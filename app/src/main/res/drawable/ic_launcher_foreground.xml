@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Top stopwatch button -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M50,23 h8 v4 h-8 z" />
+    <path
+        android:fillColor="#0284C7"
+        android:pathData="M48,27 h12 v3 h-12 z" />
+    
+    <!-- Stopwatch outer ring centered at (54,58) with radius 24dp -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M54,34 A24,24 0 1,1 30,58" />
+    
+    <!-- Stopwatch glowing track -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#60A5FA"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M30,58 A24,24 0 0,1 54,34" />
+
+    <!-- Center pivot point -->
+    <path
+        android:fillColor="#F8FAFC"
+        android:pathData="M54,58m-3,0a3,3 0 1,1 6,0a3,3 0 1,1 -6,0" />
+
+    <!-- Clock minute hand pointing up-right -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#F8FAFC"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M54,58 L54,42" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M54,58 L66,58" />
+
+    <!-- Checkmark project badge at bottom right -->
+    <path
+        android:fillColor="#10B981"
+        android:pathData="M68,68m-10,0a10,10 0 1,1 20,0a10,10 0 1,1 -20,0" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M63,68 L66.5,71.5 L73,65" />
+</vector>
