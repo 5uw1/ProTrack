@@ -83,6 +83,10 @@ dependencies {
   add("kspIosSimulatorArm64", libs.room.compiler)
 }
 
+// Desktop installer version from CI: -PappVersion=1.2.3 (MSI needs a numeric MAJOR.MINOR.PATCH).
+val desktopPackageVersion: String =
+  (project.findProperty("appVersion") as String?)?.substringBefore('-')?.takeIf { Regex("\\d+\\.\\d+\\.\\d+").matches(it) } ?: "1.0.0"
+
 compose.desktop {
   application {
     mainClass = "com.suw1labs.worktracker.MainKt"
@@ -90,7 +94,7 @@ compose.desktop {
     nativeDistributions {
       targetFormats(TargetFormat.Msi, TargetFormat.Exe, TargetFormat.Dmg, TargetFormat.Deb)
       packageName = "WorkTracker"
-      packageVersion = "1.0.0"
+      packageVersion = desktopPackageVersion
       description = "Work time tracking with project management, productivity reports and deadline reminders."
       vendor = "WorkTracker"
 

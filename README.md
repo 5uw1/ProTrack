@@ -72,9 +72,32 @@ gradlew.bat :composeApp:packageMsi :composeApp:packageExe
 ```
 
 Without a Windows machine, push to `main` (or run the workflow manually): the
-[Build installers](.github/workflows/build.yml) GitHub Actions workflow builds the Windows `.msi`/`.exe`,
-the macOS `.dmg`, the Linux `.deb` and the Android APK and attaches them as downloadable artifacts
+[Build](.github/workflows/build.yml) GitHub Actions workflow builds the Windows `.msi`/`.exe`,
+the macOS `.dmg`, the Linux `.deb` and the Android APK/AAB and attaches them as downloadable artifacts
 to the workflow run. The app stores its data under `%APPDATA%\WorkTracker` on Windows.
+
+## Releases (CI)
+
+Push a tag to publish a release:
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+The workflow stamps that version into every platform, runs the tests, builds all installers and
+creates a GitHub Release with auto-generated notes (`v1.0.0-rc1` etc. become pre-releases).
+Builds from `main` are versioned `1.0.0-dev.<run number>`.
+
+Signing and store upload are optional and switch on automatically once these repository secrets exist:
+
+| Secret | Purpose |
+| --- | --- |
+| `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | Sign the release APK/AAB with the Play upload key (`base64 -i upload.jks`). |
+| `PLAY_SERVICE_ACCOUNT_JSON` | Upload the AAB to the Google Play internal testing track on every tag. |
+| `MACOS_CERT_P12`, `MACOS_CERT_PASSWORD`, `MACOS_SIGNING_IDENTITY` | Developer ID signing of the macOS app. |
+| `APPLE_ID`, `APPLE_APP_PASSWORD`, `APPLE_TEAM_ID` | Notarize the DMG with Apple. |
+
+Privacy policy for the stores: [PRIVACY.md](PRIVACY.md).
 
 iOS (requires macOS + Xcode): open `iosApp/iosApp.xcodeproj` in Xcode and run the `iosApp`
 scheme, or from the command line:

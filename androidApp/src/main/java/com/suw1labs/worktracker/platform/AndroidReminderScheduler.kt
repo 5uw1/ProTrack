@@ -4,7 +4,6 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.util.Log
 import com.suw1labs.worktracker.data.model.WorkTaskWithProject
 
@@ -34,11 +33,9 @@ class AndroidReminderScheduler(private val context: Context) : ReminderScheduler
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
-                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
-            } else {
-                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
-            }
+            // Inexact alarm: fires within a few minutes and needs no SCHEDULE_EXACT_ALARM permission
+            // (Play restricts exact alarms to alarm-clock / calendar apps).
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
             Log.d(TAG, "Scheduled daily target reminder at $triggerAtMillis")
         } catch (e: Exception) {
             Log.w(TAG, "Cannot schedule daily target reminder: ${e.message}")
@@ -84,29 +81,8 @@ class AndroidReminderScheduler(private val context: Context) : ReminderScheduler
 
         val targetTime = reminder.triggerAtMillis
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (alarmManager.canScheduleExactAlarms()) {
-                    alarmManager.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        targetTime,
-                        pendingIntent
-                    )
-                } else {
-                    alarmManager.set(AlarmManager.RTC_WAKEUP, targetTime, pendingIntent)
-                }
-            } else {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    targetTime,
-                    pendingIntent
-                )
-            }
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, targetTime, pendingIntent)
             Log.d(TAG, "Scheduled deadline alarm for task ${task.id} at $targetTime")
-        } catch (e: SecurityException) {
-            Log.w(TAG, "Cannot schedule exact alarm: ${e.message}")
-            try {
-                alarmManager.set(AlarmManager.RTC_WAKEUP, targetTime, pendingIntent)
-            } catch (ignored: Exception) {}
         } catch (e: Exception) {
             Log.e(TAG, "Error scheduling deadline alarm", e)
         }

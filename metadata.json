@@ -1,6 +1,0 @@
-{
-  "name": "WorkTracker",
-  "description": "Work time tracking with project management, productivity reports, CSV/Excel export, and automated deadline reminders.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
