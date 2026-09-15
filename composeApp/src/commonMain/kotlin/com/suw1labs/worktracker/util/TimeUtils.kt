@@ -38,7 +38,8 @@ data class DateNames(
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
     ),
-    val weekdaysShort: List<String> = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+    val weekdaysShort: List<String> = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"),
+    val weekdaysLong: List<String> = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 )
 
 private val MONTH_ABBREVIATIONS get() = DateFormats.names.monthsShort
@@ -106,6 +107,12 @@ object DateFormats {
     fun fullDate(millis: Long): String {
         val dt = millis.toLocalDateTime()
         return "${WEEKDAY_ABBREVIATIONS[dt.dayOfWeek.isoDayNumber - 1]}, ${monthDay(millis)}, ${dt.year}"
+    }
+
+    /** `EEEE, d MMM yyyy` e.g. "Tuesday, 16 Sep 2026" – used as the Today title. */
+    fun weekdayLongDate(millis: Long): String {
+        val dt = millis.toLocalDateTime()
+        return "${names.weekdaysLong[dt.dayOfWeek.isoDayNumber - 1]}, ${dt.day} ${MONTH_ABBREVIATIONS[dt.month.number - 1]} ${dt.year}"
     }
 
     /** `MMMM yyyy` e.g. "September 2026" */

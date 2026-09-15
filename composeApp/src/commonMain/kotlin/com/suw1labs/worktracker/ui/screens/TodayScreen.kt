@@ -107,6 +107,8 @@ fun TodayScreen(
     var showManualEntry by remember { mutableStateOf(false) }
     var editingEntry by remember { mutableStateOf<TimeEntryWithDetails?>(null) }
     var showAbsenceDialog by remember { mutableStateOf(false) }
+    var showAddProjectDialog by remember { mutableStateOf(false) }
+    var newlyCreatedProjectId by remember { mutableStateOf<Long?>(null) }
 
     val isClockedIn = openSession != null
 
@@ -209,6 +211,8 @@ fun TodayScreen(
                             categories = categories,
                             isClockedIn = isClockedIn,
                             isSwitching = running != null,
+                            preselectProjectId = newlyCreatedProjectId,
+                            onAddProject = { showAddProjectDialog = true },
                             onCancel = { showActivitySelector = false },
                             onStart = { projectId, categoryId, description ->
                                 viewModel.startActivity(projectId, categoryId, null, description)
@@ -329,6 +333,17 @@ fun TodayScreen(
                     )
                 )
                 editingEntry = null
+            }
+        )
+    }
+
+    if (showAddProjectDialog) {
+        ProjectFormDialog(
+            project = null,
+            onDismiss = { showAddProjectDialog = false },
+            onSave = { code, name, client, colorHex, budgetHours, _ ->
+                viewModel.addProject(code, name, client, colorHex, budgetHours) { id -> newlyCreatedProjectId = id }
+                showAddProjectDialog = false
             }
         )
     }
@@ -456,11 +471,12 @@ private fun RunningActivity(
         Box(modifier = Modifier.width(4.dp).height(40.dp).clip(RoundedCornerShape(2.dp)).background(color))
         Spacer(modifier = Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
+            val unassigned = entry.projectId == null && entry.categoryProductive == true
             Text(
-                text = entry.projectCode?.let { "$it · ${entry.projectName}" } ?: t.noProject,
+                text = entry.projectCode?.let { "$it · ${entry.projectName}" } ?: if (unassigned) "⚠ ${t.unassignedProject}" else t.noProject,
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp,
-                color = MaterialTheme.colorScheme.primary
+                color = if (unassigned) AmberWarning else MaterialTheme.colorScheme.primary
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CategoryChip(name = entry.categoryName, productive = entry.categoryProductive)
@@ -496,11 +512,17 @@ private fun ActivitySelector(
     categories: List<WorkCategory>,
     isClockedIn: Boolean,
     isSwitching: Boolean,
+    preselectProjectId: Long?,
+    onAddProject: () -> Unit,
     onCancel: () -> Unit,
     onStart: (projectId: Long?, categoryId: Long?, description: String) -> Unit
 ) {
     val t = strings
     var projectId by remember { mutableStateOf<Long?>(projects.firstOrNull()?.id) }
+    // A project created from the "+ Add new project…" entry becomes the selection once it is loaded.
+    LaunchedEffect(preselectProjectId, projects) {
+        if (preselectProjectId != null && projects.any { it.id == preselectProjectId }) projectId = preselectProjectId
+    }
     var categoryId by remember(categories) { mutableStateOf(categories.firstOrNull()?.id) }
     var description by remember { mutableStateOf("") }
 
@@ -515,7 +537,7 @@ private fun ActivitySelector(
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
     Spacer(modifier = Modifier.height(12.dp))
-    ProjectDropdown(projects = projects, selectedProjectId = projectId, onSelect = { projectId = it }, testTag = "activity_project_dropdown")
+    ProjectDropdown(projects = projects, selectedProjectId = projectId, onSelect = { projectId = it }, testTag = "activity_project_dropdown", onAddProject = onAddProject)
     Spacer(modifier = Modifier.height(8.dp))
     CategoryDropdown(categories = categories, selectedCategoryId = categoryId, onSelect = { categoryId = it }, testTag = "activity_category_dropdown")
     Spacer(modifier = Modifier.height(8.dp))
@@ -592,6 +614,9 @@ fun DaySummaryCard(
             }
             SummaryRow(t.clockedIn, report.attendanceSeconds, MaterialTheme.colorScheme.onSurface)
             SummaryRow(t.projectWork, report.productiveSeconds, EmeraldGreen)
+            if (report.unassignedProductiveSeconds > 0) {
+                SummaryRow("↳ ${t.unassignedProject}", report.unassignedProductiveSeconds, AmberWarning)
+            }
             SummaryRow(t.unproductive, report.unproductiveSeconds, AmberWarning)
             SignedRow(t.overtimeToday, report.overtimeSeconds)
         }
@@ -673,11 +698,12 @@ fun TimeEntryRowCard(
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
+                val unassigned = entry.projectId == null && entry.categoryProductive == true
                 Text(
-                    text = entry.projectCode?.let { "$it · ${entry.projectName}" } ?: t.noProject,
+                    text = entry.projectCode?.let { "$it · ${entry.projectName}" } ?: if (unassigned) "⚠ ${t.unassignedProject}" else t.noProject,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = if (unassigned) AmberWarning else MaterialTheme.colorScheme.onSurface
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CategoryChip(name = entry.categoryName, productive = entry.categoryProductive)

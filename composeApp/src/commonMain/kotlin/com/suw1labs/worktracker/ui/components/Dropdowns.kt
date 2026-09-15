@@ -88,17 +88,21 @@ fun ProjectDropdown(
     onSelect: (Long?) -> Unit,
     modifier: Modifier = Modifier,
     label: String = strings.sapProject,
-    testTag: String? = null
+    testTag: String? = null,
+    onAddProject: (() -> Unit)? = null
 ) {
     val noProject = strings.noProjectOption
-    val options: List<Project?> = listOf<Project?>(null) + projects
+    val addLabel = strings.addProjectOption
+    // A sentinel project marks the "add new project" entry at the end of the list.
+    val addSentinel = remember { Project(id = Long.MIN_VALUE, code = "", name = "") }
+    val options: List<Project?> = listOf<Project?>(null) + projects + (if (onAddProject != null) listOf(addSentinel) else emptyList())
     val selected = projects.find { it.id == selectedProjectId }
     LabeledDropdown(
         label = label,
         selectedText = selected?.displayLabel() ?: noProject,
         options = options,
-        optionText = { it?.displayLabel() ?: noProject },
-        onSelect = { onSelect(it?.id) },
+        optionText = { if (it === addSentinel) addLabel else it?.displayLabel() ?: noProject },
+        onSelect = { if (it === addSentinel) onAddProject?.invoke() else onSelect(it?.id) },
         modifier = modifier,
         testTag = testTag
     )

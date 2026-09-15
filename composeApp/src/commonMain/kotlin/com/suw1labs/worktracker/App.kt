@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
-import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Timer
@@ -60,15 +60,16 @@ import com.suw1labs.worktracker.ui.screens.TodayScreen
 import com.suw1labs.worktracker.ui.theme.MyApplicationTheme
 import com.suw1labs.worktracker.ui.theme.RoseUrgent
 import com.suw1labs.worktracker.ui.viewmodel.TrackerViewModel
+import com.suw1labs.worktracker.util.DateFormats
 
 enum class TrackerDestination(
     val icon: ImageVector,
     val tag: String,
 ) {
     TODAY(Icons.Default.Timer, "nav_today"),
-    PROJECTS(Icons.Default.Folder, "nav_projects"),
     TASKS(Icons.AutoMirrored.Filled.Assignment, "nav_tasks"),
-    REPORTS(Icons.Default.Insights, "nav_reports");
+    REPORTS(Icons.Default.Insights, "nav_reports"),
+    PROJECTS(Icons.Default.Settings, "nav_settings");
 
     @Composable
     fun title(): String = when (this) {
@@ -98,6 +99,7 @@ fun App(container: AppContainer) {
 @Composable
 fun MainAppContent(viewModel: TrackerViewModel) {
     var currentDestination by remember { mutableStateOf(TrackerDestination.TODAY) }
+    val now by viewModel.now.collectAsState()
     val urgentTasks by viewModel.urgentTasks.collectAsState()
     val openSession by viewModel.openSession.collectAsState()
     val runningEntry by viewModel.runningEntry.collectAsState()
@@ -163,7 +165,7 @@ fun MainAppContent(viewModel: TrackerViewModel) {
                             TopAppBar(
                                 title = {
                                     Text(
-                                        text = currentDestination.title(),
+                                        text = if (currentDestination == TrackerDestination.TODAY) DateFormats.weekdayLongDate(now) else currentDestination.title(),
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 17.sp,
                                     )
@@ -196,7 +198,8 @@ fun MainAppContent(viewModel: TrackerViewModel) {
                         title = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = currentDestination.title(),
+                                    // Today shows the current weekday and date, e.g. "Tuesday, 16 Sep 2026".
+                                    text = if (currentDestination == TrackerDestination.TODAY) DateFormats.weekdayLongDate(now) else currentDestination.title(),
                                     fontWeight = FontWeight.ExtraBold,
                                     fontSize = 17.sp,
                                     color = MaterialTheme.colorScheme.primary

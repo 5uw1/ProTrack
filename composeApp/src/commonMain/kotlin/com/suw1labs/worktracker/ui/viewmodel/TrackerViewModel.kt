@@ -77,7 +77,7 @@ class TrackerViewModel(
         .map { s ->
             // Keep date formatting in sync with the UI language.
             val t = com.suw1labs.worktracker.ui.i18n.Translations.forLanguage(com.suw1labs.worktracker.ui.i18n.Language.fromCode(s.language))
-            com.suw1labs.worktracker.util.DateFormats.names = com.suw1labs.worktracker.util.DateNames(t.monthsShort, t.monthsLong, t.weekdaysShort)
+            com.suw1labs.worktracker.util.DateFormats.names = com.suw1labs.worktracker.util.DateNames(t.monthsShort, t.monthsLong, t.weekdaysShort, t.weekdaysLong)
             s
         }
         .asState(AppSettings())
@@ -359,11 +359,12 @@ class TrackerViewModel(
     }
 
     // --- Projects & categories ---
-    fun addProject(code: String, name: String, client: String, colorHex: String, budgetHours: Double) {
+    fun addProject(code: String, name: String, client: String, colorHex: String, budgetHours: Double, onCreated: (Long) -> Unit = {}) {
         viewModelScope.launch {
-            repository.insertProject(
+            val id = repository.insertProject(
                 Project(code = code.trim(), name = name.trim(), client = client.trim(), colorHex = colorHex, budgetHours = budgetHours)
             )
+            onCreated(id)
         }
     }
 

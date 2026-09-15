@@ -135,6 +135,10 @@ data class PeriodReport(
     val overtimeSeconds: Long get() = attendanceSeconds + creditedSeconds - targetSeconds
     val absences: List<DayRecord> get() = days.mapNotNull { it.absence }
 
+    /** Productive work that has no SAP project yet (order received before the project was known / added). */
+    val unassignedProductiveSeconds: Long
+        get() = days.flatMap { it.cells }.filter { it.projectId == null && it.isProductive }.sumOf { it.seconds }
+
     companion object {
         fun empty(range: DateRange) = PeriodReport(range, 0, 0, 0, 0, 0, 0, emptyList(), emptyList(), emptyList(), emptyList(), emptyList())
     }

@@ -200,6 +200,16 @@ fun ReportsScreen(
                     Text(t.hoursPerProject, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
                     val projectRows = report.projects.filter { it.projectId != null }
+                    if (report.unassignedProductiveSeconds > 0) {
+                        Row(modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("⚠ ${t.unassignedProject}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = AmberWarning)
+                                Text(t.unassignedHint, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text(TimeFormat.hoursMinutes(report.unassignedProductiveSeconds), fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, color = AmberWarning)
+                        }
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    }
                     if (projectRows.isEmpty()) {
                         Text(t.noProjectHours, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
