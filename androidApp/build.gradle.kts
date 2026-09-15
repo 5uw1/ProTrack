@@ -23,8 +23,9 @@ android {
   }
 
   signingConfigs {
-    val releaseKeystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-    if (file(releaseKeystorePath).exists()) {
+    // Blank env values (as set by CI without secrets) count as "not configured".
+    val releaseKeystorePath = System.getenv("KEYSTORE_PATH")?.takeIf { it.isNotBlank() } ?: "${rootDir}/my-upload-key.jks"
+    if (file(releaseKeystorePath).isFile) {
       create("release") {
         storeFile = file(releaseKeystorePath)
         storePassword = System.getenv("STORE_PASSWORD")
