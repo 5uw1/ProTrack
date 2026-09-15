@@ -24,4 +24,8 @@ dependencyResolutionManagement {
 
 rootProject.name = "WorkTracker"
 
-include(":app")
+// Shared Kotlin Multiplatform module: common UI + data layer, plus the iOS framework
+// and the desktop (Windows / macOS / Linux) application entry point.
+include(":composeApp")
+// Thin Android application shell that hosts the shared UI.
+include(":androidApp")

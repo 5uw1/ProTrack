@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive icon foreground: stopwatch dial with a "done" badge (drawn inside the 66dp safe zone). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+    <group
+        android:scaleX="0.56"
+        android:scaleY="0.56"
+        android:pivotX="512"
+        android:pivotY="512">
+        <!-- crown -->
+        <path android:fillColor="#FFFFFF" android:pathData="M484,150 h56 a22,22 0 0 1 22,22 v26 a22,22 0 0 1 -22,22 h-56 a22,22 0 0 1 -22,-22 v-26 a22,22 0 0 1 22,-22 z" />
+        <path android:fillColor="#FFFFFF" android:pathData="M492,205 h40 v60 h-40 z" />
+        <!-- dial ring -->
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="58" android:fillColor="#00000000"
+            android:pathData="M512,260 a300,300 0 1 1 -0.1,0 z" />
+        <!-- ticks -->
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="30" android:strokeLineCap="round" android:pathData="M512,326 L512,372" />
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="30" android:strokeLineCap="round" android:pathData="M512,748 L512,794" />
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="30" android:strokeLineCap="round" android:pathData="M278,560 L324,560" />
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="30" android:strokeLineCap="round" android:pathData="M700,560 L746,560" />
+        <!-- hands -->
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="46" android:strokeLineCap="round" android:pathData="M512,560 L512,400" />
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="46" android:strokeLineCap="round" android:pathData="M512,560 L646,620" />
+        <path android:fillColor="#FFFFFF" android:pathData="M512,526 a34,34 0 1 1 -0.1,0 z" />
+        <!-- badge -->
+        <path android:fillColor="#10B981" android:strokeColor="#FFFFFF" android:strokeWidth="34" android:pathData="M790,660 a130,130 0 1 1 -0.1,0 z" />
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="40" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillColor="#00000000" android:pathData="M728,792 L772,836 L856,744" />
+    </group>
+</vector>

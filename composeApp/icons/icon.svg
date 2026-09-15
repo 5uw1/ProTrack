@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2F6BFF"/>
+      <stop offset="1" stop-color="#1638B8"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <!-- stopwatch crown -->
+  <rect x="462" y="150" width="100" height="70" rx="22" fill="#FFFFFF"/>
+  <rect x="492" y="205" width="40" height="60" fill="#FFFFFF"/>
+  <!-- dial -->
+  <circle cx="512" cy="560" r="300" fill="none" stroke="#FFFFFF" stroke-width="58"/>
+  <!-- quarter ticks -->
+  <line x1="512" y1="326" x2="512" y2="372" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round"/>
+  <line x1="512" y1="748" x2="512" y2="794" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round"/>
+  <line x1="278" y1="560" x2="324" y2="560" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round"/>
+  <line x1="700" y1="560" x2="746" y2="560" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round"/>
+  <!-- hands -->
+  <line x1="512" y1="560" x2="512" y2="400" stroke="#FFFFFF" stroke-width="46" stroke-linecap="round"/>
+  <line x1="512" y1="560" x2="646" y2="620" stroke="#FFFFFF" stroke-width="46" stroke-linecap="round"/>
+  <circle cx="512" cy="560" r="34" fill="#FFFFFF"/>
+  <!-- done badge -->
+  <circle cx="790" cy="790" r="130" fill="#10B981" stroke="#FFFFFF" stroke-width="34"/>
+  <path d="M728 792 L772 836 L856 744" fill="none" stroke="#FFFFFF" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

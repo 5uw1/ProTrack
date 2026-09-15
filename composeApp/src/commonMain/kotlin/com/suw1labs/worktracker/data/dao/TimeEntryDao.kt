@@ -1,0 +1,48 @@
+package com.suw1labs.worktracker.data.dao
+
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
+import com.suw1labs.worktracker.data.model.TimeEntry
+import com.suw1labs.worktracker.data.model.TimeEntryWithDetails
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface TimeEntryDao {
+    @Query("""
+        SELECT 
+            te.id, te.projectId, p.code AS projectCode, p.name AS projectName, p.colorHex AS projectColor, 
+            te.taskId, t.title AS taskTitle,
+            te.categoryId, c.name AS categoryName, c.isProductive AS categoryProductive,
+            te.description, te.startTime, te.endTime, te.createdAt
+        FROM time_entries te
+        LEFT JOIN projects p ON te.projectId = p.id
+        LEFT JOIN tasks t ON te.taskId = t.id
+        LEFT JOIN work_categories c ON te.categoryId = c.id
+        ORDER BY te.startTime DESC
+    """)
+    fun getAllEntriesWithDetails(): Flow<List<TimeEntryWithDetails>>
+
+    @Query("SELECT * FROM time_entries WHERE endTime IS NULL ORDER BY startTime DESC LIMIT 1")
+    suspend fun getRunningEntry(): TimeEntry?
+
+    @Query("UPDATE time_entries SET endTime = :endTime WHERE endTime IS NULL")
+    suspend fun closeRunningEntries(endTime: Long)
+
+    @Query("SELECT * FROM time_entries WHERE id = :id")
+    suspend fun getEntryById(id: Long): TimeEntry?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertEntry(entry: TimeEntry): Long
+
+    @Update
+    suspend fun updateEntry(entry: TimeEntry)
+
+    @Query("DELETE FROM time_entries WHERE id = :id")
+    suspend fun deleteEntryById(id: Long)
+
+    @Query("SELECT COUNT(*) FROM time_entries")
+    suspend fun getEntryCount(): Int
+}
