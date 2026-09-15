@@ -55,13 +55,26 @@ Desktop – run directly:
 ./gradlew :composeApp:run
 ```
 
-Desktop – native installers (`.msi`/`.exe` must be built on Windows, `.dmg` on macOS, `.deb` on Linux; requires JDK 17+):
+Desktop – native installers (`.msi`/`.exe` must be built on Windows, `.dmg` on macOS, `.deb` on Linux; requires JDK 17+ with `jpackage`):
 
 ```bash
 ./gradlew :composeApp:packageDistributionForCurrentOS
 ```
 
 The installer is written to `composeApp/build/compose/binaries/main/<format>/`.
+
+### Windows
+
+On a Windows machine (JDK 25 and [WiX Toolset 3.x](https://wixtoolset.org/) installed):
+
+```bash
+gradlew.bat :composeApp:packageMsi :composeApp:packageExe
+```
+
+Without a Windows machine, push to `main` (or run the workflow manually): the
+[Build installers](.github/workflows/build.yml) GitHub Actions workflow builds the Windows `.msi`/`.exe`,
+the macOS `.dmg`, the Linux `.deb` and the Android APK and attaches them as downloadable artifacts
+to the workflow run. The app stores its data under `%APPDATA%\WorkTracker` on Windows.
 
 iOS (requires macOS + Xcode): open `iosApp/iosApp.xcodeproj` in Xcode and run the `iosApp`
 scheme, or from the command line:
