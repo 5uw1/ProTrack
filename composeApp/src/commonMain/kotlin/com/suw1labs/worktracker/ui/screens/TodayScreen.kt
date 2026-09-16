@@ -197,9 +197,14 @@ fun TodayScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     val running = runningEntry
                     if (running != null && !showActivitySelector) {
+                        // Total time on this project + task today, across all sessions (lunch, breaks, …).
+                        val todayTaskSeconds = todayEntries
+                            .filter { it.projectId == running.projectId && it.taskId == running.taskId }
+                            .sumOf { it.durationSeconds(now) }
                         RunningActivity(
                             entry = running,
                             now = now,
+                            todayTaskSeconds = todayTaskSeconds,
                             onSwitch = { showActivitySelector = true },
                             onStop = { viewModel.stopActivity() },
                             onEdit = { editingEntry = running },
@@ -452,6 +457,7 @@ private fun AttendanceCard(
 private fun RunningActivity(
     entry: TimeEntryWithDetails,
     now: Long,
+    todayTaskSeconds: Long,
     onSwitch: () -> Unit,
     onStop: () -> Unit,
     onEdit: () -> Unit,
@@ -465,14 +471,24 @@ private fun RunningActivity(
         Spacer(modifier = Modifier.width(8.dp))
         Text(t.currentActivity, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp, color = EmeraldGreen)
         Spacer(modifier = Modifier.weight(1f))
-        Text(
-            text = TimeFormat.hms(entry.durationSeconds(now)),
-            fontFamily = FontFamily.Monospace,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.ExtraBold,
-            modifier = Modifier.testTag("activity_elapsed_text")
-        )
+        Column(horizontalAlignment = Alignment.End) {
+            // Big number: time on this task today (all sessions). Small: the running session only.
+            Text(
+                text = TimeFormat.hms(todayTaskSeconds),
+                fontFamily = FontFamily.Monospace,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.testTag("activity_today_total_text")
+            )
+            Text(
+                text = "${t.thisSession} ${TimeFormat.hms(entry.durationSeconds(now))}",
+                fontSize = 10.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag("activity_elapsed_text")
+            )
+        }
     }
+    Text(t.todayOnThisTask, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.End)
     Spacer(modifier = Modifier.height(12.dp))
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(modifier = Modifier.width(4.dp).height(40.dp).clip(RoundedCornerShape(2.dp)).background(color))
