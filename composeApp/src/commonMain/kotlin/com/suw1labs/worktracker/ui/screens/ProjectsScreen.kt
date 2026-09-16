@@ -107,56 +107,6 @@ fun ProjectsScreen(
         ) {
             item { Spacer(modifier = Modifier.height(4.dp)) }
 
-            item {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(t.sapProjects, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text(
-                            importResult ?: t.projectsSubtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (importResult != null) EmeraldGreen else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    TextButton(onClick = { showImportDialog = true }, modifier = Modifier.testTag("import_projects_open_button")) {
-                        Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(t.importBtn, fontSize = 12.sp)
-                    }
-                }
-            }
-
-            // Filter Chips
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
-                    listOf("ALL" to t.filterAll, "ACTIVE" to t.filterActive, "ON_HOLD" to t.filterOnHold, "COMPLETED" to t.filterCompleted).forEach { (code, label) ->
-                        FilterChip(
-                            selected = selectedFilter == code,
-                            onClick = { selectedFilter = code },
-                            label = { Text(label) },
-                            modifier = Modifier.testTag("filter_chip_$code")
-                        )
-                    }
-                }
-            }
-
-            if (filteredProjects.isEmpty()) {
-                item {
-                    EmptyStateCard(
-                        icon = Icons.Default.Folder,
-                        title = t.noProjectsTitle,
-                        subtitle = t.noProjectsSubtitle
-                    )
-                }
-            } else {
-                items(filteredProjects, key = { it.id }) { summary ->
-                    ProjectCard(
-                        summary = summary,
-                        onEdit = { editingProject = summary },
-                        onDelete = { viewModel.deleteProject(summary.id) }
-                    )
-                }
-            }
-
             // --- Work schedule ---
             item {
                 Card(
@@ -205,6 +155,56 @@ fun ProjectsScreen(
                             }
                         }
                     }
+                }
+            }
+
+            item {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(t.sapProjects, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Text(
+                            importResult ?: t.projectsSubtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (importResult != null) EmeraldGreen else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    TextButton(onClick = { showImportDialog = true }, modifier = Modifier.testTag("import_projects_open_button")) {
+                        Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(t.importBtn, fontSize = 12.sp)
+                    }
+                }
+            }
+
+            // Filter Chips
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+                    listOf("ALL" to t.filterAll, "ACTIVE" to t.filterActive, "ON_HOLD" to t.filterOnHold, "COMPLETED" to t.filterCompleted).forEach { (code, label) ->
+                        FilterChip(
+                            selected = selectedFilter == code,
+                            onClick = { selectedFilter = code },
+                            label = { Text(label) },
+                            modifier = Modifier.testTag("filter_chip_$code")
+                        )
+                    }
+                }
+            }
+
+            if (filteredProjects.isEmpty()) {
+                item {
+                    EmptyStateCard(
+                        icon = Icons.Default.Folder,
+                        title = t.noProjectsTitle,
+                        subtitle = t.noProjectsSubtitle
+                    )
+                }
+            } else {
+                items(filteredProjects, key = { it.id }) { summary ->
+                    ProjectCard(
+                        summary = summary,
+                        onEdit = { editingProject = summary },
+                        onDelete = { viewModel.deleteProject(summary.id) }
+                    )
                 }
             }
 
