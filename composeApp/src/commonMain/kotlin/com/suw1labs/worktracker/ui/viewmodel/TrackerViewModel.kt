@@ -254,12 +254,29 @@ class TrackerViewModel(
     }
 
     // --- Attendance ---
+    /**
+     * Clocks in and continues the activity that was running before the last clock-out
+     * (same project, task and note), so a lunch break does not require re-selecting the work.
+     */
     fun clockIn() {
         viewModelScope.launch {
-            if (repository.getOpenSession() == null) {
-                repository.insertSession(AttendanceSession(clockIn = currentTimeMillis()))
-            }
+            val now = currentTimeMillis()
+            if (repository.getOpenSession() != null) return@launch
+            repository.insertSession(AttendanceSession(clockIn = now))
+            if (repository.getRunningEntry() != null) return@launch
+            val today = DateRanges.dayRange(now)
+            val last = allEntries.value
+                .filter { it.endTime != null && it.startTime >= today.start }
+                .maxByOrNull { it.endTime ?: 0L } ?: return@launch
+            repository.insertTimeEntry(
+                TimeEntry(projectId = last.projectId, taskId = last.taskId, description = last.description, startTime = now, endTime = null)
+            )
         }
+    }
+
+    /** Starts a new activity with the same project, task and note as [entry] (clocks in if needed). */
+    fun continueEntry(entry: TimeEntryWithDetails) {
+        startActivity(projectId = entry.projectId, taskId = entry.taskId, description = entry.description)
     }
 
     /** Clocks out; the running activity is stopped at the same moment so nothing is counted while away. */

@@ -291,7 +291,8 @@ fun TodayScreen(
                     entry = entry,
                     now = now,
                     onEdit = { editingEntry = entry },
-                    onDelete = { viewModel.deleteTimeEntry(entry.id) }
+                    onDelete = { viewModel.deleteTimeEntry(entry.id) },
+                    onContinue = if (entry.isRunning) null else ({ viewModel.continueEntry(entry) })
                 )
             }
         }
@@ -718,7 +719,8 @@ fun TimeEntryRowCard(
     entry: TimeEntryWithDetails,
     now: Long,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onContinue: (() -> Unit)? = null
 ) {
     val t = strings
     val projColor = entry.projectColor?.let { projectColor(it) } ?: MaterialTheme.colorScheme.tertiary
@@ -763,6 +765,11 @@ fun TimeEntryRowCard(
                     fontSize = 14.sp
                 )
                 Row {
+                    if (onContinue != null) {
+                        IconButton(onClick = onContinue, modifier = Modifier.size(32.dp).testTag("continue_entry_${entry.id}")) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = t.track, tint = EmeraldGreen, modifier = Modifier.size(18.dp))
+                        }
+                    }
                     IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Edit, contentDescription = t.edit, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                     }
