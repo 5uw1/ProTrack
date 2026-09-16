@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Alarm
@@ -297,7 +298,8 @@ fun TodayScreen(
                     now = now,
                     onEdit = { editingEntry = entry },
                     onDelete = { viewModel.deleteTimeEntry(entry.id) },
-                    onContinue = if (entry.isRunning) null else ({ viewModel.continueEntry(entry) })
+                    onContinue = if (entry.isRunning) null else ({ viewModel.continueEntry(entry) }),
+                    isSomethingRunning = runningEntry != null
                 )
             }
         }
@@ -465,7 +467,7 @@ private fun RunningActivity(
 ) {
     val t = strings
     val color = entry.projectColor?.let { parseHexColor(it) } ?: MaterialTheme.colorScheme.tertiary
-    var note by remember(entry.id) { mutableStateOf(entry.description) }
+    var showNoteDialog by remember { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(EmeraldGreen))
         Spacer(modifier = Modifier.width(8.dp))
@@ -505,26 +507,49 @@ private fun RunningActivity(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CategoryChip(name = entry.taskTitle ?: t.noSpecificTask, productive = entry.isProductive)
             }
+            if (entry.description.isNotBlank()) {
+                Text(entry.description, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp).testTag("running_note_text"))
+            }
             Text(t.since(DateFormats.hourMinute(entry.startTime)), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+        }
+        // Note icon: add or edit the optional note in a small dialog.
+        IconButton(onClick = { showNoteDialog = true }, modifier = Modifier.size(32.dp).testTag("running_note_button")) {
+            Icon(
+                Icons.Default.EditNote,
+                contentDescription = if (entry.description.isBlank()) t.addNote else t.editNote,
+                tint = if (entry.description.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
         }
         IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
             Icon(Icons.Default.Edit, contentDescription = t.edit, modifier = Modifier.size(16.dp))
         }
     }
-    Spacer(modifier = Modifier.height(10.dp))
-    // Optional note – can be written now, while working or after the activity has finished.
-    OutlinedTextField(
-        value = note,
-        onValueChange = {
-            note = it
-            onNoteChange(it)
-        },
-        label = { Text(t.noteOptional) },
-        placeholder = { Text(t.noteHint) },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth().testTag("running_note_input")
-    )
     Spacer(modifier = Modifier.height(12.dp))
+
+    if (showNoteDialog) {
+        var noteText by remember { mutableStateOf(entry.description) }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showNoteDialog = false },
+            title = { Text(if (entry.description.isBlank()) t.addNote else t.editNote) },
+            text = {
+                OutlinedTextField(
+                    value = noteText,
+                    onValueChange = { noteText = it },
+                    placeholder = { Text(t.noteHint) },
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth().testTag("running_note_input")
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onNoteChange(noteText.trim())
+                    showNoteDialog = false
+                }) { Text(t.save) }
+            },
+            dismissButton = { TextButton(onClick = { showNoteDialog = false }) { Text(t.cancel) } }
+        )
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         FilledTonalButton(onClick = onSwitch, modifier = Modifier.weight(1f).height(46.dp).testTag("switch_activity_button")) {
             Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -737,15 +762,55 @@ fun TimeEntryRowCard(
     now: Long,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onContinue: (() -> Unit)? = null
+    onContinue: (() -> Unit)? = null,
+    isSomethingRunning: Boolean = false
 ) {
     val t = strings
     val projColor = entry.projectColor?.let { projectColor(it) } ?: MaterialTheme.colorScheme.tertiary
     val seconds = entry.durationSeconds(now)
+    var showActions by remember { mutableStateOf(false) }
+    val switchLabel = if (isSomethingRunning) t.switchToThis else t.continueThis
+
+    // Tapping the card opens the actions (switch / continue, edit, delete).
+    if (showActions) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showActions = false },
+            title = { Text(entry.projectCode?.let { "$it · ${entry.projectName}" } ?: t.noProject, fontSize = 15.sp, fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text(entry.taskTitle ?: t.noSpecificTask, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (entry.description.isNotBlank()) Text(entry.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    if (onContinue != null) {
+                        Button(onClick = { showActions = false; onContinue() }, modifier = Modifier.fillMaxWidth().testTag("entry_action_switch")) {
+                            Icon(if (isSomethingRunning) Icons.Default.SwapHoriz else Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(switchLabel)
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
+                    OutlinedButton(onClick = { showActions = false; onEdit() }, modifier = Modifier.fillMaxWidth().testTag("entry_action_edit")) {
+                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(t.edit)
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    TextButton(onClick = { showActions = false; onDelete() }, modifier = Modifier.fillMaxWidth().testTag("entry_action_delete")) {
+                        Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(t.delete, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { showActions = false }) { Text(t.cancel) } }
+        )
+    }
 
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        onClick = { showActions = true },
         modifier = Modifier.fillMaxWidth().testTag("time_entry_card_${entry.id}")
     ) {
         Row(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -784,7 +849,12 @@ fun TimeEntryRowCard(
                 Row {
                     if (onContinue != null) {
                         IconButton(onClick = onContinue, modifier = Modifier.size(32.dp).testTag("continue_entry_${entry.id}")) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = t.track, tint = EmeraldGreen, modifier = Modifier.size(18.dp))
+                            Icon(
+                                if (isSomethingRunning) Icons.Default.SwapHoriz else Icons.Default.PlayArrow,
+                                contentDescription = switchLabel,
+                                tint = EmeraldGreen,
+                                modifier = Modifier.size(18.dp)
+                            )
                         }
                     }
                     IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
