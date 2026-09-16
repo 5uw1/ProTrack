@@ -9,11 +9,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -99,17 +101,20 @@ fun EntryFormDialog(
     /** Create a project from inside the dialog ("+ Add new project…"); the new project gets selected. */
     onQuickProject: ((code: String, name: String, client: String, colorHex: String, budgetHours: Double, isProductive: Boolean, onCreated: (Long) -> Unit) -> Unit)? = null,
     /** Show and pick only the time of day (the entry belongs to a known day). */
-    timeOnly: Boolean = false
+    timeOnly: Boolean = false,
+    /** Suggested start/end for a new entry (e.g. end of the previous activity until now). */
+    defaultStart: Long? = null,
+    defaultEnd: Long? = null
 ) {
     val t = strings
     val isRunning = entry?.isRunning == true
-    val defaultEnd = initialDayStart?.let { it + 17 * 3600_000L } ?: currentTimeMillis()
+    val defaultEnd = defaultEnd ?: initialDayStart?.let { it + 17 * 3600_000L } ?: currentTimeMillis()
     var projectId by remember { mutableStateOf(entry?.projectId) }
     var taskId by remember { mutableStateOf(entry?.taskId) }
     var showQuickTask by remember { mutableStateOf(false) }
     var showQuickProject by remember { mutableStateOf(false) }
     var description by remember { mutableStateOf(entry?.description ?: "") }
-    var start by remember { mutableStateOf(entry?.startTime ?: (defaultEnd - 3600_000L)) }
+    var start by remember { mutableStateOf(entry?.startTime ?: defaultStart?.takeIf { it < defaultEnd } ?: (defaultEnd - 3600_000L)) }
     var end by remember { mutableStateOf<Long?>(if (isRunning) null else (entry?.endTime ?: defaultEnd)) }
 
     val projectTasks = remember(projectId, tasks) { tasks.filter { it.projectId == projectId && it.status != "DONE" } }
@@ -165,6 +170,22 @@ fun EntryFormDialog(
                 if (!isRunning) {
                     Spacer(modifier = Modifier.height(10.dp))
                     DateTimeField(label = t.endLabel, millis = end, placeholder = t.pickEnd, onPick = { end = it }, timeOnly = timeOnly)
+                    // Quick durations: set the end relative to the start with one tap.
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+                        listOf(15 to "15m", 30 to "30m", 60 to "1h", 120 to "2h", 240 to "4h").forEach { (minutes, label) ->
+                            AssistChip(
+                                onClick = { end = start + minutes * 60_000L },
+                                label = { Text(t.durationChip(label), fontSize = 12.sp) },
+                                modifier = Modifier.testTag("duration_chip_$minutes")
+                            )
+                        }
+                        AssistChip(
+                            onClick = { end = currentTimeMillis() },
+                            label = { Text(t.untilNow, fontSize = 12.sp) },
+                            modifier = Modifier.testTag("duration_chip_now")
+                        )
+                    }
                 } else {
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(t.stillRunning, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)

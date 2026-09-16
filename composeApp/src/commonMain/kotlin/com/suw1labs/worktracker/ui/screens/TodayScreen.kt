@@ -24,7 +24,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Alarm
@@ -274,11 +273,12 @@ fun TodayScreen(
                 }
                 FilledTonalButton(
                     onClick = { showManualEntry = true },
+                    contentPadding = ButtonDefaults.TextButtonContentPadding,
                     modifier = Modifier.testTag("manual_time_entry_button")
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(t.manualEntry, fontSize = 12.sp)
+                    Text(t.add, fontSize = 12.sp)
                 }
             }
         }
@@ -308,6 +308,8 @@ fun TodayScreen(
     }
 
     if (showManualEntry) {
+        // Default: from the end of the last activity today (or the clock-in) until now.
+        val lastEnd = todayEntries.filter { !it.isRunning }.maxOfOrNull { it.endTime ?: 0L } ?: openSession?.clockIn
         EntryFormDialog(
             entry = null,
             projects = activeProjects,
@@ -318,6 +320,8 @@ fun TodayScreen(
                 showManualEntry = false
             },
             initialDayStart = todayReport.range.start,
+            defaultStart = lastEnd,
+            defaultEnd = now,
             onQuickTask = { projectId, title, onCreated -> viewModel.addQuickTask(projectId, title, onCreated) },
             onQuickProject = { code, name, client, color, budget, productive, onCreated -> viewModel.addProject(code, name, client, color, budget, productive, onCreated) },
             timeOnly = true
@@ -467,7 +471,6 @@ private fun RunningActivity(
 ) {
     val t = strings
     val color = entry.projectColor?.let { parseHexColor(it) } ?: MaterialTheme.colorScheme.tertiary
-    var showNoteDialog by remember { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(EmeraldGreen))
         Spacer(modifier = Modifier.width(8.dp))
@@ -512,44 +515,12 @@ private fun RunningActivity(
             }
             Text(t.since(DateFormats.hourMinute(entry.startTime)), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
         }
-        // Note icon: add or edit the optional note in a small dialog.
-        IconButton(onClick = { showNoteDialog = true }, modifier = Modifier.size(32.dp).testTag("running_note_button")) {
-            Icon(
-                Icons.Default.EditNote,
-                contentDescription = if (entry.description.isBlank()) t.addNote else t.editNote,
-                tint = if (entry.description.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
-            )
-        }
         IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
             Icon(Icons.Default.Edit, contentDescription = t.edit, modifier = Modifier.size(16.dp))
         }
     }
     Spacer(modifier = Modifier.height(12.dp))
 
-    if (showNoteDialog) {
-        var noteText by remember { mutableStateOf(entry.description) }
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showNoteDialog = false },
-            title = { Text(if (entry.description.isBlank()) t.addNote else t.editNote) },
-            text = {
-                OutlinedTextField(
-                    value = noteText,
-                    onValueChange = { noteText = it },
-                    placeholder = { Text(t.noteHint) },
-                    minLines = 2,
-                    modifier = Modifier.fillMaxWidth().testTag("running_note_input")
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    onNoteChange(noteText.trim())
-                    showNoteDialog = false
-                }) { Text(t.save) }
-            },
-            dismissButton = { TextButton(onClick = { showNoteDialog = false }) { Text(t.cancel) } }
-        )
-    }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         FilledTonalButton(onClick = onSwitch, modifier = Modifier.weight(1f).height(46.dp).testTag("switch_activity_button")) {
             Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
