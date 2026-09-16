@@ -457,6 +457,11 @@ class TrackerViewModel(
         }
     }
 
+    /** Moves a task and its logged time to another project (e.g. from Unproductive to a real project). */
+    fun moveTask(taskId: Long, projectId: Long) {
+        viewModelScope.launch { repository.moveTask(taskId, projectId) }
+    }
+
     fun updateTaskStatus(taskId: Long, newStatus: String) {
         viewModelScope.launch {
             repository.updateTaskStatus(taskId, newStatus)

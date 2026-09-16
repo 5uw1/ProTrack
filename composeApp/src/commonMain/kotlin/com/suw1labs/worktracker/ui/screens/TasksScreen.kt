@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NotificationsActive
@@ -41,6 +42,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -49,6 +51,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -76,15 +79,16 @@ import com.suw1labs.worktracker.ui.components.displayLabel
 import com.suw1labs.worktracker.ui.components.PriorityBadge
 import com.suw1labs.worktracker.ui.components.StatusBadge
 import com.suw1labs.worktracker.ui.components.dismissKeyboardOnTap
+import com.suw1labs.worktracker.ui.theme.AmberWarning
 import com.suw1labs.worktracker.ui.theme.EmeraldGreen
 import com.suw1labs.worktracker.ui.theme.RoseUrgent
 import com.suw1labs.worktracker.ui.viewmodel.TrackerViewModel
 import com.suw1labs.worktracker.util.DateFormats
 import com.suw1labs.worktracker.util.formatFixed
+import com.suw1labs.worktracker.util.TimeFormat
 import com.suw1labs.worktracker.util.projectColor
 import com.suw1labs.worktracker.ui.i18n.strings
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TasksScreen(
     viewModel: TrackerViewModel,
@@ -93,11 +97,12 @@ fun TasksScreen(
 ) {
     val t = strings
     val allTasks by viewModel.allTasks.collectAsState()
-    val activeProjects by viewModel.activeProjects.collectAsState()
+    val allProjects by viewModel.allProjects.collectAsState()
 
     var statusFilter by remember { mutableStateOf("ALL") }
-    var showAddTaskDialog by remember { mutableStateOf(false) }
+    var addTaskProjectId by remember { mutableStateOf<Long?>(null) }
     var editingTask by remember { mutableStateOf<WorkTaskWithProject?>(null) }
+    var movingTask by remember { mutableStateOf<WorkTaskWithProject?>(null) }
 
     val filteredTasks = remember(allTasks, statusFilter) {
         when (statusFilter) {
@@ -107,250 +112,274 @@ fun TasksScreen(
             else -> allTasks
         }
     }
-
-    Box(modifier = modifier.fillMaxSize()) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            item { Spacer(modifier = Modifier.height(4.dp)) }
-
-            // Filter status chips
-            item {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
-                ) {
-                    listOf("ALL" to t.filterAll, "TODO" to t.taskFilterTodo, "IN_PROGRESS" to t.taskFilterInProgress, "DONE" to t.taskFilterDone).forEach { (code, label) ->
-                        FilterChip(
-                            selected = statusFilter == code,
-                            onClick = { statusFilter = code },
-                            label = { Text(label) },
-                            modifier = Modifier.testTag("task_filter_$code")
-                        )
-                    }
-                }
-            }
-
-            if (filteredTasks.isEmpty()) {
-                item {
-                    EmptyStateCard(
-                        icon = Icons.Default.Task,
-                        title = t.noTasksTitle,
-                        subtitle = t.noTasksSubtitle
-                    )
-                }
-            } else {
-                items(filteredTasks, key = { it.id }) { task ->
-                    TaskCard(
-                        task = task,
-                        onToggleDone = {
-                            val newStatus = if (task.status == "DONE") "TODO" else "DONE"
-                            viewModel.updateTaskStatus(task.id, newStatus)
-                        },
-                        onTrack = { onTrackTask(task) },
-                        onEdit = { editingTask = task },
-                        onDelete = { viewModel.deleteTask(task.id) }
-                    )
-                }
-            }
-
-            item { Spacer(modifier = Modifier.height(80.dp)) }
-        }
-
-        FloatingActionButton(
-            onClick = { showAddTaskDialog = true },
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(20.dp)
-                .testTag("add_task_button")
-        ) {
-            Icon(Icons.Default.Add, contentDescription = t.addTask)
-        }
+    val tasksByProject = remember(filteredTasks) { filteredTasks.groupBy { it.projectId } }
+    // Productive projects first, then the unproductive one(s); completed projects last.
+    val orderedProjects = remember(allProjects) {
+        allProjects.sortedWith(compareBy({ !it.isProductive }, { it.status == "COMPLETED" }, { it.code }))
     }
 
-    // Add Task Dialog
-    if (showAddTaskDialog) {
+    LazyColumn(
+        modifier = modifier.fillMaxSize().padding(horizontal = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        // Filter status chips
+        item {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+            ) {
+                listOf("ALL" to t.filterAll, "TODO" to t.taskFilterTodo, "IN_PROGRESS" to t.taskFilterInProgress, "DONE" to t.taskFilterDone).forEach { (code, label) ->
+                    FilterChip(
+                        selected = statusFilter == code,
+                        onClick = { statusFilter = code },
+                        label = { Text(label) },
+                        modifier = Modifier.testTag("task_filter_$code")
+                    )
+                }
+            }
+        }
+
+        if (orderedProjects.isEmpty()) {
+            item {
+                EmptyStateCard(
+                    icon = Icons.Default.Task,
+                    title = t.noProjectsTitle,
+                    subtitle = t.noProjectsSubtitle
+                )
+            }
+        }
+
+        items(orderedProjects, key = { it.id }) { project ->
+            ProjectTasksCard(
+                project = project,
+                tasks = tasksByProject[project.id].orEmpty(),
+                onAddTask = { addTaskProjectId = project.id },
+                onToggleDone = { task ->
+                    viewModel.updateTaskStatus(task.id, if (task.status == "DONE") "TODO" else "DONE")
+                },
+                onTrack = onTrackTask,
+                onMove = { movingTask = it },
+                onEdit = { editingTask = it },
+                onDelete = { viewModel.deleteTask(it.id) }
+            )
+        }
+
+        item { Spacer(modifier = Modifier.height(24.dp)) }
+    }
+
+    addTaskProjectId?.let { projectId ->
         TaskFormDialog(
             task = null,
-            projects = activeProjects,
-            onDismiss = { showAddTaskDialog = false },
+            projects = allProjects,
+            initialProjectId = projectId,
+            onDismiss = { addTaskProjectId = null },
             onSave = { pId, title, desc, priority, estHours, deadline, leadHours ->
                 viewModel.addTask(pId, title, desc, priority, estHours, deadline, leadHours)
-                showAddTaskDialog = false
+                addTaskProjectId = null
             }
         )
     }
 
-    // Edit Task Dialog
-    editingTask?.let { t ->
+    editingTask?.let { task ->
         TaskFormDialog(
-            task = t,
-            projects = activeProjects,
+            task = task,
+            projects = allProjects,
             onDismiss = { editingTask = null },
             onSave = { pId, title, desc, priority, estHours, deadline, leadHours ->
+                if (pId != task.projectId) viewModel.moveTask(task.id, pId)
                 viewModel.updateTask(
                     WorkTask(
-                        id = t.id,
+                        id = task.id,
                         projectId = pId,
                         title = title,
                         description = desc,
                         priority = priority,
-                        status = t.status,
+                        status = task.status,
                         estimatedHours = estHours,
                         deadlineTimestamp = deadline,
                         reminderLeadHours = leadHours,
                         reminderEnabled = deadline != null,
-                        createdAt = t.createdAt
+                        createdAt = task.createdAt
                     )
                 )
                 editingTask = null
             }
         )
     }
+
+    movingTask?.let { task ->
+        MoveTaskDialog(
+            task = task,
+            projects = allProjects.filter { it.id != task.projectId },
+            onDismiss = { movingTask = null },
+            onMove = { projectId ->
+                viewModel.moveTask(task.id, projectId)
+                movingTask = null
+            }
+        )
+    }
+}
+
+/** One project with its tasks. */
+@Composable
+private fun ProjectTasksCard(
+    project: Project,
+    tasks: List<WorkTaskWithProject>,
+    onAddTask: () -> Unit,
+    onToggleDone: (WorkTaskWithProject) -> Unit,
+    onTrack: (WorkTaskWithProject) -> Unit,
+    onMove: (WorkTaskWithProject) -> Unit,
+    onEdit: (WorkTaskWithProject) -> Unit,
+    onDelete: (WorkTaskWithProject) -> Unit
+) {
+    val t = strings
+    val projColor = projectColor(project.colorHex)
+    val sorted = remember(tasks) { tasks.sortedWith(compareBy({ it.status == "DONE" }, { it.deadlineTimestamp ?: Long.MAX_VALUE })) }
+
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        modifier = Modifier.fillMaxWidth().testTag("project_tasks_${project.id}")
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.width(4.dp).height(30.dp).clip(RoundedCornerShape(2.dp)).background(projColor))
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (project.isProductive) "${project.code} · ${project.name}" else project.name,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = if (project.isProductive) MaterialTheme.colorScheme.onSurface else AmberWarning
+                    )
+                    Text(
+                        text = (if (project.client.isNotBlank()) "${project.client} · " else "") + t.tasksCount(tasks.size),
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                TextButton(onClick = onAddTask, modifier = Modifier.testTag("add_task_${project.id}")) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(t.add, fontSize = 12.sp)
+                }
+            }
+
+            if (sorted.isEmpty()) {
+                Text(t.noTasksInProject, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 14.dp, top = 6.dp))
+            }
+            sorted.forEachIndexed { index, task ->
+                if (index > 0) HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+                TaskRow(
+                    task = task,
+                    onToggleDone = { onToggleDone(task) },
+                    onTrack = { onTrack(task) },
+                    onMove = { onMove(task) },
+                    onEdit = { onEdit(task) },
+                    onDelete = { onDelete(task) }
+                )
+            }
+        }
+    }
 }
 
 @Composable
-fun TaskCard(
+private fun TaskRow(
     task: WorkTaskWithProject,
     onToggleDone: () -> Unit,
     onTrack: () -> Unit,
+    onMove: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     val t = strings
     val isDone = task.status == "DONE"
-    val projColor = projectColor(task.projectColor)
+    val loggedHours = task.loggedSeconds / 3600.0
 
-    Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isDone) MaterialTheme.colorScheme.surface.copy(alpha = 0.6f) else MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isDone) 0.dp else 1.5.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("task_card_${task.id}")
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // Top Row: Checkbox, Title, Priority
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top
-            ) {
-                IconButton(
-                    onClick = onToggleDone,
-                    modifier = Modifier.size(28.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isDone) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                        contentDescription = t.toggleComplete,
-                        tint = if (isDone) EmeraldGreen else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag("task_card_${task.id}"), verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = onToggleDone, modifier = Modifier.size(28.dp)) {
+            Icon(
+                imageVector = if (isDone) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                contentDescription = t.toggleComplete,
+                tint = if (isDone) EmeraldGreen else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(modifier = Modifier.width(6.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = task.title,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp,
+                maxLines = 1,
+                textDecoration = if (isDone) TextDecoration.LineThrough else TextDecoration.None,
+                color = if (isDone) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurface
+            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (task.priority != "LOW") PriorityBadge(priority = task.priority)
+                if (task.deadlineTimestamp != null && !isDone) DeadlineUrgencyBadge(deadlineTimestamp = task.deadlineTimestamp)
+                if (task.loggedSeconds > 0 || task.estimatedHours > 0) {
                     Text(
-                        text = task.title,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        textDecoration = if (isDone) TextDecoration.LineThrough else TextDecoration.None,
-                        color = if (isDone) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurface
-                    )
-                    if (task.description.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = task.description,
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(6.dp))
-                PriorityBadge(priority = task.priority)
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Project badge & deadline info
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(projColor)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "${task.projectCode} · ${task.projectName}",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        text = t.bookedPlanned(loggedHours.formatFixed(1), TimeFormat.sapHours(task.estimatedHours)),
+                        fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-
-                if (task.deadlineTimestamp != null && !isDone) {
-                    DeadlineUrgencyBadge(deadlineTimestamp = task.deadlineTimestamp)
-                } else if (isDone) {
-                    StatusBadge(status = "DONE")
-                }
             }
+        }
+        if (!isDone) {
+            IconButton(onClick = onTrack, modifier = Modifier.size(32.dp).testTag("track_task_${task.id}")) {
+                Icon(Icons.Default.PlayArrow, contentDescription = t.track, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+            }
+        }
+        IconButton(onClick = onMove, modifier = Modifier.size(32.dp).testTag("move_task_${task.id}")) {
+            Icon(Icons.Default.DriveFileMove, contentDescription = t.moveTask, modifier = Modifier.size(18.dp))
+        }
+        IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+            Icon(Icons.Default.Edit, contentDescription = t.edit, modifier = Modifier.size(16.dp))
+        }
+        IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+            Icon(Icons.Default.Delete, contentDescription = t.delete, tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f), modifier = Modifier.size(16.dp))
+        }
+    }
+}
 
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Footer Actions
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val loggedHours = task.loggedSeconds / 3600.0
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Schedule,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = t.bookedPlanned(loggedHours.formatFixed(1), task.estimatedHours.toString()),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (!isDone) {
-                        Button(
-                            onClick = onTrack,
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier
-                                .height(34.dp)
-                                .testTag("track_task_${task.id}")
-                        ) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(t.track, fontSize = 12.sp)
-                        }
-                    }
-                    IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Edit, contentDescription = t.edit, modifier = Modifier.size(16.dp))
-                    }
-                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Delete, contentDescription = t.delete, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
-                    }
+/** Pick the project a task (and its logged time) moves to. */
+@Composable
+private fun MoveTaskDialog(
+    task: WorkTaskWithProject,
+    projects: List<Project>,
+    onDismiss: () -> Unit,
+    onMove: (Long) -> Unit
+) {
+    val t = strings
+    var targetId by remember { mutableStateOf(projects.firstOrNull()?.id) }
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            modifier = Modifier.fillMaxWidth().padding(4.dp).testTag("move_task_dialog")
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(t.moveTask, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(task.title, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(14.dp))
+                LabeledDropdown(
+                    label = t.moveTaskTo,
+                    selectedText = projects.find { it.id == targetId }?.displayLabel() ?: t.selectProject,
+                    options = projects,
+                    optionText = { it.displayLabel() },
+                    onSelect = { targetId = it.id },
+                    testTag = "move_target_dropdown"
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text(t.cancel) }
+                    Button(
+                        onClick = { targetId?.let(onMove) },
+                        enabled = targetId != null,
+                        modifier = Modifier.weight(1f).testTag("confirm_move_button")
+                    ) { Text(t.save) }
                 }
             }
         }
@@ -363,10 +392,11 @@ fun TaskFormDialog(
     task: WorkTaskWithProject?,
     projects: List<Project>,
     onDismiss: () -> Unit,
-    onSave: (Long, String, String, String, Double, Long?, Int) -> Unit
+    onSave: (Long, String, String, String, Double, Long?, Int) -> Unit,
+    initialProjectId: Long? = null
 ) {
     val t = strings
-    var selectedProjectId by remember { mutableStateOf(task?.projectId ?: (projects.firstOrNull()?.id ?: 0L)) }
+    var selectedProjectId by remember { mutableStateOf(task?.projectId ?: initialProjectId ?: (projects.firstOrNull()?.id ?: 0L)) }
     var title by remember { mutableStateOf(task?.title ?: "") }
     var description by remember { mutableStateOf(task?.description ?: "") }
     var priority by remember { mutableStateOf(task?.priority ?: "MEDIUM") }

@@ -72,6 +72,12 @@ class TimeTrackerRepository(
     suspend fun deleteTask(task: WorkTask) = taskDao.deleteTask(task)
     suspend fun updateTaskStatus(taskId: Long, status: String) = taskDao.updateTaskStatus(taskId, status)
 
+    /** Moves a task (and all time logged on it) to another project. */
+    suspend fun moveTask(taskId: Long, projectId: Long) {
+        taskDao.moveTask(taskId, projectId)
+        timeEntryDao.moveEntriesOfTask(taskId, projectId)
+    }
+
     // Time entries
     suspend fun getRunningEntry(): TimeEntry? = timeEntryDao.getRunningEntry()
     suspend fun closeRunningEntries(endTime: Long) = timeEntryDao.closeRunningEntries(endTime)

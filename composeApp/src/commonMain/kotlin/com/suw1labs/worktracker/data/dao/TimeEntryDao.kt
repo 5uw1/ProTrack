@@ -30,6 +30,9 @@ interface TimeEntryDao {
     @Query("UPDATE time_entries SET endTime = :endTime WHERE endTime IS NULL")
     suspend fun closeRunningEntries(endTime: Long)
 
+    @Query("UPDATE time_entries SET projectId = :projectId WHERE taskId = :taskId")
+    suspend fun moveEntriesOfTask(taskId: Long, projectId: Long)
+
     @Query("SELECT * FROM time_entries WHERE id = :id")
     suspend fun getEntryById(id: Long): TimeEntry?
 

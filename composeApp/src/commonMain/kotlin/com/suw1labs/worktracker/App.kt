@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.NotificationsActive
@@ -67,7 +67,7 @@ enum class TrackerDestination(
     val tag: String,
 ) {
     TODAY(Icons.Default.Timer, "nav_today"),
-    TASKS(Icons.AutoMirrored.Filled.Assignment, "nav_tasks"),
+    TASKS(Icons.Default.Folder, "nav_projects"),
     REPORTS(Icons.Default.Insights, "nav_reports"),
     PROJECTS(Icons.Default.Settings, "nav_settings");
 

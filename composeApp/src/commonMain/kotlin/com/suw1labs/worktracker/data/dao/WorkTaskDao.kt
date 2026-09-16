@@ -49,6 +49,9 @@ interface WorkTaskDao {
     @Query("UPDATE tasks SET status = :status WHERE id = :taskId")
     suspend fun updateTaskStatus(taskId: Long, status: String)
 
+    @Query("UPDATE tasks SET projectId = :projectId WHERE id = :taskId")
+    suspend fun moveTask(taskId: Long, projectId: Long)
+
     @Query("SELECT COUNT(*) FROM tasks")
     suspend fun getTaskCount(): Int
 }
