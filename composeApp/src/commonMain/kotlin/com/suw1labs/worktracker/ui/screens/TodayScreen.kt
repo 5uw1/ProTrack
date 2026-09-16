@@ -480,15 +480,16 @@ private fun RunningActivity(
                 fontWeight = FontWeight.ExtraBold,
                 modifier = Modifier.testTag("activity_today_total_text")
             )
+            Text(t.todayOnThisTask, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
                 text = "${t.thisSession} ${TimeFormat.hms(entry.durationSeconds(now))}",
                 fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.testTag("activity_elapsed_text")
             )
         }
     }
-    Text(t.todayOnThisTask, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.End)
     Spacer(modifier = Modifier.height(12.dp))
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(modifier = Modifier.width(4.dp).height(40.dp).clip(RoundedCornerShape(2.dp)).background(color))
