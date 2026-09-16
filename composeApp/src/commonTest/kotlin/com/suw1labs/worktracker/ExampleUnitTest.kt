@@ -73,10 +73,10 @@ class ExampleUnitTest {
             AttendanceSession(id = 2, clockIn = dayStart + 13 * hour, clockOut = null) // still clocked in, evaluated up to `now`
         )
         val entries = listOf(
-            entry(1, projectId = 10, code = "P-1", category = "PLC", productive = true, start = dayStart + 8 * hour, end = dayStart + 11 * hour),
-            entry(2, projectId = 10, code = "P-1", category = "Meeting", productive = true, start = dayStart + 11 * hour, end = dayStart + 12 * hour),
-            entry(3, projectId = null, code = null, category = "Coffee", productive = false, start = dayStart + 13 * hour, end = dayStart + 13 * hour + 30 * 60_000L),
-            entry(4, projectId = 20, code = "P-2", category = "PLC", productive = true, start = dayStart + 14 * hour, end = null) // running
+            entry(1, projectId = 10, code = "P-1", task = "PLC", productive = true, start = dayStart + 8 * hour, end = dayStart + 11 * hour),
+            entry(2, projectId = 10, code = "P-1", task = "Meeting", productive = true, start = dayStart + 11 * hour, end = dayStart + 12 * hour),
+            entry(3, projectId = 99, code = "UNPRODUCTIVE", task = "Coffee", productive = false, start = dayStart + 13 * hour, end = dayStart + 13 * hour + 30 * 60_000L),
+            entry(4, projectId = 20, code = "P-2", task = "PLC", productive = true, start = dayStart + 14 * hour, end = null) // running
         )
 
         val report = ReportCalculator.compute(sessions, entries, range, now)
@@ -85,7 +85,7 @@ class ExampleUnitTest {
         assertEquals(10 * 3600L, report.productiveSeconds)          // 3 + 1 + 6 (running until now)
         assertEquals(1800L, report.unproductiveSeconds)
         assertEquals(1800L, report.unallocatedSeconds)              // 13:30 - 14:00 gap
-        assertEquals(listOf("P-2", "P-1", "—"), report.projects.map { it.code })
+        assertEquals(listOf("P-2", "P-1", "UNPRODUCTIVE"), report.projects.map { it.code })
         assertEquals(4 * 3600L, report.projects.first { it.code == "P-1" }.seconds)
         assertEquals(1, report.days.size)
     }
@@ -158,7 +158,7 @@ class ExampleUnitTest {
         id: Long,
         projectId: Long?,
         code: String?,
-        category: String,
+        task: String,
         productive: Boolean,
         start: Long,
         end: Long?
@@ -168,11 +168,9 @@ class ExampleUnitTest {
         projectCode = code,
         projectName = code?.let { "Project $it" },
         projectColor = "#3B82F6",
+        projectProductive = if (projectId == null) null else productive,
         taskId = null,
-        taskTitle = null,
-        categoryId = 1,
-        categoryName = category,
-        categoryProductive = productive,
+        taskTitle = task,
         description = "",
         startTime = start,
         endTime = end,

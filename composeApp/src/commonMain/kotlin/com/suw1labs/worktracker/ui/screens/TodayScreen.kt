@@ -70,9 +70,9 @@ import com.suw1labs.worktracker.data.model.DayRecord
 import com.suw1labs.worktracker.ui.i18n.emoji
 import com.suw1labs.worktracker.data.model.Project
 import com.suw1labs.worktracker.data.model.TimeEntryWithDetails
-import com.suw1labs.worktracker.data.model.WorkCategory
+import com.suw1labs.worktracker.data.model.WorkTaskWithProject
 import com.suw1labs.worktracker.data.report.PeriodReport
-import com.suw1labs.worktracker.ui.components.CategoryDropdown
+import com.suw1labs.worktracker.ui.components.TaskDropdown
 import com.suw1labs.worktracker.ui.components.DeadlineUrgencyBadge
 import com.suw1labs.worktracker.ui.components.EmptyStateCard
 import com.suw1labs.worktracker.ui.components.ProjectDropdown
@@ -98,7 +98,6 @@ fun TodayScreen(
     val todayReport by viewModel.todayReport.collectAsState()
     val todayEntries by viewModel.todayEntries.collectAsState()
     val activeProjects by viewModel.activeProjects.collectAsState()
-    val categories by viewModel.categories.collectAsState()
     val allTasks by viewModel.allTasks.collectAsState()
     val urgentTasks by viewModel.urgentTasks.collectAsState()
     val settings by viewModel.settings.collectAsState()
@@ -203,20 +202,20 @@ fun TodayScreen(
                             now = now,
                             onSwitch = { showActivitySelector = true },
                             onStop = { viewModel.stopActivity() },
-                            onEdit = { editingEntry = running }
+                            onEdit = { editingEntry = running },
+                            onNoteChange = { viewModel.updateEntryNote(running, it) }
                         )
                     } else {
                         ActivitySelector(
                             projects = activeProjects,
-                            categories = categories,
+                            tasks = allTasks,
                             isClockedIn = isClockedIn,
                             isSwitching = running != null,
                             preselectProjectId = newlyCreatedProjectId,
                             onAddProject = { showAddProjectDialog = true },
+                            onQuickTask = { projectId, title, onCreated -> viewModel.addQuickTask(projectId, title, onCreated) },
                             onCancel = { showActivitySelector = false },
-                            onStart = { projectId, categoryId, description ->
-                                viewModel.startActivity(projectId, categoryId, null, description)
-                            }
+                            onStart = { projectId, taskId -> viewModel.startActivity(projectId, taskId) }
                         )
                     }
                 }
@@ -304,13 +303,16 @@ fun TodayScreen(
         EntryFormDialog(
             entry = null,
             projects = activeProjects,
-            categories = categories,
             tasks = allTasks,
             onDismiss = { showManualEntry = false },
-            onSave = { projectId, categoryId, taskId, description, start, end ->
-                if (end != null) viewModel.addManualEntry(projectId, categoryId, taskId, description, start, end)
+            onSave = { projectId, taskId, description, start, end ->
+                if (end != null) viewModel.addManualEntry(projectId, taskId, description, start, end)
                 showManualEntry = false
-            }
+            },
+            initialDayStart = todayReport.range.start,
+            onQuickTask = { projectId, title, onCreated -> viewModel.addQuickTask(projectId, title, onCreated) },
+            onQuickProject = { code, name, client, color, budget, productive, onCreated -> viewModel.addProject(code, name, client, color, budget, productive, onCreated) },
+            timeOnly = true
         )
     }
 
@@ -318,14 +320,12 @@ fun TodayScreen(
         EntryFormDialog(
             entry = entry,
             projects = activeProjects,
-            categories = categories,
             tasks = allTasks,
             onDismiss = { editingEntry = null },
-            onSave = { projectId, categoryId, taskId, description, start, end ->
+            onSave = { projectId, taskId, description, start, end ->
                 viewModel.updateEntry(
                     entry.toEntity().copy(
                         projectId = projectId,
-                        categoryId = categoryId,
                         taskId = taskId,
                         description = description,
                         startTime = start,
@@ -333,7 +333,11 @@ fun TodayScreen(
                     )
                 )
                 editingEntry = null
-            }
+            },
+            initialDayStart = todayReport.range.start,
+            onQuickTask = { projectId, title, onCreated -> viewModel.addQuickTask(projectId, title, onCreated) },
+            onQuickProject = { code, name, client, color, budget, productive, onCreated -> viewModel.addProject(code, name, client, color, budget, productive, onCreated) },
+            timeOnly = true
         )
     }
 
@@ -341,8 +345,8 @@ fun TodayScreen(
         ProjectFormDialog(
             project = null,
             onDismiss = { showAddProjectDialog = false },
-            onSave = { code, name, client, colorHex, budgetHours, _ ->
-                viewModel.addProject(code, name, client, colorHex, budgetHours) { id -> newlyCreatedProjectId = id }
+            onSave = { code, name, client, colorHex, budgetHours, _, isProductive ->
+                viewModel.addProject(code, name, client, colorHex, budgetHours, isProductive) { id -> newlyCreatedProjectId = id }
                 showAddProjectDialog = false
             }
         )
@@ -449,10 +453,12 @@ private fun RunningActivity(
     now: Long,
     onSwitch: () -> Unit,
     onStop: () -> Unit,
-    onEdit: () -> Unit
+    onEdit: () -> Unit,
+    onNoteChange: (String) -> Unit
 ) {
     val t = strings
     val color = entry.projectColor?.let { parseHexColor(it) } ?: MaterialTheme.colorScheme.tertiary
+    var note by remember(entry.id) { mutableStateOf(entry.description) }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(EmeraldGreen))
         Spacer(modifier = Modifier.width(8.dp))
@@ -471,7 +477,7 @@ private fun RunningActivity(
         Box(modifier = Modifier.width(4.dp).height(40.dp).clip(RoundedCornerShape(2.dp)).background(color))
         Spacer(modifier = Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
-            val unassigned = entry.projectId == null && entry.categoryProductive == true
+            val unassigned = entry.isUnassigned
             Text(
                 text = entry.projectCode?.let { "$it · ${entry.projectName}" } ?: if (unassigned) "⚠ ${t.unassignedProject}" else t.noProject,
                 fontWeight = FontWeight.Bold,
@@ -479,11 +485,7 @@ private fun RunningActivity(
                 color = if (unassigned) AmberWarning else MaterialTheme.colorScheme.primary
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                CategoryChip(name = entry.categoryName, productive = entry.categoryProductive)
-                if (entry.description.isNotBlank()) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(entry.description, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                CategoryChip(name = entry.taskTitle ?: t.noSpecificTask, productive = entry.isProductive)
             }
             Text(t.since(DateFormats.hourMinute(entry.startTime)), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
         }
@@ -491,7 +493,20 @@ private fun RunningActivity(
             Icon(Icons.Default.Edit, contentDescription = t.edit, modifier = Modifier.size(16.dp))
         }
     }
-    Spacer(modifier = Modifier.height(14.dp))
+    Spacer(modifier = Modifier.height(10.dp))
+    // Optional note – can be written now, while working or after the activity has finished.
+    OutlinedTextField(
+        value = note,
+        onValueChange = {
+            note = it
+            onNoteChange(it)
+        },
+        label = { Text(t.noteOptional) },
+        placeholder = { Text(t.noteHint) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth().testTag("running_note_input")
+    )
+    Spacer(modifier = Modifier.height(12.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         FilledTonalButton(onClick = onSwitch, modifier = Modifier.weight(1f).height(46.dp).testTag("switch_activity_button")) {
             Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -509,25 +524,31 @@ private fun RunningActivity(
 @Composable
 private fun ActivitySelector(
     projects: List<Project>,
-    categories: List<WorkCategory>,
+    tasks: List<WorkTaskWithProject>,
     isClockedIn: Boolean,
     isSwitching: Boolean,
     preselectProjectId: Long?,
     onAddProject: () -> Unit,
+    onQuickTask: (projectId: Long, title: String, onCreated: (Long) -> Unit) -> Unit,
     onCancel: () -> Unit,
-    onStart: (projectId: Long?, categoryId: Long?, description: String) -> Unit
+    onStart: (projectId: Long?, taskId: Long?) -> Unit
 ) {
     val t = strings
-    var projectId by remember { mutableStateOf<Long?>(projects.firstOrNull()?.id) }
-    // A project created from the "+ Add new project…" entry becomes the selection once it is loaded.
-    LaunchedEffect(preselectProjectId, projects) {
-        if (preselectProjectId != null && projects.any { it.id == preselectProjectId }) projectId = preselectProjectId
-    }
-    var categoryId by remember(categories) { mutableStateOf(categories.firstOrNull()?.id) }
-    var description by remember { mutableStateOf("") }
+    var projectId by remember { mutableStateOf<Long?>(projects.firstOrNull { it.isProductive }?.id) }
+    var taskId by remember { mutableStateOf<Long?>(null) }
+    var showQuickTask by remember { mutableStateOf(false) }
 
-    // Default to the first active project once projects are loaded.
-    LaunchedEffect(projects) { if (projectId == null && projects.isNotEmpty()) projectId = projects.first().id }
+    // Default to the first productive project once projects are loaded.
+    LaunchedEffect(projects) { if (projectId == null && projects.isNotEmpty()) projectId = projects.firstOrNull { it.isProductive }?.id ?: projects.first().id }
+    // A project created from "+ Add new project…" becomes the selection once it is loaded.
+    LaunchedEffect(preselectProjectId, projects) {
+        if (preselectProjectId != null && projects.any { it.id == preselectProjectId }) {
+            projectId = preselectProjectId
+            taskId = null
+        }
+    }
+
+    val projectTasks = remember(projectId, tasks) { tasks.filter { it.projectId == projectId && it.status != "DONE" } }
 
     Text(
         text = if (isSwitching) t.switchActivity else t.whatWorkingOn,
@@ -537,25 +558,34 @@ private fun ActivitySelector(
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
     Spacer(modifier = Modifier.height(12.dp))
-    ProjectDropdown(projects = projects, selectedProjectId = projectId, onSelect = { projectId = it }, testTag = "activity_project_dropdown", onAddProject = onAddProject)
-    Spacer(modifier = Modifier.height(8.dp))
-    CategoryDropdown(categories = categories, selectedCategoryId = categoryId, onSelect = { categoryId = it }, testTag = "activity_category_dropdown")
-    Spacer(modifier = Modifier.height(8.dp))
-    OutlinedTextField(
-        value = description,
-        onValueChange = { description = it },
-        label = { Text(t.noteOptional) },
-        placeholder = { Text(t.notePlaceholder) },
-        modifier = Modifier.fillMaxWidth().testTag("activity_description_input")
+    ProjectDropdown(
+        projects = projects,
+        selectedProjectId = projectId,
+        onSelect = {
+            projectId = it
+            taskId = null
+        },
+        testTag = "activity_project_dropdown",
+        onAddProject = onAddProject
     )
+    val currentProjectId = projectId
+    if (currentProjectId != null) {
+        Spacer(modifier = Modifier.height(8.dp))
+        TaskDropdown(
+            tasks = projectTasks,
+            selectedTaskId = taskId,
+            onSelect = { taskId = it },
+            testTag = "activity_task_dropdown",
+            onAddTask = { showQuickTask = true }
+        )
+    }
     Spacer(modifier = Modifier.height(12.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         if (isSwitching) {
             OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f).height(48.dp)) { Text(t.cancel) }
         }
         Button(
-            onClick = { onStart(projectId, categoryId, description) },
-            enabled = categoryId != null,
+            onClick = { onStart(projectId, taskId) },
             shape = RoundedCornerShape(14.dp),
             modifier = Modifier.weight(if (isSwitching) 1.5f else 1f).height(48.dp).testTag("start_activity_button")
         ) {
@@ -566,10 +596,16 @@ private fun ActivitySelector(
     }
     if (!isClockedIn) {
         Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            t.autoClockInHint,
-            fontSize = 11.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+        Text(t.autoClockInHint, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+
+    if (showQuickTask && currentProjectId != null) {
+        QuickTaskDialog(
+            onDismiss = { showQuickTask = false },
+            onSave = { title ->
+                onQuickTask(currentProjectId, title) { id -> taskId = id }
+                showQuickTask = false
+            }
         )
     }
 }
@@ -668,7 +704,7 @@ fun CategoryChip(name: String?, productive: Boolean?) {
     val color = if (productive == true) MaterialTheme.colorScheme.primary else AmberWarning
     Surface(color = color.copy(alpha = 0.12f), shape = RoundedCornerShape(6.dp)) {
         Text(
-            text = name ?: strings.uncategorized,
+            text = name ?: strings.noSpecificTask,
             color = color,
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold,
@@ -698,7 +734,7 @@ fun TimeEntryRowCard(
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                val unassigned = entry.projectId == null && entry.categoryProductive == true
+                val unassigned = entry.isUnassigned
                 Text(
                     text = entry.projectCode?.let { "$it · ${entry.projectName}" } ?: if (unassigned) "⚠ ${t.unassignedProject}" else t.noProject,
                     fontWeight = FontWeight.Bold,
@@ -706,10 +742,10 @@ fun TimeEntryRowCard(
                     color = if (unassigned) AmberWarning else MaterialTheme.colorScheme.onSurface
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    CategoryChip(name = entry.categoryName, productive = entry.categoryProductive)
+                    CategoryChip(name = entry.taskTitle ?: t.noSpecificTask, productive = entry.isProductive)
                     if (entry.description.isNotBlank()) {
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(entry.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(entry.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                     }
                 }
                 Text(

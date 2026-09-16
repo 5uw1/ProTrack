@@ -40,6 +40,9 @@ object SapExport {
         override fun toString(): String = sb.toString()
     }
 
+    private fun isUnproductiveProject(report: PeriodReport, projectId: Long?): Boolean =
+        report.days.flatMap { it.cells }.any { it.projectId == projectId && !it.isProductive }
+
     private fun hours(seconds: Long, roundToQuarter: Boolean): String {
         val value = if (roundToQuarter) TimeFormat.quarterHours(seconds) else TimeFormat.decimalHours(seconds)
         return TimeFormat.sapHours(value)
@@ -74,13 +77,15 @@ object SapExport {
         w.blank()
 
         w.row("Project Number", "Project Name", "Hours", "Time (H:MM)")
-        val projectRows = report.projects.filter { it.projectId != null }
+        // Only productive projects are booked in SAP; unassigned productive time is listed so it can be booked manually.
+        val projectRows = report.projects.filter { it.projectId != null && it.seconds > 0 && !isUnproductiveProject(report, it.projectId) }
         for (p in projectRows) w.row(p.code, p.name, hours(p.seconds, roundToQuarter), TimeFormat.hm(p.seconds))
+        report.projects.firstOrNull { it.projectId == null }?.let { w.row("", "NOT ASSIGNED YET – book manually", hours(it.seconds, roundToQuarter), TimeFormat.hm(it.seconds)) }
         val projectTotal = projectRows.sumOf { it.seconds }
         w.row("TOTAL PROJECT HOURS", "", hours(projectTotal, roundToQuarter), TimeFormat.hm(projectTotal))
         w.blank()
 
-        w.row("Unproductive / not project related", "Category", "Hours", "Time (H:MM)")
+        w.row("Unproductive", "Task", "Hours", "Time (H:MM)")
         for (c in report.categories.filter { !it.isProductive }) w.row("", c.name, hours(c.seconds, roundToQuarter), TimeFormat.hm(c.seconds))
         w.row("TOTAL UNPRODUCTIVE", "", hours(report.unproductiveSeconds, roundToQuarter), TimeFormat.hm(report.unproductiveSeconds))
         w.blank()
@@ -100,7 +105,7 @@ object SapExport {
         val w = Writer(format.separator, format.bom)
         w.row("Period:", periodLabel)
         w.blank()
-        w.row("Date", "Project Number", "Project Name", "Category", "Productive", "Hours", "Time (H:MM)", "Clocked-in (H:MM)")
+        w.row("Date", "Project Number", "Project Name", "Task", "Productive", "Hours", "Time (H:MM)", "Clocked-in (H:MM)")
         for (day in report.days) {
             if (day.attendanceSeconds == 0L && day.cells.isEmpty() && day.absence == null) continue
             val date = DateFormats.date(day.range.start)
@@ -109,7 +114,7 @@ object SapExport {
                     date,
                     if (cell.projectId == null) "" else cell.projectCode,
                     cell.projectName,
-                    cell.categoryName,
+                    cell.taskName,
                     if (cell.isProductive) "Yes" else "No",
                     hours(cell.seconds, roundToQuarter),
                     TimeFormat.hm(cell.seconds),

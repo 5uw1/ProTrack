@@ -42,7 +42,9 @@ fun DateTimePickerDialog(
     title: String,
     confirmLabel: String = "OK",
     onDismiss: () -> Unit,
-    onConfirm: (Long) -> Unit
+    onConfirm: (Long) -> Unit,
+    /** When false only the time is picked; the date stays the one of [initialMillis]. */
+    dateSelectable: Boolean = true
 ) {
     val t = strings
     val initialLocal = remember { (initialMillis ?: currentTimeMillis()).toLocalDateTime() }
@@ -58,7 +60,7 @@ fun DateTimePickerDialog(
         is24Hour = true
     )
 
-    var pickedDate by remember { mutableStateOf<LocalDate?>(null) }
+    var pickedDate by remember { mutableStateOf<LocalDate?>(if (dateSelectable) null else initialLocal.date) }
 
     if (pickedDate == null) {
         DatePickerDialog(
@@ -98,7 +100,11 @@ fun DateTimePickerDialog(
                 ) { Text(confirmLabel) }
             },
             dismissButton = {
-                TextButton(onClick = { pickedDate = null }) { Text(t.back) }
+                if (dateSelectable) {
+                    TextButton(onClick = { pickedDate = null }) { Text(t.back) }
+                } else {
+                    TextButton(onClick = onDismiss) { Text(t.cancel) }
+                }
             }
         )
     }

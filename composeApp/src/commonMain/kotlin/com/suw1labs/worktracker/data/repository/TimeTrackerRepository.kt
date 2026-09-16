@@ -5,7 +5,6 @@ import com.suw1labs.worktracker.data.dao.DayRecordDao
 import com.suw1labs.worktracker.data.dao.SettingsDao
 import com.suw1labs.worktracker.data.dao.ProjectDao
 import com.suw1labs.worktracker.data.dao.TimeEntryDao
-import com.suw1labs.worktracker.data.dao.WorkCategoryDao
 import com.suw1labs.worktracker.data.dao.WorkTaskDao
 import com.suw1labs.worktracker.data.model.AppSettings
 import com.suw1labs.worktracker.data.model.AttendanceSession
@@ -14,7 +13,6 @@ import com.suw1labs.worktracker.data.model.Project
 import com.suw1labs.worktracker.data.model.ProjectSummary
 import com.suw1labs.worktracker.data.model.TimeEntry
 import com.suw1labs.worktracker.data.model.TimeEntryWithDetails
-import com.suw1labs.worktracker.data.model.WorkCategory
 import com.suw1labs.worktracker.data.model.WorkTask
 import com.suw1labs.worktracker.data.model.WorkTaskWithProject
 import kotlinx.coroutines.flow.Flow
@@ -22,7 +20,6 @@ import kotlinx.coroutines.flow.combine
 
 class TimeTrackerRepository(
     private val projectDao: ProjectDao,
-    private val categoryDao: WorkCategoryDao,
     private val taskDao: WorkTaskDao,
     private val timeEntryDao: TimeEntryDao,
     private val attendanceDao: AttendanceDao,
@@ -31,7 +28,6 @@ class TimeTrackerRepository(
 ) {
     val allProjects: Flow<List<Project>> = projectDao.getAllProjects()
     val activeProjects: Flow<List<Project>> = projectDao.getActiveProjects()
-    val allCategories: Flow<List<WorkCategory>> = categoryDao.getAllCategories()
     val allTasksWithProject: Flow<List<WorkTaskWithProject>> = taskDao.getTasksWithProject()
     val allTimeEntries: Flow<List<TimeEntryWithDetails>> = timeEntryDao.getAllEntriesWithDetails()
     val allSessions: Flow<List<AttendanceSession>> = attendanceDao.getAllSessions()
@@ -56,6 +52,7 @@ class TimeTrackerRepository(
                 colorHex = project.colorHex,
                 budgetHours = project.budgetHours,
                 status = project.status,
+                isProductive = project.isProductive,
                 totalSeconds = projectEntries.sumOf { it.durationSeconds(it.endTime ?: it.startTime) },
                 totalTasks = projectTasks.size,
                 completedTasks = projectTasks.count { it.status == "DONE" }
@@ -68,13 +65,9 @@ class TimeTrackerRepository(
     suspend fun updateProject(project: Project) = projectDao.updateProject(project)
     suspend fun deleteProjectById(id: Long) = projectDao.deleteProjectById(id)
 
-    // Categories
-    suspend fun insertCategory(category: WorkCategory): Long = categoryDao.insertCategory(category)
-    suspend fun updateCategory(category: WorkCategory) = categoryDao.updateCategory(category)
-    suspend fun deleteCategoryById(id: Long) = categoryDao.deleteCategoryById(id)
-
     // Tasks
     suspend fun insertTask(task: WorkTask): Long = taskDao.insertTask(task)
+    suspend fun findTaskByTitle(projectId: Long, title: String): WorkTask? = taskDao.findTaskByTitle(projectId, title)
     suspend fun updateTask(task: WorkTask) = taskDao.updateTask(task)
     suspend fun deleteTask(task: WorkTask) = taskDao.deleteTask(task)
     suspend fun updateTaskStatus(taskId: Long, status: String) = taskDao.updateTaskStatus(taskId, status)

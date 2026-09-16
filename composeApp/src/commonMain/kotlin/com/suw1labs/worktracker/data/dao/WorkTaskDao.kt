@@ -34,6 +34,9 @@ interface WorkTaskDao {
     @Query("SELECT * FROM tasks WHERE id = :id")
     suspend fun getTaskById(id: Long): WorkTask?
 
+    @Query("SELECT * FROM tasks WHERE projectId = :projectId AND title = :title COLLATE NOCASE LIMIT 1")
+    suspend fun findTaskByTitle(projectId: Long, title: String): WorkTask?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTask(task: WorkTask): Long
 

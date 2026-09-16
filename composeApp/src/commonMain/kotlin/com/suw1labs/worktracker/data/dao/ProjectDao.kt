@@ -17,6 +17,9 @@ interface ProjectDao {
     @Query("SELECT * FROM projects WHERE id = :id")
     suspend fun getProjectById(id: Long): Project?
 
+    @Query("SELECT * FROM projects WHERE code = :code LIMIT 1")
+    suspend fun findByCode(code: String): Project?
+
     @Query("SELECT * FROM projects WHERE status = 'ACTIVE' ORDER BY code ASC, name ASC")
     fun getActiveProjects(): Flow<List<Project>>
 

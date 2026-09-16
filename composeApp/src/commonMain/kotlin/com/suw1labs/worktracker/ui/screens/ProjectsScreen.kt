@@ -38,6 +38,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -57,7 +58,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.suw1labs.worktracker.data.model.Project
 import com.suw1labs.worktracker.data.model.ProjectSummary
-import com.suw1labs.worktracker.data.model.WorkCategory
 import com.suw1labs.worktracker.ui.components.ColorPaletteSelector
 import com.suw1labs.worktracker.ui.components.EmptyStateCard
 import com.suw1labs.worktracker.ui.components.HoursProgressBar
@@ -80,12 +80,9 @@ fun ProjectsScreen(
 ) {
     val t = strings
     val projectSummaries by viewModel.projectSummaries.collectAsState()
-    val categories by viewModel.categories.collectAsState()
     var selectedFilter by remember { mutableStateOf("ALL") }
     var showAddProjectDialog by remember { mutableStateOf(false) }
     var editingProject by remember { mutableStateOf<ProjectSummary?>(null) }
-    var showAddCategoryDialog by remember { mutableStateOf(false) }
-    var editingCategory by remember { mutableStateOf<WorkCategory?>(null) }
     var showScheduleDialog by remember { mutableStateOf(false) }
     var showImportDialog by remember { mutableStateOf(false) }
     var importResult by remember { mutableStateOf<String?>(null) }
@@ -208,68 +205,6 @@ fun ProjectsScreen(
                 }
             }
 
-            // --- Work categories ---
-            item {
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    modifier = Modifier.fillMaxWidth().testTag("categories_card")
-                ) {
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(t.workCategories, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Text(
-                                    t.categoriesSubtitle,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            TextButton(onClick = { showAddCategoryDialog = true }, modifier = Modifier.testTag("add_category_button")) {
-                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(t.add, fontSize = 12.sp)
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        categories.forEachIndexed { index, category ->
-                            if (index > 0) HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag("category_row_${category.id}"),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier.size(10.dp).clip(CircleShape)
-                                        .background(parseHexColor(category.colorHex) ?: MaterialTheme.colorScheme.primary)
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text(category.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                                val badgeColor = if (category.isProductive) EmeraldGreen else AmberWarning
-                                Surface(color = badgeColor.copy(alpha = 0.12f), shape = RoundedCornerShape(6.dp)) {
-                                    Text(
-                                        if (category.isProductive) t.productive else t.unproductiveLabel,
-                                        color = badgeColor,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
-                                IconButton(onClick = { editingCategory = category }, modifier = Modifier.size(32.dp)) {
-                                    Icon(Icons.Default.Edit, contentDescription = t.edit, modifier = Modifier.size(16.dp))
-                                }
-                                IconButton(onClick = { viewModel.deleteCategory(category.id) }, modifier = Modifier.size(32.dp)) {
-                                    Icon(Icons.Default.Delete, contentDescription = t.delete, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
             item { Spacer(modifier = Modifier.height(80.dp)) }
         }
 
@@ -287,8 +222,8 @@ fun ProjectsScreen(
         ProjectFormDialog(
             project = null,
             onDismiss = { showAddProjectDialog = false },
-            onSave = { code, name, client, colorHex, budgetHours, _ ->
-                viewModel.addProject(code, name, client, colorHex, budgetHours)
+            onSave = { code, name, client, colorHex, budgetHours, _, isProductive ->
+                viewModel.addProject(code, name, client, colorHex, budgetHours, isProductive)
                 showAddProjectDialog = false
             }
         )
@@ -303,10 +238,11 @@ fun ProjectsScreen(
                 client = summary.client,
                 colorHex = summary.colorHex,
                 budgetHours = summary.budgetHours,
-                status = summary.status
+                status = summary.status,
+                isProductive = summary.isProductive
             ),
             onDismiss = { editingProject = null },
-            onSave = { code, name, client, colorHex, budgetHours, status ->
+            onSave = { code, name, client, colorHex, budgetHours, status, isProductive ->
                 viewModel.updateProject(
                     Project(
                         id = summary.id,
@@ -315,7 +251,8 @@ fun ProjectsScreen(
                         client = client.trim(),
                         colorHex = colorHex,
                         budgetHours = budgetHours,
-                        status = status
+                        status = status,
+                        isProductive = isProductive
                     )
                 )
                 editingProject = null
@@ -347,27 +284,6 @@ fun ProjectsScreen(
         )
     }
 
-    if (showAddCategoryDialog) {
-        CategoryFormDialog(
-            category = null,
-            onDismiss = { showAddCategoryDialog = false },
-            onSave = { name, productive, color ->
-                viewModel.addCategory(name, productive, color)
-                showAddCategoryDialog = false
-            }
-        )
-    }
-
-    editingCategory?.let { category ->
-        CategoryFormDialog(
-            category = category,
-            onDismiss = { editingCategory = null },
-            onSave = { name, productive, color ->
-                viewModel.updateCategory(category.copy(name = name.trim(), isProductive = productive, colorHex = color))
-                editingCategory = null
-            }
-        )
-    }
 }
 
 @Composable
@@ -410,7 +326,11 @@ fun ProjectCard(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                StatusBadge(status = summary.status)
+                if (summary.isProductive) StatusBadge(status = summary.status) else {
+                    Surface(color = AmberWarning.copy(alpha = 0.12f), shape = RoundedCornerShape(6.dp)) {
+                        Text(t.unproductiveLabel, color = AmberWarning, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                    }
+                }
             }
 
             if (summary.client.isNotBlank()) {
@@ -463,10 +383,11 @@ fun ProjectCard(
 fun ProjectFormDialog(
     project: Project?,
     onDismiss: () -> Unit,
-    onSave: (code: String, name: String, client: String, colorHex: String, budgetHours: Double, status: String) -> Unit
+    onSave: (code: String, name: String, client: String, colorHex: String, budgetHours: Double, status: String, isProductive: Boolean) -> Unit
 ) {
     val t = strings
     var code by remember { mutableStateOf(project?.code ?: "") }
+    var isProductive by remember { mutableStateOf(project?.isProductive ?: true) }
     var name by remember { mutableStateOf(project?.name ?: "") }
     var client by remember { mutableStateOf(project?.client ?: "") }
     var colorHex by remember { mutableStateOf(project?.colorHex ?: "#3B82F6") }
@@ -528,6 +449,18 @@ fun ProjectFormDialog(
                     )
                 }
                 Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(if (isProductive) t.productiveWork else t.unproductiveTime, fontWeight = FontWeight.Medium)
+                        Text(if (isProductive) t.productiveHint else t.unproductiveHint, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = isProductive, onCheckedChange = { isProductive = it }, modifier = Modifier.testTag("project_productive_switch"))
+                }
+                Spacer(modifier = Modifier.height(12.dp))
                 Text(t.colourTag, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                 ColorPaletteSelector(selectedColorHex = colorHex, onColorSelected = { colorHex = it })
                 Spacer(modifier = Modifier.height(16.dp))
@@ -535,7 +468,7 @@ fun ProjectFormDialog(
                     OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text(t.cancel) }
                     Button(
                         onClick = {
-                            if (valid) onSave(code, name, client, colorHex, budgetHoursStr.toDoubleOrNull() ?: 0.0, status)
+                            if (valid) onSave(code, name, client, colorHex, budgetHoursStr.toDoubleOrNull() ?: 0.0, status, isProductive)
                         },
                         enabled = valid,
                         modifier = Modifier.weight(1f).testTag("save_project_button")

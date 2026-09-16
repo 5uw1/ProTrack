@@ -13,8 +13,8 @@ import kotlin.math.min
 import kotlinx.datetime.isoDayNumber
 
 const val NO_PROJECT_CODE = "—"
-const val NO_PROJECT_NAME = "No project (internal / unproductive)"
-const val UNCATEGORIZED_NAME = "Uncategorized"
+const val NO_PROJECT_NAME = "No project assigned yet"
+const val GENERAL_TASK_NAME = "General"
 
 /**
  * Break rules applied per working day (company rule based on Swiss labour law, canton of Bern):
@@ -41,22 +41,23 @@ data class ProjectHours(
     val name: String,
     val colorHex: String,
     val seconds: Long,
-    /** Seconds per category name. */
-    val categorySeconds: Map<String, Long>
+    /** Seconds per task title. */
+    val taskSeconds: Map<String, Long>
 )
 
+/** Hours per task title (used for the unproductive breakdown in exports). */
 data class CategoryHours(
     val name: String,
     val isProductive: Boolean,
     val seconds: Long
 )
 
-/** One (day, project, category) cell of the timesheet. */
+/** One (day, project, task) cell of the timesheet. */
 data class DayCell(
     val projectId: Long?,
     val projectCode: String,
     val projectName: String,
-    val categoryName: String,
+    val taskName: String,
     val isProductive: Boolean,
     val seconds: Long
 )
@@ -135,7 +136,7 @@ data class PeriodReport(
     val overtimeSeconds: Long get() = attendanceSeconds + creditedSeconds - targetSeconds
     val absences: List<DayRecord> get() = days.mapNotNull { it.absence }
 
-    /** Productive work that has no SAP project yet (order received before the project was known / added). */
+    /** Productive work that has no project yet (order received before the project was known / added). */
     val unassignedProductiveSeconds: Long
         get() = days.flatMap { it.cells }.filter { it.projectId == null && it.isProductive }.sumOf { it.seconds }
 
@@ -192,16 +193,15 @@ object ReportCalculator {
             entries.forEach { entry ->
                 val secs = overlapSeconds(entry.startTime, entry.endTime ?: now, dayRange.start, dayRange.endExclusive)
                 if (secs <= 0) return@forEach
-                val categoryName = entry.categoryName ?: UNCATEGORIZED_NAME
-                val productive = entry.categoryProductive ?: false
-                val key = entry.projectId to categoryName
+                val taskName = entry.taskTitle ?: GENERAL_TASK_NAME
+                val key = entry.projectId to taskName
                 val existing = cellMap[key]
                 cellMap[key] = DayCell(
                     projectId = entry.projectId,
                     projectCode = entry.projectCode ?: NO_PROJECT_CODE,
                     projectName = entry.projectName ?: NO_PROJECT_NAME,
-                    categoryName = categoryName,
-                    isProductive = productive,
+                    taskName = taskName,
+                    isProductive = entry.isProductive,
                     seconds = (existing?.seconds ?: 0L) + secs
                 )
             }
@@ -215,7 +215,7 @@ object ReportCalculator {
                 attendanceSeconds = attendanceSeconds(sessions, dayRange, now),
                 breakSeconds = breakSeconds(sessions, dayRange, now),
                 absence = recordsByDay[dayRange.start],
-                cells = cellMap.values.sortedWith(compareBy({ it.projectId == null }, { it.projectCode }, { it.categoryName }))
+                cells = cellMap.values.sortedWith(compareBy({ it.projectId == null }, { it.projectCode }, { it.taskName }))
             )
         }
 
@@ -229,11 +229,11 @@ object ReportCalculator {
                 name = first.projectName,
                 colorHex = entries.firstOrNull { it.projectId == projectId }?.projectColor ?: "#64748B",
                 seconds = cells.sumOf { it.seconds },
-                categorySeconds = cells.groupBy { it.categoryName }.mapValues { (_, c) -> c.sumOf { it.seconds } }
+                taskSeconds = cells.groupBy { it.taskName }.mapValues { (_, c) -> c.sumOf { it.seconds } }
             )
         }.sortedWith(compareBy<ProjectHours> { it.projectId == null }.thenByDescending { it.seconds })
 
-        val categories = allCells.groupBy { it.categoryName }.map { (name, cells) ->
+        val categories = allCells.groupBy { it.taskName }.map { (name, cells) ->
             CategoryHours(name = name, isProductive = cells.first().isProductive, seconds = cells.sumOf { it.seconds })
         }.sortedWith(compareByDescending<CategoryHours> { it.isProductive }.thenByDescending { it.seconds })
 

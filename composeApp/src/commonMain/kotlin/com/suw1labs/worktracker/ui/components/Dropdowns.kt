@@ -20,7 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import com.suw1labs.worktracker.data.model.Project
-import com.suw1labs.worktracker.data.model.WorkCategory
+import com.suw1labs.worktracker.data.model.WorkTaskWithProject
 import com.suw1labs.worktracker.ui.i18n.strings
 
 /** Read-only exposed dropdown used for all pick-one fields in the app. */
@@ -108,26 +108,28 @@ fun ProjectDropdown(
     )
 }
 
+/** Task picker for one project, with "General" and an optional "+ Add new task…" entry. */
 @Composable
-fun CategoryDropdown(
-    categories: List<WorkCategory>,
-    selectedCategoryId: Long?,
+fun TaskDropdown(
+    tasks: List<WorkTaskWithProject>,
+    selectedTaskId: Long?,
     onSelect: (Long?) -> Unit,
     modifier: Modifier = Modifier,
-    testTag: String? = null
+    testTag: String? = null,
+    onAddTask: (() -> Unit)? = null
 ) {
-    val selected = categories.find { it.id == selectedCategoryId }
-    val suffix = strings.unproductiveSuffix
+    val general = strings.noSpecificTask
+    val addLabel = strings.addTaskOption
+    val addSentinel = remember { WorkTaskWithProject(id = Long.MIN_VALUE, projectId = 0, projectCode = "", projectName = "", projectColor = "", client = "", title = "", description = "", priority = "", status = "", estimatedHours = 0.0, deadlineTimestamp = null, reminderLeadHours = 0, reminderEnabled = false, createdAt = 0) }
+    val options: List<WorkTaskWithProject?> = listOf<WorkTaskWithProject?>(null) + tasks + (if (onAddTask != null) listOf(addSentinel) else emptyList())
+    val selected = tasks.find { it.id == selectedTaskId }
     LabeledDropdown(
         label = strings.category,
-        selectedText = selected?.let { categoryLabel(it, suffix) } ?: strings.selectCategory,
-        options = categories,
-        optionText = { categoryLabel(it, suffix) },
-        onSelect = { onSelect(it.id) },
+        selectedText = selected?.title ?: general,
+        options = options,
+        optionText = { if (it === addSentinel) addLabel else it?.title ?: general },
+        onSelect = { if (it === addSentinel) onAddTask?.invoke() else onSelect(it?.id) },
         modifier = modifier,
         testTag = testTag
     )
 }
-
-fun categoryLabel(category: WorkCategory, unproductiveSuffix: String): String =
-    if (category.isProductive) category.name else "${category.name} $unproductiveSuffix"

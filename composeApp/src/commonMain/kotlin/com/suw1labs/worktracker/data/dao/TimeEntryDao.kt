@@ -14,13 +14,12 @@ interface TimeEntryDao {
     @Query("""
         SELECT 
             te.id, te.projectId, p.code AS projectCode, p.name AS projectName, p.colorHex AS projectColor, 
+            p.isProductive AS projectProductive,
             te.taskId, t.title AS taskTitle,
-            te.categoryId, c.name AS categoryName, c.isProductive AS categoryProductive,
             te.description, te.startTime, te.endTime, te.createdAt
         FROM time_entries te
         LEFT JOIN projects p ON te.projectId = p.id
         LEFT JOIN tasks t ON te.taskId = t.id
-        LEFT JOIN work_categories c ON te.categoryId = c.id
         ORDER BY te.startTime DESC
     """)
     fun getAllEntriesWithDetails(): Flow<List<TimeEntryWithDetails>>

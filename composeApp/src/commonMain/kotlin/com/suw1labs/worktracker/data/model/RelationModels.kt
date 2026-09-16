@@ -6,17 +6,22 @@ data class TimeEntryWithDetails(
     val projectCode: String?,
     val projectName: String?,
     val projectColor: String?,
+    /** Null when the entry has no project; time without a project counts as productive but unassigned. */
+    val projectProductive: Boolean?,
     val taskId: Long?,
     val taskTitle: String?,
-    val categoryId: Long?,
-    val categoryName: String?,
-    val categoryProductive: Boolean?,
     val description: String,
     val startTime: Long,
     val endTime: Long?,
     val createdAt: Long
 ) {
     val isRunning: Boolean get() = endTime == null
+
+    /** Productive unless booked on an unproductive project. */
+    val isProductive: Boolean get() = projectProductive != false
+
+    /** Productive work that still needs a project. */
+    val isUnassigned: Boolean get() = projectId == null
 
     /** Seconds between start and end (or [now] while running). */
     fun durationSeconds(now: Long): Long = (((endTime ?: now) - startTime) / 1000L).coerceAtLeast(0L)
@@ -25,7 +30,6 @@ data class TimeEntryWithDetails(
         id = id,
         projectId = projectId,
         taskId = taskId,
-        categoryId = categoryId,
         description = description,
         startTime = startTime,
         endTime = endTime,
@@ -60,6 +64,7 @@ data class ProjectSummary(
     val colorHex: String,
     val budgetHours: Double,
     val status: String,
+    val isProductive: Boolean,
     val totalSeconds: Long,
     val totalTasks: Int,
     val completedTasks: Int

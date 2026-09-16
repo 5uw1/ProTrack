@@ -21,7 +21,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,10 +38,8 @@ import com.suw1labs.worktracker.data.model.AttendanceSession
 import com.suw1labs.worktracker.data.model.ClockOutReason
 import com.suw1labs.worktracker.data.model.Project
 import com.suw1labs.worktracker.data.model.TimeEntryWithDetails
-import com.suw1labs.worktracker.data.model.WorkCategory
 import com.suw1labs.worktracker.data.model.WorkTaskWithProject
-import com.suw1labs.worktracker.ui.components.CategoryDropdown
-import com.suw1labs.worktracker.ui.components.ColorPaletteSelector
+import com.suw1labs.worktracker.ui.components.TaskDropdown
 import com.suw1labs.worktracker.ui.components.DateTimePickerDialog
 import com.suw1labs.worktracker.ui.components.LabeledDropdown
 import com.suw1labs.worktracker.ui.components.ProjectDropdown
@@ -60,7 +57,8 @@ private fun DateTimeField(
     millis: Long?,
     placeholder: String,
     onPick: (Long) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    timeOnly: Boolean = false
 ) {
     var showPicker by remember { mutableStateOf(false) }
     Column(modifier = modifier) {
@@ -69,7 +67,7 @@ private fun DateTimeField(
         OutlinedButton(onClick = { showPicker = true }, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(6.dp))
-            Text(millis?.let { DateFormats.dateTime(it) } ?: placeholder, fontSize = 13.sp)
+            Text(millis?.let { if (timeOnly) DateFormats.hourMinute(it) else DateFormats.dateTime(it) } ?: placeholder, fontSize = 13.sp)
         }
     }
     if (showPicker) {
@@ -80,7 +78,8 @@ private fun DateTimeField(
             onConfirm = {
                 onPick(it)
                 showPicker = false
-            }
+            },
+            dateSelectable = !timeOnly
         )
     }
 }
@@ -92,18 +91,23 @@ private fun DateTimeField(
 fun EntryFormDialog(
     entry: TimeEntryWithDetails?,
     projects: List<Project>,
-    categories: List<WorkCategory>,
     tasks: List<WorkTaskWithProject>,
     onDismiss: () -> Unit,
-    onSave: (projectId: Long?, categoryId: Long?, taskId: Long?, description: String, start: Long, end: Long?) -> Unit,
-    initialDayStart: Long? = null
+    onSave: (projectId: Long?, taskId: Long?, description: String, start: Long, end: Long?) -> Unit,
+    initialDayStart: Long? = null,
+    onQuickTask: ((projectId: Long, title: String, onCreated: (Long) -> Unit) -> Unit)? = null,
+    /** Create a project from inside the dialog ("+ Add new project…"); the new project gets selected. */
+    onQuickProject: ((code: String, name: String, client: String, colorHex: String, budgetHours: Double, isProductive: Boolean, onCreated: (Long) -> Unit) -> Unit)? = null,
+    /** Show and pick only the time of day (the entry belongs to a known day). */
+    timeOnly: Boolean = false
 ) {
     val t = strings
     val isRunning = entry?.isRunning == true
     val defaultEnd = initialDayStart?.let { it + 17 * 3600_000L } ?: currentTimeMillis()
     var projectId by remember { mutableStateOf(entry?.projectId) }
-    var categoryId by remember { mutableStateOf(entry?.categoryId ?: categories.firstOrNull()?.id) }
     var taskId by remember { mutableStateOf(entry?.taskId) }
+    var showQuickTask by remember { mutableStateOf(false) }
+    var showQuickProject by remember { mutableStateOf(false) }
     var description by remember { mutableStateOf(entry?.description ?: "") }
     var start by remember { mutableStateOf(entry?.startTime ?: (defaultEnd - 3600_000L)) }
     var end by remember { mutableStateOf<Long?>(if (isRunning) null else (entry?.endTime ?: defaultEnd)) }
@@ -126,26 +130,25 @@ fun EntryFormDialog(
                 )
                 Spacer(modifier = Modifier.height(14.dp))
 
-                ProjectDropdown(projects = projects, selectedProjectId = projectId, onSelect = {
-                    projectId = it
-                    taskId = null
-                }, testTag = "entry_project_dropdown")
-                Spacer(modifier = Modifier.height(10.dp))
+                ProjectDropdown(
+                    projects = projects,
+                    selectedProjectId = projectId,
+                    onSelect = {
+                        projectId = it
+                        taskId = null
+                    },
+                    testTag = "entry_project_dropdown",
+                    onAddProject = if (onQuickProject != null) ({ showQuickProject = true }) else null
+                )
 
-                CategoryDropdown(categories = categories, selectedCategoryId = categoryId, onSelect = { categoryId = it })
-
-                if (projectTasks.isNotEmpty()) {
+                val currentProjectId = projectId
+                if (currentProjectId != null) {
                     Spacer(modifier = Modifier.height(10.dp))
-                    val options: List<WorkTaskWithProject?> = listOf<WorkTaskWithProject?>(null) + projectTasks
-                    LabeledDropdown(
-                        label = t.taskOptional,
-                        selectedText = projectTasks.find { it.id == taskId }?.title ?: t.noSpecificTask,
-                        options = options,
-                        optionText = { it?.title ?: t.noSpecificTask },
-                        onSelect = { selected ->
-                            taskId = selected?.id
-                            if (selected != null && description.isBlank()) description = selected.title
-                        }
+                    TaskDropdown(
+                        tasks = projectTasks,
+                        selectedTaskId = taskId,
+                        onSelect = { taskId = it },
+                        onAddTask = if (onQuickTask != null) ({ showQuickTask = true }) else null
                     )
                 }
 
@@ -153,15 +156,15 @@ fun EntryFormDialog(
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text(t.whatDidYouDo) },
+                    label = { Text(t.noteOptional) },
                     modifier = Modifier.fillMaxWidth().testTag("entry_description_input")
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
-                DateTimeField(label = t.startLabel, millis = start, placeholder = t.pickStart, onPick = { start = it })
+                DateTimeField(label = t.startLabel, millis = start, placeholder = t.pickStart, onPick = { start = it }, timeOnly = timeOnly)
                 if (!isRunning) {
                     Spacer(modifier = Modifier.height(10.dp))
-                    DateTimeField(label = t.endLabel, millis = end, placeholder = t.pickEnd, onPick = { end = it })
+                    DateTimeField(label = t.endLabel, millis = end, placeholder = t.pickEnd, onPick = { end = it }, timeOnly = timeOnly)
                 } else {
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(t.stillRunning, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -183,7 +186,7 @@ fun EntryFormDialog(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text(t.cancel) }
                     Button(
-                        onClick = { onSave(projectId, categoryId, taskId, description, start, end) },
+                        onClick = { onSave(projectId, taskId, description, start, end) },
                         enabled = !invalidRange && (isRunning || end != null),
                         modifier = Modifier.weight(1f).testTag("save_entry_button")
                     ) { Text(t.save) }
@@ -191,6 +194,32 @@ fun EntryFormDialog(
             }
         }
     }
+
+    if (showQuickProject && onQuickProject != null) {
+        ProjectFormDialog(
+            project = null,
+            onDismiss = { showQuickProject = false },
+            onSave = { code, name, client, colorHex, budgetHours, _, productive ->
+                onQuickProject(code, name, client, colorHex, budgetHours, productive) { id ->
+                    projectId = id
+                    taskId = null
+                }
+                showQuickProject = false
+            }
+        )
+    }
+
+    val quickProjectId = projectId
+    if (showQuickTask && quickProjectId != null && onQuickTask != null) {
+        QuickTaskDialog(
+            onDismiss = { showQuickTask = false },
+            onSave = { title ->
+                onQuickTask(quickProjectId, title) { id -> taskId = id }
+                showQuickTask = false
+            }
+        )
+    }
+
 }
 
 /**
@@ -260,64 +289,37 @@ fun SessionFormDialog(
     }
 }
 
-/** Add or edit a work category. */
+/** Minimal dialog to create a task by title (e.g. "Meeting" on the Unproductive project). */
 @Composable
-fun CategoryFormDialog(
-    category: WorkCategory?,
+fun QuickTaskDialog(
     onDismiss: () -> Unit,
-    onSave: (name: String, isProductive: Boolean, colorHex: String) -> Unit
+    onSave: (title: String) -> Unit
 ) {
     val t = strings
-    var name by remember { mutableStateOf(category?.name ?: "") }
-    var isProductive by remember { mutableStateOf(category?.isProductive ?: true) }
-    var colorHex by remember { mutableStateOf(category?.colorHex ?: "#3B82F6") }
-
+    var title by remember { mutableStateOf("") }
     Dialog(onDismissRequest = onDismiss) {
         Card(
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            modifier = Modifier.fillMaxWidth().padding(4.dp).testTag("category_form_dialog").dismissKeyboardOnTap()
+            modifier = Modifier.fillMaxWidth().padding(4.dp).testTag("quick_task_dialog").dismissKeyboardOnTap()
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
-                Text(
-                    text = if (category == null) t.newCategory else t.editCategory,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
+                Text(t.newTaskTitle, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(14.dp))
                 OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(t.categoryName) },
-                    placeholder = { Text(t.categoryPlaceholder) },
-                    modifier = Modifier.fillMaxWidth().testTag("category_name_input")
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text(t.taskTitle) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("quick_task_title_input")
                 )
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(if (isProductive) t.productiveWork else t.unproductiveTime, fontWeight = FontWeight.Medium)
-                        Text(
-                            if (isProductive) t.productiveHint else t.unproductiveHint,
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(checked = isProductive, onCheckedChange = { isProductive = it })
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(t.colour, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                ColorPaletteSelector(selectedColorHex = colorHex, onColorSelected = { colorHex = it })
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text(t.cancel) }
                     Button(
-                        onClick = { if (name.isNotBlank()) onSave(name, isProductive, colorHex) },
-                        enabled = name.isNotBlank(),
-                        modifier = Modifier.weight(1f).testTag("save_category_button")
+                        onClick = { if (title.isNotBlank()) onSave(title) },
+                        enabled = title.isNotBlank(),
+                        modifier = Modifier.weight(1f).testTag("save_quick_task_button")
                     ) { Text(t.save) }
                 }
             }

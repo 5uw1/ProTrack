@@ -30,7 +30,6 @@ class AppContainer(
 
     val repository: TimeTrackerRepository = TimeTrackerRepository(
         projectDao = database.projectDao(),
-        categoryDao = database.workCategoryDao(),
         taskDao = database.workTaskDao(),
         timeEntryDao = database.timeEntryDao(),
         attendanceDao = database.attendanceDao(),

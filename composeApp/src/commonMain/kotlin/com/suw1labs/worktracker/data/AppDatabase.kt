@@ -10,14 +10,12 @@ import com.suw1labs.worktracker.data.dao.DayRecordDao
 import com.suw1labs.worktracker.data.dao.SettingsDao
 import com.suw1labs.worktracker.data.dao.ProjectDao
 import com.suw1labs.worktracker.data.dao.TimeEntryDao
-import com.suw1labs.worktracker.data.dao.WorkCategoryDao
 import com.suw1labs.worktracker.data.dao.WorkTaskDao
 import com.suw1labs.worktracker.data.model.AppSettings
 import com.suw1labs.worktracker.data.model.AttendanceSession
 import com.suw1labs.worktracker.data.model.DayRecord
 import com.suw1labs.worktracker.data.model.Project
 import com.suw1labs.worktracker.data.model.TimeEntry
-import com.suw1labs.worktracker.data.model.WorkCategory
 import com.suw1labs.worktracker.data.model.WorkTask
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -27,14 +25,13 @@ import kotlin.concurrent.Volatile
 const val DATABASE_NAME = "work_tracker.db"
 
 @Database(
-    entities = [Project::class, WorkCategory::class, WorkTask::class, TimeEntry::class, AttendanceSession::class, DayRecord::class, AppSettings::class],
-    version = 5,
+    entities = [Project::class, WorkTask::class, TimeEntry::class, AttendanceSession::class, DayRecord::class, AppSettings::class],
+    version = 6,
     exportSchema = false
 )
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun projectDao(): ProjectDao
-    abstract fun workCategoryDao(): WorkCategoryDao
     abstract fun workTaskDao(): WorkTaskDao
     abstract fun timeEntryDao(): TimeEntryDao
     abstract fun attendanceDao(): AttendanceDao
@@ -42,26 +39,32 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun settingsDao(): SettingsDao
 
     /**
-     * Inserts the default work categories when none exist yet. Projects are not seeded:
-     * they are entered from the list provided by project management.
+     * Creates the default settings row and the built-in "Unproductive" project with its tasks
+     * (meeting, coffee break, …) when they do not exist yet. Real projects are entered from the
+     * list provided by project management.
      */
     suspend fun seedDefaults() {
         if (settingsDao().getSettings() == null) settingsDao().upsert(AppSettings())
-        val dao = workCategoryDao()
-        if (dao.getCategoryCount() > 0) return
-        DEFAULT_CATEGORIES.forEachIndexed { index, (name, productive, color) ->
-            dao.insertCategory(WorkCategory(name = name, isProductive = productive, colorHex = color, sortOrder = index))
+        val projects = projectDao()
+        if (projects.findByCode(Project.UNPRODUCTIVE_CODE) == null) {
+            val id = projects.insertProject(
+                Project(
+                    code = Project.UNPRODUCTIVE_CODE,
+                    name = "Unproductive",
+                    client = "",
+                    colorHex = "#F59E0B",
+                    isProductive = false
+                )
+            )
+            DEFAULT_UNPRODUCTIVE_TASKS.forEach { title ->
+                workTaskDao().insertTask(WorkTask(projectId = id, title = title, priority = "LOW", reminderEnabled = false))
+            }
         }
     }
 
     companion object {
-        val DEFAULT_CATEGORIES: List<Triple<String, Boolean, String>> = listOf(
-            Triple("PLC", true, "#3B82F6"),
-            Triple("High Level Language", true, "#8B5CF6"),
-            Triple("Meeting", true, "#0F766E"),
-            Triple("Coffee / Smoke break", false, "#F59E0B"),
-            Triple("Informal meeting", false, "#EC4899"),
-            Triple("Uncategorized", false, "#64748B")
+        val DEFAULT_UNPRODUCTIVE_TASKS: List<String> = listOf(
+            "Meeting", "Coffee / Smoke break", "Informal meeting", "Uncategorized"
         )
     }
 }

@@ -31,7 +31,6 @@ class GreetingScreenshotTest {
     val db = androidDatabaseBuilder(context).buildAppDatabase(DatabaseCreationTracker())
     val repo = TimeTrackerRepository(
       projectDao = db.projectDao(),
-      categoryDao = db.workCategoryDao(),
       taskDao = db.workTaskDao(),
       timeEntryDao = db.timeEntryDao(),
       attendanceDao = db.attendanceDao(),

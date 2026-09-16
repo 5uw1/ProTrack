@@ -94,7 +94,6 @@ fun ReportsScreen(
     val daySessions by viewModel.selectedDaySessions.collectAsState()
     val dayEntries by viewModel.selectedDayEntries.collectAsState()
     val activeProjects by viewModel.activeProjects.collectAsState()
-    val categories by viewModel.categories.collectAsState()
     val allTasks by viewModel.allTasks.collectAsState()
 
     var showExportDialog by remember { mutableStateOf(false) }
@@ -199,7 +198,8 @@ fun ReportsScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(t.hoursPerProject, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
-                    val projectRows = report.projects.filter { it.projectId != null }
+                    val unproductiveIds = remember(report) { report.days.flatMap { it.cells }.filter { !it.isProductive }.map { it.projectId }.toSet() }
+                    val projectRows = report.projects.filter { it.projectId != null && it.projectId !in unproductiveIds }
                     if (report.unassignedProductiveSeconds > 0) {
                         Row(modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
@@ -412,14 +412,16 @@ fun ReportsScreen(
         EntryFormDialog(
             entry = null,
             projects = activeProjects,
-            categories = categories,
             tasks = allTasks,
             initialDayStart = periodAnchor,
             onDismiss = { showManualEntry = false },
-            onSave = { projectId, categoryId, taskId, description, start, end ->
-                if (end != null) viewModel.addManualEntry(projectId, categoryId, taskId, description, start, end)
+            onSave = { projectId, taskId, description, start, end ->
+                if (end != null) viewModel.addManualEntry(projectId, taskId, description, start, end)
                 showManualEntry = false
-            }
+            },
+            onQuickTask = { projectId, title, onCreated -> viewModel.addQuickTask(projectId, title, onCreated) },
+            onQuickProject = { code, name, client, color, budget, productive, onCreated -> viewModel.addProject(code, name, client, color, budget, productive, onCreated) },
+            timeOnly = true
         )
     }
 
@@ -427,14 +429,16 @@ fun ReportsScreen(
         EntryFormDialog(
             entry = entry,
             projects = activeProjects,
-            categories = categories,
             tasks = allTasks,
             initialDayStart = periodAnchor,
             onDismiss = { editingEntry = null },
-            onSave = { projectId, categoryId, taskId, description, start, end ->
-                viewModel.updateEntry(entry.toEntity().copy(projectId = projectId, categoryId = categoryId, taskId = taskId, description = description, startTime = start, endTime = end))
+            onSave = { projectId, taskId, description, start, end ->
+                viewModel.updateEntry(entry.toEntity().copy(projectId = projectId, taskId = taskId, description = description, startTime = start, endTime = end))
                 editingEntry = null
-            }
+            },
+            onQuickTask = { projectId, title, onCreated -> viewModel.addQuickTask(projectId, title, onCreated) },
+            onQuickProject = { code, name, client, color, budget, productive, onCreated -> viewModel.addProject(code, name, client, color, budget, productive, onCreated) },
+            timeOnly = true
         )
     }
 }

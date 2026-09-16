@@ -14,7 +14,6 @@ import com.suw1labs.worktracker.data.model.Project
 import com.suw1labs.worktracker.data.model.ProjectSummary
 import com.suw1labs.worktracker.data.model.TimeEntry
 import com.suw1labs.worktracker.data.model.TimeEntryWithDetails
-import com.suw1labs.worktracker.data.model.WorkCategory
 import com.suw1labs.worktracker.data.model.WorkTask
 import com.suw1labs.worktracker.data.model.WorkTaskWithProject
 import com.suw1labs.worktracker.data.report.PeriodReport
@@ -67,7 +66,6 @@ class TrackerViewModel(
     // --- Database streams ---
     val allProjects: StateFlow<List<Project>> = repository.allProjects.asState(emptyList())
     val activeProjects: StateFlow<List<Project>> = repository.activeProjects.asState(emptyList())
-    val categories: StateFlow<List<WorkCategory>> = repository.allCategories.asState(emptyList())
     val allTasks: StateFlow<List<WorkTaskWithProject>> = repository.allTasksWithProject.asState(emptyList())
     val allEntries: StateFlow<List<TimeEntryWithDetails>> = repository.allTimeEntries.asState(emptyList())
     val allSessions: StateFlow<List<AttendanceSession>> = repository.allSessions.asState(emptyList())
@@ -293,7 +291,7 @@ class TrackerViewModel(
      * Starts a new activity (stopping the running one). Clocks in automatically if needed so that
      * starting work from a task is a single tap.
      */
-    fun startActivity(projectId: Long?, categoryId: Long?, taskId: Long? = null, description: String = "") {
+    fun startActivity(projectId: Long?, taskId: Long? = null, description: String = "") {
         viewModelScope.launch {
             val now = currentTimeMillis()
             if (repository.getOpenSession() == null) {
@@ -304,7 +302,6 @@ class TrackerViewModel(
                 TimeEntry(
                     projectId = projectId,
                     taskId = taskId,
-                    categoryId = categoryId,
                     description = description,
                     startTime = now,
                     endTime = null
@@ -314,13 +311,23 @@ class TrackerViewModel(
     }
 
     fun startActivityFromTask(task: WorkTaskWithProject) {
-        val defaultCategory = categories.value.firstOrNull { it.isProductive }
-        startActivity(
-            projectId = task.projectId,
-            categoryId = defaultCategory?.id,
-            taskId = task.id,
-            description = task.title
-        )
+        startActivity(projectId = task.projectId, taskId = task.id)
+    }
+
+    /** Updates the note of an entry (used while an activity is running or afterwards). */
+    fun updateEntryNote(entry: TimeEntryWithDetails, note: String) {
+        viewModelScope.launch { repository.updateTimeEntry(entry.toEntity().copy(description = note)) }
+    }
+
+    /** Creates a task with just a title (e.g. "Meeting" on the Unproductive project) unless it exists. */
+    fun addQuickTask(projectId: Long, title: String, onCreated: (Long) -> Unit = {}) {
+        val clean = title.trim()
+        if (clean.isEmpty()) return
+        viewModelScope.launch {
+            val existing = repository.findTaskByTitle(projectId, clean)
+            val id = existing?.id ?: repository.insertTask(WorkTask(projectId = projectId, title = clean, priority = "LOW", reminderEnabled = false))
+            onCreated(id)
+        }
     }
 
     fun stopActivity() {
@@ -329,7 +336,6 @@ class TrackerViewModel(
 
     fun addManualEntry(
         projectId: Long?,
-        categoryId: Long?,
         taskId: Long?,
         description: String,
         startTime: Long,
@@ -341,7 +347,6 @@ class TrackerViewModel(
                 TimeEntry(
                     projectId = projectId,
                     taskId = taskId,
-                    categoryId = categoryId,
                     description = description,
                     startTime = startTime,
                     endTime = endTime
@@ -359,10 +364,10 @@ class TrackerViewModel(
     }
 
     // --- Projects & categories ---
-    fun addProject(code: String, name: String, client: String, colorHex: String, budgetHours: Double, onCreated: (Long) -> Unit = {}) {
+    fun addProject(code: String, name: String, client: String, colorHex: String, budgetHours: Double, isProductive: Boolean = true, onCreated: (Long) -> Unit = {}) {
         viewModelScope.launch {
             val id = repository.insertProject(
-                Project(code = code.trim(), name = name.trim(), client = client.trim(), colorHex = colorHex, budgetHours = budgetHours)
+                Project(code = code.trim(), name = name.trim(), client = client.trim(), colorHex = colorHex, budgetHours = budgetHours, isProductive = isProductive)
             )
             onCreated(id)
         }
@@ -374,21 +379,6 @@ class TrackerViewModel(
 
     fun deleteProject(projectId: Long) {
         viewModelScope.launch { repository.deleteProjectById(projectId) }
-    }
-
-    fun addCategory(name: String, isProductive: Boolean, colorHex: String) {
-        viewModelScope.launch {
-            val order = (categories.value.maxOfOrNull { it.sortOrder } ?: -1) + 1
-            repository.insertCategory(WorkCategory(name = name.trim(), isProductive = isProductive, colorHex = colorHex, sortOrder = order))
-        }
-    }
-
-    fun updateCategory(category: WorkCategory) {
-        viewModelScope.launch { repository.updateCategory(category) }
-    }
-
-    fun deleteCategory(categoryId: Long) {
-        viewModelScope.launch { repository.deleteCategoryById(categoryId) }
     }
 
     // --- Tasks (defined by project management) ---

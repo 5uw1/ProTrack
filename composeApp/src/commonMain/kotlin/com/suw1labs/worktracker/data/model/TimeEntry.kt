@@ -24,22 +24,15 @@ import com.suw1labs.worktracker.util.currentTimeMillis
             parentColumns = ["id"],
             childColumns = ["taskId"],
             onDelete = ForeignKey.SET_NULL
-        ),
-        ForeignKey(
-            entity = WorkCategory::class,
-            parentColumns = ["id"],
-            childColumns = ["categoryId"],
-            onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("projectId"), Index("taskId"), Index("categoryId"), Index("startTime")]
+    indices = [Index("projectId"), Index("taskId"), Index("startTime")]
 )
 data class TimeEntry(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val projectId: Long? = null,
     val taskId: Long? = null,
-    val categoryId: Long? = null,
     val description: String = "",
     val startTime: Long,
     val endTime: Long? = null,
