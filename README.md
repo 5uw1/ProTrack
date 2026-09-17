@@ -23,6 +23,14 @@ as files.
   break, more than 9 h with less than 1 h break, a week exceeds 45 h, or a clock-out was forgotten.
 * **Absences** – sick, holiday (own vacation), public holiday (paid by company), compensation
   (taken from overtime), education, or any custom reason. Paid absences count towards the target.
+* **Home-screen widgets (Android & iOS)** – clocked-in time today, target progress, the running
+  activity, a Clock in / Clock out button and one-tap task switching (running task first, then the
+  most recently used ones). Android uses Jetpack Glance and works on the shared database directly.
+  iOS uses WidgetKit (home screen, lock screen; buttons need iOS 17): the app publishes a
+  `WidgetSnapshot` into the App Group `group.com.suw1labs.worktracker`, the widget shows a live
+  timer, and its buttons queue `{type, at, taskId}` actions in the App Group which the app replays
+  with their original timestamps as soon as it becomes active. The App Group must be enabled for
+  both the app and the `WorkTrackerWidget` extension in the Apple developer account.
 * **Import / export** – paste a project list (from Excel, SAP or CSV; tab, `;` or `,` separated)
   to import project numbers. Export the summary per project, a daily timesheet or an
   attendance/overtime report as plain CSV or Excel-friendly CSV (semicolon + UTF-8 BOM).
@@ -33,13 +41,14 @@ as files.
 | --- | --- |
 | `composeApp/` | Shared Kotlin Multiplatform module: all UI (Compose), view models, Room database, export generation. Also contains the desktop entry point (`desktopMain`) and the iOS framework sources (`iosMain`). |
 | `androidApp/` | Thin Android application (activity, manifest, notifications via AlarmManager, share sheet, Firebase). |
-| `iosApp/` | Xcode project that embeds the `ComposeApp` framework produced by `composeApp`. |
+| `iosApp/` | Xcode project that embeds the `ComposeApp` framework produced by `composeApp`, plus the `WorkTrackerWidget` WidgetKit extension (Swift, reads the App Group). |
 
 Platform-specific behaviour is isolated behind small interfaces in `composeApp/src/commonMain/kotlin/com/example/platform/`:
 
 * `ReminderScheduler` – AlarmManager + notifications (Android), `UNUserNotificationCenter` (iOS), system-tray notifications (desktop).
 * `FileExporter` – share sheet (Android/iOS) or native save dialog (desktop).
 * `NotificationPermissionEffect` – runtime notification permission where the platform needs it.
+* `WidgetBridge` – re-renders the Glance widget (Android) or writes the App Group defaults and reloads WidgetKit (iOS); no-op on desktop.
 
 ## Building & running
 
@@ -88,7 +97,8 @@ The workflow stamps that version into every platform, runs the tests, builds all
 creates a GitHub Release with auto-generated notes (`v1.0.0-rc1` etc. become pre-releases).
 Builds from `main` are versioned `1.0.0-dev.<run number>`.
 
-Signing and store upload are optional and switch on automatically once these repository secrets exist:
+Signing and store upload are optional and switch on automatically once these repository secrets exist
+(`ci_scripts/set-play-secrets.sh <service-account.json>` sets all of the Android ones in one go):
 
 | Secret | Purpose |
 | --- | --- |
