@@ -363,6 +363,20 @@ class AppStrings(val language: Language) {
     var backupExported = ""; var backupRestored = ""; var backupContents: (BackupSummary) -> String = { "" }
     var restoreQuestion: (String) -> String = { it }; var restoreWarning = ""; var restoreConfirm = ""
     var backupErrorNotBackup = ""; var backupErrorNewer = ""; var backupErrorCorrupt = ""; var backupErrorIo = ""
+    // automatic backup into a chosen folder
+    lateinit var autoBackupTitle: String
+    lateinit var autoBackupSubtitle: String
+    lateinit var autoBackupOff: String
+    lateinit var autoBackupFolder: (String) -> String
+    lateinit var autoBackupLast: (String) -> String
+    lateinit var autoBackupPending: String
+    lateinit var autoBackupFailed: String
+    lateinit var autoBackupNoFile: String
+    lateinit var chooseFolder: String
+    lateinit var changeFolder: String
+    lateinit var turnOff: String
+    lateinit var backupNow: String
+    lateinit var restoreFromFolder: String
 
     fun backupError(error: BackupError): String = when (error) {
         BackupError.NOT_A_BACKUP -> backupErrorNotBackup
@@ -711,6 +725,19 @@ object Translations {
         backupErrorNewer = "The backup was made with a newer app version. Update the app, then try again."
         backupErrorCorrupt = "The backup file is damaged and cannot be read."
         backupErrorIo = "The file could not be read or written."
+        autoBackupTitle = "Automatic backup"
+        autoBackupSubtitle = "Keeps a copy of everything in a folder you choose – Google Drive, iCloud Drive or a folder on this device – a few seconds after every change. After reinstalling, restore from that folder."
+        autoBackupOff = "Off – no folder chosen"
+        autoBackupFolder = { "Folder: $it" }
+        autoBackupLast = { "Last backup $it" }
+        autoBackupPending = "Not written yet"
+        autoBackupFailed = "The last backup could not be written. Check that the folder still exists, or choose it again."
+        autoBackupNoFile = "No backup file in that folder yet."
+        chooseFolder = "Choose folder"
+        changeFolder = "Change"
+        turnOff = "Turn off"
+        backupNow = "Back up now"
+        restoreFromFolder = "Restore from folder"
     }
 
     val DE: AppStrings = AppStrings(Language.DE).apply {
@@ -1008,6 +1035,19 @@ object Translations {
         backupErrorNewer = "Die Sicherung stammt von einer neueren App-Version. Bitte zuerst die App aktualisieren."
         backupErrorCorrupt = "Die Sicherungsdatei ist beschädigt und kann nicht gelesen werden."
         backupErrorIo = "Die Datei konnte nicht gelesen oder geschrieben werden."
+        autoBackupTitle = "Automatische Sicherung"
+        autoBackupSubtitle = "Legt wenige Sekunden nach jeder Änderung eine Kopie aller Daten in einem Ordner deiner Wahl ab – Google Drive, iCloud Drive oder ein Ordner auf diesem Gerät. Nach einer Neuinstallation aus diesem Ordner wiederherstellen."
+        autoBackupOff = "Aus – kein Ordner gewählt"
+        autoBackupFolder = { "Ordner: $it" }
+        autoBackupLast = { "Letzte Sicherung $it" }
+        autoBackupPending = "Noch nicht geschrieben"
+        autoBackupFailed = "Die letzte Sicherung konnte nicht geschrieben werden. Prüfe, ob der Ordner noch existiert, oder wähle ihn neu."
+        autoBackupNoFile = "In diesem Ordner liegt noch keine Sicherung."
+        chooseFolder = "Ordner wählen"
+        changeFolder = "Ändern"
+        turnOff = "Ausschalten"
+        backupNow = "Jetzt sichern"
+        restoreFromFolder = "Aus Ordner wiederherstellen"
     }
 
     val FR: AppStrings = AppStrings(Language.FR).apply {
@@ -1305,6 +1345,19 @@ object Translations {
         backupErrorNewer = "La sauvegarde provient d'une version plus récente de l'app. Mettez l'app à jour, puis réessayez."
         backupErrorCorrupt = "Le fichier de sauvegarde est endommagé et ne peut pas être lu."
         backupErrorIo = "Le fichier n'a pas pu être lu ou écrit."
+        autoBackupTitle = "Sauvegarde automatique"
+        autoBackupSubtitle = "Conserve une copie de tout dans un dossier de votre choix – Google Drive, iCloud Drive ou un dossier de l'appareil – quelques secondes après chaque modification. Après une réinstallation, restaurez depuis ce dossier."
+        autoBackupOff = "Désactivée – aucun dossier choisi"
+        autoBackupFolder = { "Dossier : $it" }
+        autoBackupLast = { "Dernière sauvegarde $it" }
+        autoBackupPending = "Pas encore écrite"
+        autoBackupFailed = "La dernière sauvegarde n'a pas pu être écrite. Vérifiez que le dossier existe toujours ou choisissez-le à nouveau."
+        autoBackupNoFile = "Aucune sauvegarde dans ce dossier pour l'instant."
+        chooseFolder = "Choisir un dossier"
+        changeFolder = "Changer"
+        turnOff = "Désactiver"
+        backupNow = "Sauvegarder maintenant"
+        restoreFromFolder = "Restaurer depuis le dossier"
     }
 }
 

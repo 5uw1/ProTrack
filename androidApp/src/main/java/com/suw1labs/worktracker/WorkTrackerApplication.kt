@@ -3,6 +3,7 @@ package com.suw1labs.worktracker
 import android.app.Application
 import android.content.Context
 import com.suw1labs.worktracker.data.androidDatabaseBuilder
+import com.suw1labs.worktracker.platform.AndroidBackupFolderStore
 import com.suw1labs.worktracker.platform.AndroidFileExporter
 import com.suw1labs.worktracker.platform.AndroidReminderScheduler
 import com.suw1labs.worktracker.platform.AndroidWidgetBridge
@@ -18,18 +19,26 @@ class WorkTrackerApplication : Application() {
         var fileExporter: AndroidFileExporter? = null
             private set
 
+        /** Backup folder store so the activity can attach the folder picker. */
+        @Volatile
+        var backupFolderStore: AndroidBackupFolderStore? = null
+            private set
+
         /** Process-wide dependency graph, created lazily on first use. */
         fun container(context: Context): AppContainer {
             return instance ?: synchronized(this) {
                 instance ?: run {
                     val exporter = AndroidFileExporter(context.applicationContext)
                     fileExporter = exporter
+                    val folderStore = AndroidBackupFolderStore(context.applicationContext)
+                    backupFolderStore = folderStore
                     AppContainer(
                         databaseBuilder = androidDatabaseBuilder(context),
                         reminderScheduler = AndroidReminderScheduler(context.applicationContext),
                         fileExporter = exporter,
                         widgetBridge = AndroidWidgetBridge(context.applicationContext),
-                        platformName = "android"
+                        platformName = "android",
+                        backupFolderStore = folderStore
                     ).also { instance = it }
                 }
             }

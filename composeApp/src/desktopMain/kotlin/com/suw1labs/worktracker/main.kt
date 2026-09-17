@@ -6,6 +6,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.suw1labs.worktracker.data.desktopDatabaseBuilder
+import com.suw1labs.worktracker.platform.DesktopBackupFolderStore
 import com.suw1labs.worktracker.platform.DesktopFileExporter
 import com.suw1labs.worktracker.platform.DesktopReminderScheduler
 
@@ -16,7 +17,8 @@ object DesktopAppGraph {
             databaseBuilder = desktopDatabaseBuilder(),
             reminderScheduler = DesktopReminderScheduler(),
             fileExporter = DesktopFileExporter(),
-            platformName = "desktop"
+            platformName = "desktop",
+            backupFolderStore = DesktopBackupFolderStore()
         )
     }
 }

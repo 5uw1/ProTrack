@@ -2,6 +2,7 @@ package com.suw1labs.worktracker
 
 import androidx.compose.ui.window.ComposeUIViewController
 import com.suw1labs.worktracker.data.iosDatabaseBuilder
+import com.suw1labs.worktracker.platform.IosBackupFolderStore
 import com.suw1labs.worktracker.platform.IosFileExporter
 import com.suw1labs.worktracker.platform.IosReminderScheduler
 import com.suw1labs.worktracker.platform.IosWidgetBridge
@@ -15,7 +16,8 @@ object IosAppGraph {
             reminderScheduler = IosReminderScheduler(),
             fileExporter = IosFileExporter(),
             widgetBridge = IosWidgetBridge(),
-            platformName = "ios"
+            platformName = "ios",
+            backupFolderStore = IosBackupFolderStore()
         )
     }
 }

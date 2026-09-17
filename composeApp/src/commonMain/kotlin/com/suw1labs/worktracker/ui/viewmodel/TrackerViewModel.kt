@@ -2,6 +2,8 @@ package com.suw1labs.worktracker.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.suw1labs.worktracker.data.backup.AutoBackup
+import com.suw1labs.worktracker.data.backup.AutoBackupState
 import com.suw1labs.worktracker.data.backup.BackupCodec
 import com.suw1labs.worktracker.data.backup.BackupError
 import com.suw1labs.worktracker.data.backup.BackupException
@@ -26,6 +28,7 @@ import com.suw1labs.worktracker.data.report.PeriodReport
 import com.suw1labs.worktracker.data.import.ProjectImporter
 import com.suw1labs.worktracker.data.report.ReportCalculator
 import com.suw1labs.worktracker.data.repository.TimeTrackerRepository
+import com.suw1labs.worktracker.platform.BackupFolder
 import com.suw1labs.worktracker.platform.ExportAction
 import com.suw1labs.worktracker.platform.FileExporter
 import com.suw1labs.worktracker.platform.NoOpFileExporter
@@ -56,7 +59,8 @@ class TrackerViewModel(
     private val repository: TimeTrackerRepository,
     private val reminderScheduler: ReminderScheduler = NoOpReminderScheduler,
     private val fileExporter: FileExporter = NoOpFileExporter,
-    private val backupManager: BackupManager? = null
+    private val backupManager: BackupManager? = null,
+    private val autoBackup: AutoBackup? = null
 ) : ViewModel() {
 
     private fun <T> kotlinx.coroutines.flow.Flow<T>.asState(initial: T): StateFlow<T> =
@@ -677,6 +681,48 @@ class TrackerViewModel(
         }
     }
 
+    // --- Automatic backup into a user-chosen folder (Drive, iCloud, local) ---
+    val autoBackupFolder: StateFlow<BackupFolder?> = autoBackup?.folder ?: MutableStateFlow(null)
+    val autoBackupState: StateFlow<AutoBackupState> = autoBackup?.state ?: MutableStateFlow(AutoBackupState())
+    /** Whether this platform can pick a folder at all (desktop and mobile yes, tests no). */
+    val autoBackupAvailable: Boolean = autoBackup != null
+
+    /** Opens the folder picker; once chosen, the first backup is written right away. */
+    fun chooseAutoBackupFolder() {
+        val auto = autoBackup ?: return
+        viewModelScope.launch {
+            _backupBusy.value = true
+            try {
+                if (auto.pickFolder() != null) auto.backupNow()
+            } finally {
+                _backupBusy.value = false
+            }
+        }
+    }
+
+    fun disableAutoBackup() { autoBackup?.clearFolder() }
+
+    fun runAutoBackupNow() {
+        val auto = autoBackup ?: return
+        viewModelScope.launch { auto.backupNow() }
+    }
+
+    /** Reads the file in the backup folder; it becomes [pendingRestore] for the usual confirmation. */
+    fun restoreFromAutoBackup() {
+        val auto = autoBackup ?: return
+        viewModelScope.launch {
+            _backupBusy.value = true
+            try {
+                val backup = auto.readLatest()
+                if (backup == null) _backupMessage.value = BackupMessage.NoAutoBackup else _pendingRestore.value = backup
+            } catch (e: BackupException) {
+                _backupMessage.value = BackupMessage.Failed(e.error)
+            } finally {
+                _backupBusy.value = false
+            }
+        }
+    }
+
     private suspend fun rescheduleTaskReminders() {
         val now = currentTimeMillis()
         repository.allTasksWithProject.first().forEach { task ->
@@ -695,4 +741,6 @@ sealed interface BackupMessage {
     data class Exported(val summary: BackupSummary) : BackupMessage
     data class Restored(val summary: BackupSummary) : BackupMessage
     data class Failed(val error: BackupError) : BackupMessage
+    /** "Restore from folder" found no backup file there yet. */
+    data object NoAutoBackup : BackupMessage
 }

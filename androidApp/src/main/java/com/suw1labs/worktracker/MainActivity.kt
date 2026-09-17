@@ -40,6 +40,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Folder picker for the automatic backup (Drive, device, …); the store keeps the permission. */
+    private var pendingFolderResult: ((Uri?) -> Unit)? = null
+    private val openFolder = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
+        val onResult = pendingFolderResult
+        pendingFolderResult = null
+        onResult?.invoke(uri)
+    }
+
     private fun writePendingExport(uri: Uri?) {
         val content = pendingExportContent
         pendingExportContent = null
@@ -69,6 +77,12 @@ class MainActivity : ComponentActivity() {
             openDocument.launch(mimeTypes)
         }
 
+        WorkTrackerApplication.backupFolderStore?.pickRequestHandler = { onResult ->
+            pendingFolderResult?.invoke(null)
+            pendingFolderResult = onResult
+            openFolder.launch(null)
+        }
+
         setContent {
             App(container)
         }
@@ -78,6 +92,7 @@ class MainActivity : ComponentActivity() {
         if (isFinishing) {
             WorkTrackerApplication.fileExporter?.saveRequestHandler = null
             WorkTrackerApplication.fileExporter?.openRequestHandler = null
+            WorkTrackerApplication.backupFolderStore?.pickRequestHandler = null
         }
         super.onDestroy()
     }

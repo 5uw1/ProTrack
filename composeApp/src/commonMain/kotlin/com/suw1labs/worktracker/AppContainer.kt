@@ -2,11 +2,14 @@ package com.suw1labs.worktracker
 
 import androidx.room.RoomDatabase
 import com.suw1labs.worktracker.data.AppDatabase
+import com.suw1labs.worktracker.data.backup.AutoBackup
 import com.suw1labs.worktracker.data.backup.BackupManager
 import com.suw1labs.worktracker.data.DatabaseCreationTracker
 import com.suw1labs.worktracker.data.buildAppDatabase
 import com.suw1labs.worktracker.data.repository.TimeTrackerRepository
+import com.suw1labs.worktracker.platform.BackupFolderStore
 import com.suw1labs.worktracker.platform.FileExporter
+import com.suw1labs.worktracker.platform.NoOpBackupFolderStore
 import com.suw1labs.worktracker.platform.NoOpWidgetBridge
 import com.suw1labs.worktracker.platform.ReminderScheduler
 import com.suw1labs.worktracker.platform.WidgetBridge
@@ -18,6 +21,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 
 /**
@@ -30,7 +35,9 @@ class AppContainer(
     val fileExporter: FileExporter,
     val widgetBridge: WidgetBridge = NoOpWidgetBridge,
     /** Recorded in backup files ("android", "ios", "desktop") – informational only. */
-    platformName: String = ""
+    platformName: String = "",
+    /** User-chosen folder for the automatic JSON backup (Drive, iCloud, local); none on platforms without a picker. */
+    val backupFolderStore: BackupFolderStore = NoOpBackupFolderStore
 ) {
     private val creationTracker = DatabaseCreationTracker()
     /** Process-wide background scope (database seeding, widget sync, actions queued by widgets). */
@@ -40,6 +47,9 @@ class AppContainer(
 
     /** Whole-database export / import for moving the data to another device. */
     val backupManager: BackupManager = BackupManager(database, platformName)
+
+    /** Keeps a copy of the database as JSON in the chosen backup folder, rewritten shortly after each change. */
+    val autoBackup: AutoBackup = AutoBackup(backupFolderStore, createBackup = { backupManager.createBackup() })
 
     val repository: TimeTrackerRepository = TimeTrackerRepository(
         projectDao = database.projectDao(),
@@ -55,10 +65,18 @@ class AppContainer(
         appScope.launch { database.seedDefaults() }
         // Keep the home-screen widget in sync with the database for as long as the process lives.
         appScope.launch { WidgetSnapshots.flow(repository).collect { widgetBridge.publish(it) } }
+        // Any table change (Room re-emits every query on invalidation) schedules an automatic backup.
+        autoBackup.start(
+            appScope,
+            merge(
+                repository.allProjects, repository.allTasksWithProject, repository.allTimeEntries,
+                repository.allSessions, repository.allDayRecords, repository.settings
+            ).map { }
+        )
     }
 
     /** Current widget state, computed from the database (used when a widget renders itself). */
     suspend fun widgetSnapshot(): WidgetSnapshot = WidgetSnapshots.flow(repository).first()
 
-    fun createViewModel(): TrackerViewModel = TrackerViewModel(repository, reminderScheduler, fileExporter, backupManager)
+    fun createViewModel(): TrackerViewModel = TrackerViewModel(repository, reminderScheduler, fileExporter, backupManager, autoBackup)
 }

@@ -23,11 +23,13 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.FolderSpecial
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -97,6 +99,8 @@ fun ProjectsScreen(
     val settings by viewModel.settings.collectAsState()
     val backupBusy by viewModel.backupBusy.collectAsState()
     val pendingRestore by viewModel.pendingRestore.collectAsState()
+    val autoBackupFolder by viewModel.autoBackupFolder.collectAsState()
+    val autoBackupState by viewModel.autoBackupState.collectAsState()
     val backupMessage by viewModel.backupMessage.collectAsState()
     val snackbarHost = LocalSnackbarHostState.current
 
@@ -107,6 +111,7 @@ fun ProjectsScreen(
             is BackupMessage.Exported -> t.backupExported
             is BackupMessage.Restored -> "${t.backupRestored} · ${t.backupContents(message.summary)}"
             is BackupMessage.Failed -> t.backupError(message.error)
+            BackupMessage.NoAutoBackup -> t.autoBackupNoFile
         }
         viewModel.clearBackupMessage()
         snackbarHost.showSnackbar(text)
@@ -226,6 +231,77 @@ fun ProjectsScreen(
                             Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(t.backupRestore, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+
+            // --- Automatic backup into a chosen folder (Drive, iCloud, local) ---
+            if (viewModel.autoBackupAvailable) {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        modifier = Modifier.fillMaxWidth().testTag("auto_backup_card")
+                    ) {
+                        Column(modifier = Modifier.padding(18.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.FolderSpecial, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(t.autoBackupTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    Text(t.autoBackupSubtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            val folder = autoBackupFolder
+                            if (folder == null) {
+                                Text(t.autoBackupOff, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("auto_backup_status"))
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = { viewModel.chooseAutoBackupFolder() },
+                                    enabled = !backupBusy,
+                                    modifier = Modifier.fillMaxWidth().testTag("auto_backup_choose_button")
+                                ) {
+                                    Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(t.chooseFolder, fontSize = 12.sp)
+                                }
+                            } else {
+                                Text(t.autoBackupFolder(folder.displayName), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.testTag("auto_backup_status"))
+                                val status = when {
+                                    autoBackupState.lastError -> t.autoBackupFailed
+                                    autoBackupState.lastWrittenAt != null -> t.autoBackupLast(DateFormats.dateTime(autoBackupState.lastWrittenAt!!))
+                                    else -> t.autoBackupPending
+                                }
+                                Text(
+                                    status,
+                                    fontSize = 12.sp,
+                                    color = if (autoBackupState.lastError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                    OutlinedButton(onClick = { viewModel.runAutoBackupNow() }, enabled = !backupBusy && !autoBackupState.running, modifier = Modifier.weight(1f).testTag("auto_backup_now_button")) {
+                                        Icon(Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(t.backupNow, fontSize = 12.sp, maxLines = 1)
+                                    }
+                                    OutlinedButton(onClick = { viewModel.restoreFromAutoBackup() }, enabled = !backupBusy, modifier = Modifier.weight(1f).testTag("auto_backup_restore_button")) {
+                                        Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(t.restoreFromFolder, fontSize = 12.sp, maxLines = 1)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                    TextButton(onClick = { viewModel.chooseAutoBackupFolder() }, enabled = !backupBusy, modifier = Modifier.weight(1f).testTag("auto_backup_change_button")) {
+                                        Text(t.changeFolder, fontSize = 12.sp)
+                                    }
+                                    TextButton(onClick = { viewModel.disableAutoBackup() }, modifier = Modifier.weight(1f).testTag("auto_backup_off_button")) {
+                                        Text(t.turnOff, fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            }
                         }
                     }
                 }

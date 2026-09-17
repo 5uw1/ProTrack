@@ -35,6 +35,13 @@ as files.
   timer, and its buttons queue `{type, at, taskId}` actions in the App Group which the app replays
   with their original timestamps as soon as it becomes active. The App Group must be enabled for
   both the app and the `WorkTrackerWidget` extension in the Apple developer account.
+* **Backup & automatic backup** – "Backup & transfer" saves or shares everything as one JSON
+  file and restores it on any device. "Automatic backup" mirrors the same file into a folder you
+  choose – Google Drive, iCloud Drive or a local folder – a few seconds after every change
+  (`worktracker-backup.json`, only rewritten when the data changed). The database itself stays in
+  the app's private storage: SQLite must not live on a cloud-synced folder. On Android the folder
+  is a Storage Access Framework tree, on iOS a security-scoped bookmark, on desktop a path; the
+  choice is kept outside the database so it never travels inside a backup.
 * **Import / export** – paste a project list (from Excel, SAP or CSV; tab, `;` or `,` separated)
   to import project numbers. Export the summary per project, a daily timesheet or an
   attendance/overtime report as plain CSV or Excel-friendly CSV (semicolon + UTF-8 BOM).
