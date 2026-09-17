@@ -154,6 +154,10 @@ data class PeriodReport(
     val unassignedProductiveSeconds: Long
         get() = days.flatMap { it.cells }.filter { it.projectId == null && it.isProductive }.sumOf { it.seconds }
 
+    /** Productive work booked on a project but on no specific task ("General"). */
+    val noTaskProductiveSeconds: Long
+        get() = days.flatMap { it.cells }.filter { it.projectId != null && it.isProductive && it.taskName == GENERAL_TASK_NAME }.sumOf { it.seconds }
+
     companion object {
         fun empty(range: DateRange) = PeriodReport(range, 0, 0, 0, 0, 0, 0, emptyList(), emptyList(), emptyList(), emptyList(), emptyList())
     }

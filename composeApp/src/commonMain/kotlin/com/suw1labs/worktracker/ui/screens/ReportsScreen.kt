@@ -196,6 +196,7 @@ fun ReportsScreen(
                     PlainRow(t.clockedIn, TimeFormat.hoursMinutes(report.attendanceSeconds))
                     PlainRow(t.projectWork, TimeFormat.hoursMinutes(report.productiveSeconds), EmeraldGreen)
                     PlainRow(t.unproductive, TimeFormat.hoursMinutes(report.unproductiveSeconds), AmberWarning)
+                    if (report.unallocatedSeconds > 0) PlainRow(t.noActivity, TimeFormat.hoursMinutes(report.unallocatedSeconds), MaterialTheme.colorScheme.onSurfaceVariant)
                     if (report.lunchSeconds > 0) PlainRow(t.reasonLunch, TimeFormat.hoursMinutes(report.lunchSeconds), MaterialTheme.colorScheme.onSurfaceVariant)
                     if (report.paidBreakSeconds > 0) PlainRow("+ ${t.paidBreak}", TimeFormat.hoursMinutes(report.paidBreakSeconds), EmeraldGreen)
                     if (report.creditedSeconds > 0) PlainRow(t.absencesCredited, TimeFormat.hoursMinutes(report.creditedSeconds))

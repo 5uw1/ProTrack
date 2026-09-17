@@ -363,12 +363,16 @@ private struct TaskList: View {
     let limit: Int
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("SWITCH TO").font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
-            if state.quickTasks.isEmpty {
+            Text(state.clockedIn ? "SWITCH TO" : "TASKS").font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
+            if !state.clockedIn {
+                // Tasks are chosen after clocking in.
+                Text("Clock in first, then pick a task.").font(.system(size: 11)).foregroundStyle(.secondary)
+            } else if state.quickTasks.isEmpty {
                 Text("Add tasks in the app").font(.system(size: 11)).foregroundStyle(.secondary)
-            }
-            ForEach(state.quickTasks.prefix(limit)) { task in
-                TaskChip(task: task, running: task.taskId == state.runningTaskId)
+            } else {
+                ForEach(state.quickTasks.prefix(limit)) { task in
+                    TaskChip(task: task, running: task.taskId == state.runningTaskId)
+                }
             }
         }
     }

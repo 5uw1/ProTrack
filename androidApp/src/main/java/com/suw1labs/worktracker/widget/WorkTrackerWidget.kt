@@ -166,7 +166,8 @@ private fun WidgetContent(snapshot: WidgetSnapshot, now: Long, t: AppStrings) {
                 maxLines = 1
             )
         }
-        if (snapshot.quickTasks.isNotEmpty()) {
+        // Tasks are chosen after clocking in, so the chips only show while clocked in.
+        if (snapshot.clockedIn && snapshot.quickTasks.isNotEmpty()) {
             Spacer(modifier = GlanceModifier.height(8.dp))
             QuickTaskChips(tasks = snapshot.quickTasks.take(if (wide) 3 else 2), runningTaskId = snapshot.runningTaskId)
         }

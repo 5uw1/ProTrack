@@ -132,6 +132,27 @@ class WidgetAndTimelineTest {
         assertEquals(10 * 60L, ReportCalculator.compute(more, emptyList(), day, at(18.0), AppSettings(paidBreakMinutes = 10)).paidBreakSeconds)
     }
 
+    @Test
+    fun summary_splitsClockedInTimeIntoWorkUnproductiveAndNoActivity() {
+        val sessions = listOf(AttendanceSession(id = 1, clockIn = at(8.0), clockOut = at(16.0)))
+        val entries = listOf(
+            entry(1, at(8.0), at(12.0)),                                              // project + task
+            entry(2, at(12.0), at(13.0)).copy(taskId = null, taskTitle = null),      // project, no task
+            entry(3, at(13.0), at(14.0)).copy(projectId = null, projectCode = null, projectName = null, projectProductive = null), // no project yet
+            entry(4, at(14.0), at(15.0), code = "UNPRODUCTIVE", productive = false)
+                .copy(projectId = 2, projectName = "Unproductive", taskTitle = "Meeting")  // unproductive project
+            // 15:00-16:00: clocked in, nothing running
+        )
+        val r = ReportCalculator.compute(sessions, entries, DateRanges.dayRange(dayStart), at(17.0), AppSettings())
+        assertEquals(8 * 3600L, r.attendanceSeconds)
+        assertEquals(6 * 3600L, r.productiveSeconds)
+        assertEquals(1 * 3600L, r.noTaskProductiveSeconds)
+        assertEquals(1 * 3600L, r.unassignedProductiveSeconds)
+        assertEquals(1 * 3600L, r.unproductiveSeconds)
+        assertEquals(1 * 3600L, r.unallocatedSeconds)
+        assertEquals(r.attendanceSeconds, r.productiveSeconds + r.unproductiveSeconds + r.unallocatedSeconds)
+    }
+
     private companion object {
         const val HOUR = 3600_000L
     }

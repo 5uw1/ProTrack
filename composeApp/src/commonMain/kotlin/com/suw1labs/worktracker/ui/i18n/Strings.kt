@@ -159,6 +159,8 @@ class AppStrings(
     var targetLabel: (String) -> String = { it }; var remainingToTarget: (String) -> String = { it }; var targetReached = ""
     // Clock-in / clock-out events in the day's activity list.
     var eventClockedIn = ""; var eventClockedOut = ""
+    // Today summary breakdown.
+    var noActivity = ""; var generalTaskTime = ""; var clockInFirst = ""
     // Paid short breaks (company rule).
     var paidBreak = ""; var paidBreakPerDay = ""; var paidBreakHint = ""; var paidBreakSummary: (String) -> String = { it }
 
@@ -308,6 +310,8 @@ object Translations {
         deleteAbsenceQuestion = "Delete this absence? Its hours are no longer credited."
         targetLabel = { "Target $it" }; remainingToTarget = { "$it to go" }; targetReached = "Target reached"
         eventClockedIn = "Clocked in"; eventClockedOut = "Clocked out"
+        noActivity = "No activity running"; generalTaskTime = "No specific task"
+        clockInFirst = "Clock in first, then choose what you are working on."
         paidBreak = "Paid breaks"; paidBreakPerDay = "Paid break per day (min)"
         paidBreakHint = "Coffee / smoke breaks tagged as Break count as working time up to this many minutes a day. 0 = unpaid."
         paidBreakSummary = { "$it min paid break" }
@@ -415,6 +419,8 @@ object Translations {
         deleteAbsenceQuestion = "Diese Abwesenheit löschen? Die Stunden werden nicht mehr gutgeschrieben."
         targetLabel = { "Soll $it" }; remainingToTarget = { "noch $it" }; targetReached = "Soll erreicht"
         eventClockedIn = "Eingestempelt"; eventClockedOut = "Ausgestempelt"
+        noActivity = "Keine Tätigkeit erfasst"; generalTaskTime = "Keine bestimmte Aufgabe"
+        clockInFirst = "Zuerst einstempeln, dann wählen, woran du arbeitest."
         paidBreak = "Bezahlte Pausen"; paidBreakPerDay = "Bezahlte Pause pro Tag (Min.)"
         paidBreakHint = "Als Pause markierte Kaffee-/Raucherpausen zählen bis zu so vielen Minuten pro Tag als Arbeitszeit. 0 = unbezahlt."
         paidBreakSummary = { "$it Min. bezahlte Pause" }
@@ -522,6 +528,8 @@ object Translations {
         deleteAbsenceQuestion = "Supprimer cette absence ? Ses heures ne sont plus créditées."
         targetLabel = { "Objectif $it" }; remainingToTarget = { "encore $it" }; targetReached = "Objectif atteint"
         eventClockedIn = "Pointé"; eventClockedOut = "Dépointé"
+        noActivity = "Aucune activité en cours"; generalTaskTime = "Aucune tâche précise"
+        clockInFirst = "Pointe d'abord, puis choisis sur quoi tu travailles."
         paidBreak = "Pauses payées"; paidBreakPerDay = "Pause payée par jour (min)"
         paidBreakHint = "Les pauses café / cigarette marquées « Pause » comptent comme temps de travail jusqu'à ce nombre de minutes par jour. 0 = non payées."
         paidBreakSummary = { "$it min de pause payée" }

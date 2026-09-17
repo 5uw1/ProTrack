@@ -246,6 +246,13 @@ fun TodayScreen(
                             onEdit = { editingEntry = running },
                             onNoteChange = { viewModel.updateEntryNote(running, it) }
                         )
+                    } else if (!isClockedIn) {
+                        // The day starts with a clock-in; the task is chosen afterwards.
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Login, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(t.clockInFirst, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("clock_in_first_hint"))
+                        }
                     } else {
                         ActivitySelector(
                             projects = activeProjects,
@@ -841,11 +848,6 @@ private fun ActivitySelector(
             Text(if (isSwitching) t.switchShort else t.start, fontWeight = FontWeight.Bold)
         }
     }
-    if (!isClockedIn) {
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(t.autoClockInHint, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-
     if (showQuickTask && currentProjectId != null) {
         QuickTaskDialog(
             onDismiss = { showQuickTask = false },
@@ -899,19 +901,28 @@ fun DaySummaryCard(
                 TargetProgress(attendanceSeconds = report.accountedSeconds, targetSeconds = report.targetSeconds)
                 Spacer(modifier = Modifier.height(8.dp))
             }
+            // Clocked in = project work + unproductive + time with no activity running.
             SummaryRow(t.clockedIn, report.attendanceSeconds, MaterialTheme.colorScheme.onSurface)
             SummaryRow(t.projectWork, report.productiveSeconds, EmeraldGreen)
             if (report.unassignedProductiveSeconds > 0) {
-                SummaryRow("↳ ${t.unassignedProject}", report.unassignedProductiveSeconds, AmberWarning)
+                SummaryRow("↳ ${t.unassignedProject}", report.unassignedProductiveSeconds, AmberWarning, indent = true)
+            }
+            if (report.noTaskProductiveSeconds > 0) {
+                SummaryRow("↳ ${t.generalTaskTime}", report.noTaskProductiveSeconds, MaterialTheme.colorScheme.onSurfaceVariant, indent = true)
             }
             SummaryRow(t.unproductive, report.unproductiveSeconds, AmberWarning)
-            if (report.lunchSeconds > 0) {
-                SummaryRow(t.reasonLunch, report.lunchSeconds, MaterialTheme.colorScheme.onSurfaceVariant)
+            if (report.unallocatedSeconds > 0) {
+                SummaryRow(t.noActivity, report.unallocatedSeconds, MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            // Credited on top of the clocked-in time; lunch is shown for information only.
             if (report.paidBreakSeconds > 0) {
                 SummaryRow("+ ${t.paidBreak}", report.paidBreakSeconds, EmeraldGreen)
             }
-            SignedRow(t.overtimeToday, report.overtimeSeconds)
+            if (report.lunchSeconds > 0) {
+                SummaryRow(t.reasonLunch, report.lunchSeconds, MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            // Overtime only once the day's target is exceeded; until then the target row says what is left.
+            if (report.overtimeSeconds > 0) SignedRow(t.overtimeToday, report.overtimeSeconds)
         }
     }
 }
@@ -968,9 +979,9 @@ private fun SignedRow(label: String, seconds: Long) {
 }
 
 @Composable
-private fun SummaryRow(label: String, seconds: Long, color: Color) {
+private fun SummaryRow(label: String, seconds: Long, color: Color, indent: Boolean = false) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = if (indent) 12.dp else 0.dp, top = 2.dp, bottom = 2.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
