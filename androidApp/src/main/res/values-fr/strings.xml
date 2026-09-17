@@ -1,0 +1,4 @@
+<resources>
+    <string name="widget_label">WorkTracker</string>
+    <string name="widget_description">Temps pointé aujourd\'hui, activité en cours et pointage / dépointage.</string>
+</resources>

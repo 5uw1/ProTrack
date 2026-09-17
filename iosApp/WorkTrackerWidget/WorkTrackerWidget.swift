@@ -27,6 +27,7 @@ struct WidgetState {
     var runningSince: Date? = nil
     var runningTaskId: Int? = nil
     var quickTasks: [QuickTask] = []
+    var language = "en"
     var updatedAt: Date? = nil
 
     static var defaults: UserDefaults? { UserDefaults(suiteName: appGroup) }
@@ -48,9 +49,13 @@ struct WidgetState {
             return QuickTask(taskId: taskId, projectId: projectId, title: title,
                              projectLabel: m["projectLabel"] as? String ?? "", productive: m["productive"] as? Bool ?? true)
         }
+        s.language = d.string(forKey: "widget.language") ?? "en"
         s.updatedAt = date(d, "widget.updatedAt")
         return s
     }
+
+    /// Widget texts in the app's language (the widget cannot use the Kotlin translations).
+    func text(_ key: String) -> String { WidgetTexts.text(key, language: language) }
 
     private static func date(_ d: UserDefaults, _ key: String) -> Date? {
         guard d.object(forKey: key) != nil else { return nil }
@@ -85,6 +90,27 @@ struct WidgetState {
         ]
         return s
     }()
+}
+
+/// Small table of the widget's own texts in the three app languages.
+enum WidgetTexts {
+    private static let table: [String: [String: String]] = [
+        "clockedIn": ["en": "CLOCKED IN", "de": "EINGESTEMPELT", "fr": "POINTÉ"],
+        "clockedOut": ["en": "CLOCKED OUT", "de": "AUSGESTEMPELT", "fr": "DÉPOINTÉ"],
+        "ofToday": ["en": "of %@ today", "de": "von %@ heute", "fr": "sur %@ aujourd'hui"],
+        "clockIn": ["en": "Clock in", "de": "Einstempeln", "fr": "Pointer"],
+        "clockOut": ["en": "Clock out", "de": "Ausstempeln", "fr": "Dépointer"],
+        "switchTo": ["en": "SWITCH TO", "de": "WECHSELN ZU", "fr": "PASSER À"],
+        "tasks": ["en": "TASKS", "de": "AUFGABEN", "fr": "TÂCHES"],
+        "clockInFirst": ["en": "Clock in first, then pick a task.", "de": "Zuerst einstempeln, dann Aufgabe wählen.", "fr": "Pointe d'abord, puis choisis une tâche."],
+        "addTasks": ["en": "Add tasks in the app", "de": "Aufgaben in der App anlegen", "fr": "Ajoute des tâches dans l'app"],
+        "now": ["en": "NOW", "de": "JETZT", "fr": "EN COURS"],
+    ]
+
+    static func text(_ key: String, language: String) -> String {
+        let row = table[key] ?? [:]
+        return row[language] ?? row["en"] ?? key
+    }
 }
 
 // MARK: - Actions queued for the app (the extension cannot open the database)
@@ -249,9 +275,9 @@ private struct StatusLine: View {
         HStack(spacing: 5) {
             Circle().fill(state.clockedIn ? green : Color.secondary.opacity(0.5)).frame(width: 7, height: 7)
             if state.clockedIn, let since = state.clockedInSince {
-                Text("CLOCKED IN · \(hourMinute(since))")
+                Text("\(state.text("clockedIn")) · \(hourMinute(since))")
             } else {
-                Text("CLOCKED OUT")
+                Text(state.text("clockedOut"))
             }
         }
         .font(.system(size: 10, weight: .bold))
@@ -286,7 +312,7 @@ private struct ClockButton: View {
     var body: some View {
         let label = HStack(spacing: 4) {
             Image(systemName: state.clockedIn ? "rectangle.portrait.and.arrow.right" : "arrow.right.to.line")
-            Text(state.clockedIn ? "Clock out" : "Clock in")
+            Text(state.text(state.clockedIn ? "clockOut" : "clockIn"))
         }
         .font(.system(size: compact ? 11 : 12, weight: .bold))
         .foregroundStyle(.white)
@@ -347,7 +373,7 @@ private struct SmallView: View {
                 .minimumScaleFactor(0.6)
                 .lineLimit(1)
             if entry.state.targetSeconds > 0 {
-                Text("of \(hoursMinutes(entry.state.targetSeconds)) today")
+                Text(String(format: entry.state.text("ofToday"), hoursMinutes(entry.state.targetSeconds)))
                     .font(.system(size: 10)).foregroundStyle(.secondary)
             }
             TargetBar(entry: entry)
@@ -363,12 +389,12 @@ private struct TaskList: View {
     let limit: Int
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(state.clockedIn ? "SWITCH TO" : "TASKS").font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
+            Text(state.text(state.clockedIn ? "switchTo" : "tasks")).font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
             if !state.clockedIn {
                 // Tasks are chosen after clocking in.
-                Text("Clock in first, then pick a task.").font(.system(size: 11)).foregroundStyle(.secondary)
+                Text(state.text("clockInFirst")).font(.system(size: 11)).foregroundStyle(.secondary)
             } else if state.quickTasks.isEmpty {
-                Text("Add tasks in the app").font(.system(size: 11)).foregroundStyle(.secondary)
+                Text(state.text("addTasks")).font(.system(size: 11)).foregroundStyle(.secondary)
             } else {
                 ForEach(state.quickTasks.prefix(limit)) { task in
                     TaskChip(task: task, running: task.taskId == state.runningTaskId)
@@ -389,7 +415,7 @@ private struct MediumView: View {
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
                 if entry.state.targetSeconds > 0 {
-                    Text("of \(hoursMinutes(entry.state.targetSeconds)) today")
+                    Text(String(format: entry.state.text("ofToday"), hoursMinutes(entry.state.targetSeconds)))
                         .font(.system(size: 10)).foregroundStyle(.secondary)
                 }
                 TargetBar(entry: entry)
@@ -415,7 +441,7 @@ private struct LargeView: View {
                         .minimumScaleFactor(0.6)
                         .lineLimit(1)
                     if entry.state.targetSeconds > 0 {
-                        Text("of \(hoursMinutes(entry.state.targetSeconds)) today")
+                        Text(String(format: entry.state.text("ofToday"), hoursMinutes(entry.state.targetSeconds)))
                             .font(.system(size: 11)).foregroundStyle(.secondary)
                     }
                     TargetBar(entry: entry)
@@ -425,7 +451,7 @@ private struct LargeView: View {
             }
             if let project = entry.state.runningProject {
                 HStack(spacing: 4) {
-                    Text("NOW").font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
+                    Text(entry.state.text("now")).font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
                     Text(project).font(.system(size: 12, weight: .bold)).lineLimit(1)
                     if let task = entry.state.runningTask {
                         Text("· \(task)").font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)

@@ -1,0 +1,4 @@
+<resources>
+    <string name="widget_label">WorkTracker</string>
+    <string name="widget_description">Heute eingestempelte Zeit, laufende Tätigkeit und Ein-/Ausstempeln.</string>
+</resources>

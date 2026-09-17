@@ -43,6 +43,7 @@ class IosWidgetBridge(private val appGroup: String = WIDGET_APP_GROUP) : WidgetB
             },
             KEY_QUICK_TASKS
         )
+        defaults.setObject(snapshot.language, KEY_LANGUAGE)
         defaults.setDouble(snapshot.updatedAt.toEpochSeconds(), KEY_UPDATED_AT)
         defaults.synchronize()
         WidgetReload.handler?.invoke()
@@ -69,6 +70,7 @@ class IosWidgetBridge(private val appGroup: String = WIDGET_APP_GROUP) : WidgetB
         const val KEY_RUNNING_SINCE = "widget.runningSince"
         const val KEY_RUNNING_TASK_ID = "widget.runningTaskId"
         const val KEY_QUICK_TASKS = "widget.quickTasks"
+        const val KEY_LANGUAGE = "widget.language"
         const val KEY_UPDATED_AT = "widget.updatedAt"
         /** Actions the widget's buttons queued while the app was not running (see WidgetActions). */
         const val KEY_PENDING_ACTIONS = "widget.pendingActions"

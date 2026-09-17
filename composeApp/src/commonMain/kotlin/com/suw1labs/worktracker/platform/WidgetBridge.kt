@@ -35,6 +35,8 @@ data class WidgetSnapshot(
     val runningTaskId: Long? = null,
     /** Tasks offered as one-tap switches on the widget (running one first, then recently used). */
     val quickTasks: List<QuickTask> = emptyList(),
+    /** UI language code (en / de / fr) so the widgets speak the app's language. */
+    val language: String = "en",
     val updatedAt: Long
 ) {
     /** Total clocked-in seconds of today at [now]. */
@@ -98,6 +100,7 @@ object WidgetSnapshots {
             runningProjectId = running?.projectId,
             runningTaskId = running?.taskId,
             quickTasks = quickTasks(tasks, entries, running?.taskId, projects.filter { it.isProductive }.map { it.id }.toSet()),
+            language = settings.language,
             updatedAt = now
         )
     }
