@@ -15,7 +15,8 @@ object DesktopAppGraph {
         AppContainer(
             databaseBuilder = desktopDatabaseBuilder(),
             reminderScheduler = DesktopReminderScheduler(),
-            fileExporter = DesktopFileExporter()
+            fileExporter = DesktopFileExporter(),
+            platformName = "desktop"
         )
     }
 }

@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 import com.suw1labs.worktracker.util.currentTimeMillis
 
 /**
@@ -26,8 +27,9 @@ import com.suw1labs.worktracker.util.currentTimeMillis
             onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("projectId"), Index("taskId"), Index("startTime")]
+    indices = [Index("projectId"), Index("taskId"), Index("startTime"), Index("endTime")]
 )
+@Serializable
 data class TimeEntry(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,

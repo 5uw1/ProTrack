@@ -2,6 +2,7 @@ package com.suw1labs.worktracker.data.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * Personal work schedule (single row, id = 1).
@@ -12,6 +13,7 @@ import androidx.room.PrimaryKey
  * Bern: 5 × 8 h = 40 h, legal maximum 45 h per week.
  */
 @Entity(tableName = "app_settings")
+@Serializable
 data class AppSettings(
     @PrimaryKey
     val id: Long = 1,

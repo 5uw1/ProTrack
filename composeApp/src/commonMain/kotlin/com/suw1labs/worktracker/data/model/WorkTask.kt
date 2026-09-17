@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 import com.suw1labs.worktracker.util.currentTimeMillis
 
 @Entity(
@@ -18,6 +19,7 @@ import com.suw1labs.worktracker.util.currentTimeMillis
     ],
     indices = [Index("projectId")]
 )
+@Serializable
 data class WorkTask(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,

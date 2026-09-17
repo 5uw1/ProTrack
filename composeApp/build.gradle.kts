@@ -6,6 +6,7 @@ plugins {
   alias(libs.plugins.android.kotlin.multiplatform.library)
   alias(libs.plugins.compose.multiplatform)
   alias(libs.plugins.kotlin.compose)
+  alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.ksp)
   alias(libs.plugins.room)
 }
@@ -51,6 +52,8 @@ kotlin {
       implementation(libs.jetbrains.lifecycle.runtime.compose)
       implementation(libs.kotlinx.coroutines.core)
       implementation(libs.kotlinx.datetime)
+      // Backup file format (JSON) used to move data between devices.
+      implementation(libs.kotlinx.serialization.json)
       // `api`: RoomDatabase.Builder is part of AppContainer's public constructor signature.
       api(libs.room.runtime)
       implementation(libs.sqlite.bundled)
@@ -69,9 +72,16 @@ kotlin {
       implementation(compose.desktop.currentOs)
       implementation(libs.kotlinx.coroutines.swing)
     }
+    // Schema migration and backup/restore tests run against a real SQLite database on the JVM.
+    getByName("desktopTest").dependencies {
+      implementation(libs.room.testing)
+    }
   }
 }
 
+// Every schema version is exported to composeApp/schemas/<db class>/<version>.json (committed to git).
+// The JSON files are the source of truth for the migration test and must be updated whenever
+// the @Database version is bumped.
 room {
   schemaDirectory("$projectDir/schemas")
 }

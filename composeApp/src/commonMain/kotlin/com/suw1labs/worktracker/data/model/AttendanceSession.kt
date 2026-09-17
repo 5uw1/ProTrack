@@ -3,6 +3,7 @@ package com.suw1labs.worktracker.data.model
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 import com.suw1labs.worktracker.util.currentTimeMillis
 
 enum class ClockOutReason(val label: String) {
@@ -17,7 +18,8 @@ enum class ClockOutReason(val label: String) {
 }
 
 /** A clocked-in period. [clockOut] is null while clocked in. */
-@Entity(tableName = "attendance_sessions", indices = [Index("clockIn")])
+@Entity(tableName = "attendance_sessions", indices = [Index("clockIn"), Index("clockOut")])
+@Serializable
 data class AttendanceSession(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,

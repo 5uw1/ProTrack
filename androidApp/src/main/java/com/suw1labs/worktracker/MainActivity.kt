@@ -16,13 +16,34 @@ import kotlinx.coroutines.withContext
 class MainActivity : ComponentActivity() {
 
     private var pendingExportContent: String? = null
+    private var pendingOpenResult: ((String?) -> Unit)? = null
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    /** "Save file" picker: the user chooses the folder (Downloads, Drive, …) and we write the CSV there. */
-    private val createDocument = registerForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri: Uri? ->
+    /** "Save file" pickers: the user chooses the folder (Downloads, Drive, …) and we write the file there. */
+    private val createCsvDocument = registerForActivityResult(ActivityResultContracts.CreateDocument("text/csv"), ::writePendingExport)
+    private val createJsonDocument = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json"), ::writePendingExport)
+
+    /** "Open file" picker for restoring a backup. */
+    private val openDocument = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        val onResult = pendingOpenResult
+        pendingOpenResult = null
+        if (onResult == null) return@registerForActivityResult
+        if (uri == null) {
+            onResult(null)
+            return@registerForActivityResult
+        }
+        ioScope.launch {
+            val text = runCatching {
+                contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+            }.getOrNull()
+            withContext(Dispatchers.Main) { onResult(text) }
+        }
+    }
+
+    private fun writePendingExport(uri: Uri?) {
         val content = pendingExportContent
         pendingExportContent = null
-        if (uri == null || content == null) return@registerForActivityResult
+        if (uri == null || content == null) return
         ioScope.launch {
             val ok = runCatching {
                 contentResolver.openOutputStream(uri)?.use { it.write(content.toByteArray(Charsets.UTF_8)) } != null
@@ -38,9 +59,14 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val container = WorkTrackerApplication.container(applicationContext)
-        WorkTrackerApplication.fileExporter?.saveRequestHandler = { filename, _, content ->
+        WorkTrackerApplication.fileExporter?.saveRequestHandler = { filename, mimeType, content ->
             pendingExportContent = content
-            createDocument.launch(filename)
+            (if (mimeType == "application/json") createJsonDocument else createCsvDocument).launch(filename)
+        }
+        WorkTrackerApplication.fileExporter?.openRequestHandler = { mimeTypes, onResult ->
+            pendingOpenResult?.invoke(null)
+            pendingOpenResult = onResult
+            openDocument.launch(mimeTypes)
         }
 
         setContent {
@@ -49,8 +75,9 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        if (WorkTrackerApplication.fileExporter?.saveRequestHandler != null && isFinishing) {
+        if (isFinishing) {
             WorkTrackerApplication.fileExporter?.saveRequestHandler = null
+            WorkTrackerApplication.fileExporter?.openRequestHandler = null
         }
         super.onDestroy()
     }

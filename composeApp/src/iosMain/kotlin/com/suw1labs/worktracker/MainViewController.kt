@@ -14,7 +14,8 @@ object IosAppGraph {
             databaseBuilder = iosDatabaseBuilder(),
             reminderScheduler = IosReminderScheduler(),
             fileExporter = IosFileExporter(),
-            widgetBridge = IosWidgetBridge()
+            widgetBridge = IosWidgetBridge(),
+            platformName = "ios"
         )
     }
 }

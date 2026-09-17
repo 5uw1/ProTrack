@@ -3,6 +3,7 @@ package com.suw1labs.worktracker.data.model
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 import com.suw1labs.worktracker.util.currentTimeMillis
 
 /**
@@ -25,6 +26,7 @@ enum class AbsenceType(val label: String, val creditsHours: Boolean) {
 
 /** An absence booked on a calendar day (identified by the local day start in epoch millis). */
 @Entity(tableName = "day_records", indices = [Index("dayStart", unique = true)])
+@Serializable
 data class DayRecord(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,

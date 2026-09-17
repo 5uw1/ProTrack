@@ -28,7 +28,8 @@ class WorkTrackerApplication : Application() {
                         databaseBuilder = androidDatabaseBuilder(context),
                         reminderScheduler = AndroidReminderScheduler(context.applicationContext),
                         fileExporter = exporter,
-                        widgetBridge = AndroidWidgetBridge(context.applicationContext)
+                        widgetBridge = AndroidWidgetBridge(context.applicationContext),
+                        platformName = "android"
                     ).also { instance = it }
                 }
             }

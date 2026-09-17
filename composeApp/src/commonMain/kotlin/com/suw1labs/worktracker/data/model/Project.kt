@@ -3,6 +3,7 @@ package com.suw1labs.worktracker.data.model
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 import com.suw1labs.worktracker.util.currentTimeMillis
 
 /**
@@ -10,6 +11,7 @@ import com.suw1labs.worktracker.util.currentTimeMillis
  * "Unproductive" project whose tasks (meeting, coffee break, …) are recorded but reported separately.
  */
 @Entity(tableName = "projects", indices = [Index("code")])
+@Serializable
 data class Project(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,

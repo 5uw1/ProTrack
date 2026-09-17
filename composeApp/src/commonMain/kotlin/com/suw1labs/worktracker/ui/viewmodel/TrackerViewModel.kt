@@ -2,6 +2,12 @@ package com.suw1labs.worktracker.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.suw1labs.worktracker.data.backup.BackupCodec
+import com.suw1labs.worktracker.data.backup.BackupError
+import com.suw1labs.worktracker.data.backup.BackupException
+import com.suw1labs.worktracker.data.backup.BackupFile
+import com.suw1labs.worktracker.data.backup.BackupManager
+import com.suw1labs.worktracker.data.backup.BackupSummary
 import com.suw1labs.worktracker.data.export.ExportFormat
 import com.suw1labs.worktracker.data.export.SapExport
 import com.suw1labs.worktracker.data.export.SapExportType
@@ -37,7 +43,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -47,7 +55,8 @@ import kotlinx.coroutines.launch
 class TrackerViewModel(
     private val repository: TimeTrackerRepository,
     private val reminderScheduler: ReminderScheduler = NoOpReminderScheduler,
-    private val fileExporter: FileExporter = NoOpFileExporter
+    private val fileExporter: FileExporter = NoOpFileExporter,
+    private val backupManager: BackupManager? = null
 ) : ViewModel() {
 
     private fun <T> kotlinx.coroutines.flow.Flow<T>.asState(initial: T): StateFlow<T> =
@@ -556,4 +565,98 @@ class TrackerViewModel(
             }
         }
     }
+
+    // --- Backup & restore (move all data to another device) ---
+    private val _backupBusy = MutableStateFlow(false)
+    val backupBusy: StateFlow<Boolean> = _backupBusy.asStateFlow()
+
+    /** A backup the user picked, waiting for confirmation before it replaces the local data. */
+    private val _pendingRestore = MutableStateFlow<BackupFile?>(null)
+    val pendingRestore: StateFlow<BackupFile?> = _pendingRestore.asStateFlow()
+
+    /** Outcome of the last backup action, shown once by the UI and then cleared. */
+    private val _backupMessage = MutableStateFlow<BackupMessage?>(null)
+    val backupMessage: StateFlow<BackupMessage?> = _backupMessage.asStateFlow()
+    fun clearBackupMessage() { _backupMessage.value = null }
+
+    /** Writes every table to one JSON file and saves or shares it. */
+    fun exportBackup(action: ExportAction) {
+        val manager = backupManager ?: return
+        viewModelScope.launch {
+            _backupBusy.value = true
+            try {
+                val backup = manager.createBackup()
+                val text = BackupCodec.encode(backup)
+                val filename = BackupCodec.fileName(backup.exportedAt)
+                when (action) {
+                    ExportAction.SAVE -> fileExporter.saveText(text, filename, BackupCodec.MIME_TYPE)
+                    ExportAction.SHARE -> fileExporter.shareText(text, filename, BackupCodec.MIME_TYPE, "WorkTracker backup")
+                }
+                _backupMessage.value = BackupMessage.Exported(backup.summary)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _backupMessage.value = BackupMessage.Failed(BackupError.IO)
+            } finally {
+                _backupBusy.value = false
+            }
+        }
+    }
+
+    /** Opens the file picker; a readable backup becomes [pendingRestore] for the confirmation dialog. */
+    fun pickBackupToRestore() {
+        viewModelScope.launch {
+            _backupBusy.value = true
+            try {
+                val text = fileExporter.openText(BackupCodec.OPEN_MIME_TYPES, listOf(BackupCodec.FILE_EXTENSION)) ?: return@launch
+                _pendingRestore.value = BackupCodec.decode(text)
+            } catch (e: BackupException) {
+                _backupMessage.value = BackupMessage.Failed(e.error)
+            } finally {
+                _backupBusy.value = false
+            }
+        }
+    }
+
+    fun cancelRestore() { _pendingRestore.value = null }
+
+    /** Replaces all local data with [pendingRestore] and re-arms the deadline reminders for the restored tasks. */
+    fun confirmRestore() {
+        val manager = backupManager ?: return
+        val backup = _pendingRestore.value ?: return
+        _pendingRestore.value = null
+        viewModelScope.launch {
+            _backupBusy.value = true
+            try {
+                val summary = manager.restore(backup)
+                rescheduleTaskReminders()
+                _backupMessage.value = BackupMessage.Restored(summary)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _backupMessage.value = BackupMessage.Failed(BackupError.IO)
+            } finally {
+                _backupBusy.value = false
+            }
+        }
+    }
+
+    private suspend fun rescheduleTaskReminders() {
+        val now = currentTimeMillis()
+        repository.allTasksWithProject.first().forEach { task ->
+            val deadline = task.deadlineTimestamp
+            if (task.reminderEnabled && task.status != "DONE" && deadline != null && deadline > now) {
+                reminderScheduler.scheduleTaskReminder(task)
+            } else {
+                reminderScheduler.cancelTaskReminder(task.id)
+            }
+        }
+    }
+}
+
+/** Result of a backup export or restore, translated by the UI. */
+sealed interface BackupMessage {
+    data class Exported(val summary: BackupSummary) : BackupMessage
+    data class Restored(val summary: BackupSummary) : BackupMessage
+    data class Failed(val error: BackupError) : BackupMessage
 }

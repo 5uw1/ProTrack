@@ -21,7 +21,11 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.Card
@@ -31,12 +35,14 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
@@ -58,13 +64,17 @@ import com.suw1labs.worktracker.ui.components.ColorPaletteSelector
 import com.suw1labs.worktracker.ui.components.ConfirmDeleteDialog
 import com.suw1labs.worktracker.ui.components.FormDialog
 import com.suw1labs.worktracker.ui.components.EmptyStateCard
+import com.suw1labs.worktracker.ui.components.LocalSnackbarHostState
 import com.suw1labs.worktracker.ui.components.HoursProgressBar
 import com.suw1labs.worktracker.ui.components.LabeledDropdown
 import com.suw1labs.worktracker.ui.components.StatusBadge
 import com.suw1labs.worktracker.ui.i18n.Language
 import com.suw1labs.worktracker.ui.theme.AmberWarning
 import com.suw1labs.worktracker.ui.theme.EmeraldGreen
+import com.suw1labs.worktracker.ui.viewmodel.BackupMessage
 import com.suw1labs.worktracker.ui.viewmodel.TrackerViewModel
+import com.suw1labs.worktracker.platform.ExportAction
+import com.suw1labs.worktracker.util.DateFormats
 import com.suw1labs.worktracker.util.TimeFormat
 import com.suw1labs.worktracker.util.projectColor
 import com.suw1labs.worktracker.ui.i18n.strings
@@ -84,6 +94,22 @@ fun ProjectsScreen(
     var showImportDialog by remember { mutableStateOf(false) }
     var importResult by remember { mutableStateOf<String?>(null) }
     val settings by viewModel.settings.collectAsState()
+    val backupBusy by viewModel.backupBusy.collectAsState()
+    val pendingRestore by viewModel.pendingRestore.collectAsState()
+    val backupMessage by viewModel.backupMessage.collectAsState()
+    val snackbarHost = LocalSnackbarHostState.current
+
+    // Report the outcome of a backup action once, then forget it.
+    LaunchedEffect(backupMessage) {
+        val message = backupMessage ?: return@LaunchedEffect
+        val text = when (message) {
+            is BackupMessage.Exported -> t.backupExported
+            is BackupMessage.Restored -> "${t.backupRestored} · ${t.backupContents(message.summary)}"
+            is BackupMessage.Failed -> t.backupError(message.error)
+        }
+        viewModel.clearBackupMessage()
+        snackbarHost.showSnackbar(text)
+    }
 
     val filteredProjects = remember(projectSummaries, selectedFilter) {
         when (selectedFilter) {
@@ -148,6 +174,57 @@ fun ProjectsScreen(
                                     modifier = Modifier.testTag("language_${lang.code}")
                                 )
                             }
+                        }
+                    }
+                }
+            }
+
+            // --- Backup & transfer ---
+            item {
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    modifier = Modifier.fillMaxWidth().testTag("backup_card")
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.CloudSync, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(t.backupTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text(t.backupSubtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            OutlinedButton(
+                                onClick = { viewModel.exportBackup(ExportAction.SAVE) },
+                                enabled = !backupBusy,
+                                modifier = Modifier.weight(1f).testTag("backup_save_button")
+                            ) {
+                                Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(t.saveFile, fontSize = 12.sp)
+                            }
+                            OutlinedButton(
+                                onClick = { viewModel.exportBackup(ExportAction.SHARE) },
+                                enabled = !backupBusy,
+                                modifier = Modifier.weight(1f).testTag("backup_share_button")
+                            ) {
+                                Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(t.backupShare, fontSize = 12.sp)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { viewModel.pickBackupToRestore() },
+                            enabled = !backupBusy,
+                            modifier = Modifier.fillMaxWidth().testTag("backup_restore_button")
+                        ) {
+                            Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(t.backupRestore, fontSize = 12.sp)
                         }
                     }
                 }
@@ -278,6 +355,16 @@ fun ProjectsScreen(
                 viewModel.saveSettings(it)
                 showScheduleDialog = false
             }
+        )
+    }
+
+    pendingRestore?.let { backup ->
+        ConfirmDeleteDialog(
+            title = t.restoreQuestion(DateFormats.dateTime(backup.exportedAt)),
+            message = "${t.backupContents(backup.summary)}\n\n${t.restoreWarning}",
+            confirmLabel = t.restoreConfirm,
+            onConfirm = { viewModel.confirmRestore() },
+            onDismiss = { viewModel.cancelRestore() }
         )
     }
 

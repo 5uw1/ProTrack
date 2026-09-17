@@ -3,6 +3,8 @@ package com.suw1labs.worktracker.ui.i18n
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
+import com.suw1labs.worktracker.data.backup.BackupError
+import com.suw1labs.worktracker.data.backup.BackupSummary
 import com.suw1labs.worktracker.data.export.ExportFormat
 import com.suw1labs.worktracker.data.export.SapExportType
 import com.suw1labs.worktracker.data.model.AbsenceType
@@ -163,6 +165,18 @@ class AppStrings(
     var noActivity = ""; var generalTaskTime = ""; var clockInFirst = ""
     // Paid short breaks (company rule).
     var paidBreak = ""; var paidBreakPerDay = ""; var paidBreakHint = ""; var paidBreakSummary: (String) -> String = { it }
+    // Backup & transfer to another device.
+    var backupTitle = ""; var backupSubtitle = ""; var backupShare = ""; var backupRestore = ""
+    var backupExported = ""; var backupRestored = ""; var backupContents: (BackupSummary) -> String = { "" }
+    var restoreQuestion: (String) -> String = { it }; var restoreWarning = ""; var restoreConfirm = ""
+    var backupErrorNotBackup = ""; var backupErrorNewer = ""; var backupErrorCorrupt = ""; var backupErrorIo = ""
+
+    fun backupError(error: BackupError): String = when (error) {
+        BackupError.NOT_A_BACKUP -> backupErrorNotBackup
+        BackupError.NEWER_FORMAT -> backupErrorNewer
+        BackupError.CORRUPT -> backupErrorCorrupt
+        BackupError.IO -> backupErrorIo
+    }
 
     fun projectStatus(status: String): String = when (status) {
         "ACTIVE" -> statusActive
@@ -316,6 +330,17 @@ object Translations {
         paidBreakHint = "Coffee / smoke breaks tagged as Break count as working time up to this many minutes a day. 0 = unpaid."
         paidBreakSummary = { "$it min paid break" }
         formatCsv = "CSV (comma)"; formatExcel = "Excel (semicolon)"
+        backupTitle = "Backup & transfer"; backupSubtitle = "Save everything (projects, tasks, times, absences, settings) as one file and restore it on another device."
+        backupShare = "Share backup"; backupRestore = "Restore from file"
+        backupExported = "Backup created"; backupRestored = "Backup restored"
+        backupContents = { s -> "${s.projects} projects · ${s.tasks} tasks · ${s.timeEntries} activities · ${s.attendanceSessions} clock-in periods · ${s.dayRecords} absences" }
+        restoreQuestion = { "Restore backup from $it?" }
+        restoreWarning = "All data on this device is replaced by the backup. This cannot be undone – export a backup of this device first if in doubt."
+        restoreConfirm = "Replace & restore"
+        backupErrorNotBackup = "This file is not a WorkTracker backup."
+        backupErrorNewer = "The backup was made with a newer app version. Update the app, then try again."
+        backupErrorCorrupt = "The backup file is damaged and cannot be read."
+        backupErrorIo = "The file could not be read or written."
     }
 
     val DE: AppStrings = AppStrings(
@@ -425,6 +450,17 @@ object Translations {
         paidBreakHint = "Als Pause markierte Kaffee-/Raucherpausen zählen bis zu so vielen Minuten pro Tag als Arbeitszeit. 0 = unbezahlt."
         paidBreakSummary = { "$it Min. bezahlte Pause" }
         formatCsv = "CSV (Komma)"; formatExcel = "Excel (Semikolon)"
+        backupTitle = "Sicherung & Übertragung"; backupSubtitle = "Alles (Projekte, Aufgaben, Zeiten, Abwesenheiten, Einstellungen) als eine Datei sichern und auf einem anderen Gerät wiederherstellen."
+        backupShare = "Sicherung teilen"; backupRestore = "Aus Datei wiederherstellen"
+        backupExported = "Sicherung erstellt"; backupRestored = "Sicherung wiederhergestellt"
+        backupContents = { s -> "${s.projects} Projekte · ${s.tasks} Aufgaben · ${s.timeEntries} Tätigkeiten · ${s.attendanceSessions} Stempelzeiten · ${s.dayRecords} Abwesenheiten" }
+        restoreQuestion = { "Sicherung vom $it wiederherstellen?" }
+        restoreWarning = "Alle Daten auf diesem Gerät werden durch die Sicherung ersetzt. Das kann nicht rückgängig gemacht werden – im Zweifel zuerst dieses Gerät sichern."
+        restoreConfirm = "Ersetzen & wiederherstellen"
+        backupErrorNotBackup = "Diese Datei ist keine WorkTracker-Sicherung."
+        backupErrorNewer = "Die Sicherung stammt von einer neueren App-Version. Bitte zuerst die App aktualisieren."
+        backupErrorCorrupt = "Die Sicherungsdatei ist beschädigt und kann nicht gelesen werden."
+        backupErrorIo = "Die Datei konnte nicht gelesen oder geschrieben werden."
     }
 
     val FR: AppStrings = AppStrings(
@@ -534,6 +570,17 @@ object Translations {
         paidBreakHint = "Les pauses café / cigarette marquées « Pause » comptent comme temps de travail jusqu'à ce nombre de minutes par jour. 0 = non payées."
         paidBreakSummary = { "$it min de pause payée" }
         formatCsv = "CSV (virgule)"; formatExcel = "Excel (point-virgule)"
+        backupTitle = "Sauvegarde & transfert"; backupSubtitle = "Enregistrer tout (projets, tâches, temps, absences, réglages) dans un seul fichier et le restaurer sur un autre appareil."
+        backupShare = "Partager la sauvegarde"; backupRestore = "Restaurer depuis un fichier"
+        backupExported = "Sauvegarde créée"; backupRestored = "Sauvegarde restaurée"
+        backupContents = { s -> "${s.projects} projets · ${s.tasks} tâches · ${s.timeEntries} activités · ${s.attendanceSessions} périodes pointées · ${s.dayRecords} absences" }
+        restoreQuestion = { "Restaurer la sauvegarde du $it ?" }
+        restoreWarning = "Toutes les données de cet appareil seront remplacées par la sauvegarde. Irréversible – en cas de doute, sauvegardez d'abord cet appareil."
+        restoreConfirm = "Remplacer & restaurer"
+        backupErrorNotBackup = "Ce fichier n'est pas une sauvegarde WorkTracker."
+        backupErrorNewer = "La sauvegarde provient d'une version plus récente de l'app. Mettez l'app à jour, puis réessayez."
+        backupErrorCorrupt = "Le fichier de sauvegarde est endommagé et ne peut pas être lu."
+        backupErrorIo = "Le fichier n'a pas pu être lu ou écrit."
     }
 }
 

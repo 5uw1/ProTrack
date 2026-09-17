@@ -2,6 +2,7 @@ package com.suw1labs.worktracker
 
 import androidx.room.RoomDatabase
 import com.suw1labs.worktracker.data.AppDatabase
+import com.suw1labs.worktracker.data.backup.BackupManager
 import com.suw1labs.worktracker.data.DatabaseCreationTracker
 import com.suw1labs.worktracker.data.buildAppDatabase
 import com.suw1labs.worktracker.data.repository.TimeTrackerRepository
@@ -27,13 +28,18 @@ class AppContainer(
     databaseBuilder: RoomDatabase.Builder<AppDatabase>,
     val reminderScheduler: ReminderScheduler,
     val fileExporter: FileExporter,
-    val widgetBridge: WidgetBridge = NoOpWidgetBridge
+    val widgetBridge: WidgetBridge = NoOpWidgetBridge,
+    /** Recorded in backup files ("android", "ios", "desktop") – informational only. */
+    platformName: String = ""
 ) {
     private val creationTracker = DatabaseCreationTracker()
     /** Process-wide background scope (database seeding, widget sync, actions queued by widgets). */
     val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val database: AppDatabase = databaseBuilder.buildAppDatabase(creationTracker)
+
+    /** Whole-database export / import for moving the data to another device. */
+    val backupManager: BackupManager = BackupManager(database, platformName)
 
     val repository: TimeTrackerRepository = TimeTrackerRepository(
         projectDao = database.projectDao(),
@@ -54,5 +60,5 @@ class AppContainer(
     /** Current widget state, computed from the database (used when a widget renders itself). */
     suspend fun widgetSnapshot(): WidgetSnapshot = WidgetSnapshots.flow(repository).first()
 
-    fun createViewModel(): TrackerViewModel = TrackerViewModel(repository, reminderScheduler, fileExporter)
+    fun createViewModel(): TrackerViewModel = TrackerViewModel(repository, reminderScheduler, fileExporter, backupManager)
 }
