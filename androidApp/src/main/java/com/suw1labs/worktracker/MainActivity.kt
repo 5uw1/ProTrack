@@ -1,6 +1,8 @@
 package com.suw1labs.worktracker
 
+import android.content.pm.ApplicationInfo
 import android.net.Uri
+import com.suw1labs.worktracker.data.backup.DemoData
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -83,8 +85,18 @@ class MainActivity : ComponentActivity() {
             openFolder.launch(null)
         }
 
+        // Screenshot / demo flags (debug builds only): adb shell am start ... --ez demo true --es tab reports --es lang de
+        val debuggable = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        val launchOptions = if (debuggable) {
+            AppLaunchOptions.of(intent.getBooleanExtra("demo", false), intent.getStringExtra("tab"), intent.getStringExtra("lang"), intent.getStringExtra("time"))
+        } else {
+            AppLaunchOptions.NONE
+        }
+        launchOptions.applyClock()
+        if (launchOptions.demo) container.appScope.launch { DemoData.seed(container.backupManager, launchOptions.language) }
+
         setContent {
-            App(container)
+            App(container, launchOptions)
         }
     }
 

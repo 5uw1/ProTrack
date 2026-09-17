@@ -1,0 +1,5 @@
+• Sauvegarde automatique dans un dossier de votre choix (Google Drive, iCloud Drive, local)
+• Attribuez le temps pointé sans activité directement depuis la chronologie
+• Modification des heures : déplacer l'activité voisine ou laisser un trou – aucune minute perdue
+• Rappel en cas d'oubli de dépointage, corrigé en un geste
+• Widgets d'écran d'accueil et interface en français, allemand et anglais

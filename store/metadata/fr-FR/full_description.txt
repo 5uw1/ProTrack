@@ -1,0 +1,31 @@
+WorkTracker est un outil de suivi du temps pour les ingénieurs et consultants qui doivent imputer leurs heures sur des projets – et veulent y passer le moins de temps possible.
+
+POINTER À L'ARRIVÉE ET AU DÉPART
+• Un geste le matin, un à midi, un en partant. Seul le temps pointé compte.
+• Marquez une pause comme repas ou pause ; les courtes pauses payées sont créditées automatiquement.
+• Oublié de dépointer ? L'application vous le rappelle et corrige en un geste.
+
+PROJETS ET TÂCHES
+• Choisissez le projet et la tâche pendant le travail ; changer démarre l'activité suivante.
+• Corrigez les heures après coup – déplacez l'activité voisine ou laissez un trou à attribuer plus tard. Aucune minute n'est perdue.
+• Le temps pointé sans activité apparaît dans la chronologie du jour et s'attribue en un geste.
+
+DES RAPPORTS QUI CORRESPONDENT À VOTRE FEUILLE D'HEURES
+• Vues jour, semaine et mois avec les heures par numéro de projet, arrondies à 0.25 h.
+• Heures cibles, heures supplémentaires du jour et solde courant.
+• Absences : maladie, vacances, jour férié, compensation, formation.
+• Export CSV pour Excel ou votre ERP.
+
+RÈGLES DE TEMPS DE TRAVAIL
+• Horaire configurable par jour de semaine (adapté au temps partiel), maximum légal par semaine.
+• Avertissements pour pauses manquantes, longues journées et semaines au-dessus de la limite (règles suisses par défaut).
+
+WIDGETS
+• Widget d'écran d'accueil avec le temps pointé aujourd'hui, l'activité en cours, pointer / dépointer et changement de tâche en un geste.
+
+VOS DONNÉES RESTENT À VOUS
+• Tout est stocké sur votre appareil. Pas de compte, pas de serveur, pas de suivi.
+• Sauvegarde automatique optionnelle dans un dossier de votre choix – Google Drive, iCloud Drive ou local – et restauration depuis un fichier sur n'importe quel appareil.
+• Disponible aussi pour Windows, macOS et Linux.
+
+Langues : français, allemand, anglais.

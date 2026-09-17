@@ -1,0 +1,31 @@
+WorkTracker ist eine Zeiterfassung für Ingenieure und Berater, die ihre Stunden auf Projekte buchen müssen – und dafür möglichst wenig Zeit verlieren wollen.
+
+EIN- UND AUSSTEMPELN
+• Ein Tipp am Morgen, einer beim Mittag, einer beim Gehen. Nur eingestempelte Zeit zählt.
+• Pausen als Mittag oder Pause markieren; bezahlte Kurzpausen werden automatisch gutgeschrieben.
+• Ausstempeln vergessen? Die App erinnert dich und korrigiert es mit einem Tipp.
+
+PROJEKTE UND AUFGABEN
+• Projekt und Aufgabe während der Arbeit wählen; ein Wechsel startet die nächste Tätigkeit.
+• Zeiten nachträglich anpassen – die Nachbartätigkeit mitziehen oder eine Lücke lassen und später zuordnen. Keine Minute geht verloren.
+• Eingestempelte Zeit ohne Tätigkeit erscheint in der Tageszeitleiste und wird mit einem Tipp zugeordnet.
+
+AUSWERTUNGEN WIE DEIN STUNDENRAPPORT
+• Tag, Woche und Monat mit Stunden pro Projektnummer, gerundet auf 0.25 h.
+• Sollstunden, Überzeit heute und laufender Überzeitsaldo.
+• Abwesenheiten: Krankheit, Ferien, Feiertag, Kompensation, Weiterbildung.
+• CSV-Export für Excel oder das ERP-System.
+
+ARBEITSZEITREGELN
+• Sollzeit pro Wochentag (Teilzeit-tauglich), gesetzliche Höchstarbeitszeit pro Woche.
+• Warnungen bei fehlenden Pausen, langen Tagen und Wochen über dem Limit (Schweizer Regeln als Standard).
+
+WIDGETS
+• Home-Screen-Widget mit der heutigen Präsenzzeit, der laufenden Tätigkeit, Ein-/Ausstempeln und Aufgabenwechsel per Tipp.
+
+DEINE DATEN BLEIBEN DEINE
+• Alles wird auf deinem Gerät gespeichert. Kein Konto, kein Server, kein Tracking.
+• Optionale automatische Sicherung in einen Ordner deiner Wahl – Google Drive, iCloud Drive oder lokal – und Wiederherstellung aus einer Datei auf jedem Gerät.
+• Auch für Windows, macOS und Linux.
+
+Sprachen: Deutsch, Englisch, Französisch.

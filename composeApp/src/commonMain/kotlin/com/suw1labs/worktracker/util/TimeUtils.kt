@@ -17,7 +17,10 @@ import kotlinx.datetime.toLocalDateTime
 
 /** Epoch milliseconds "now", usable from every platform. */
 @OptIn(ExperimentalTime::class)
-fun currentTimeMillis(): Long = Clock.System.now().toEpochMilliseconds()
+/** Added to the wall clock; non-zero only in debug / simulator builds when a demo time is requested (store screenshots). */
+var demoClockOffsetMillis: Long = 0L
+
+fun currentTimeMillis(): Long = Clock.System.now().toEpochMilliseconds() + demoClockOffsetMillis
 
 @OptIn(ExperimentalTime::class)
 fun Long.toLocalDateTime(zone: TimeZone = TimeZone.currentSystemDefault()): LocalDateTime =

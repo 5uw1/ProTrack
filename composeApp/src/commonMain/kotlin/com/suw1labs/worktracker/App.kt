@@ -82,27 +82,38 @@ enum class TrackerDestination(
         TASKS -> strings.tabTasks
         REPORTS -> strings.tabReports
     }
+
+    companion object {
+        /** "today", "tasks", "reports" or "settings" (as the tabs read on screen), for launch options. */
+        fun fromLaunchName(name: String): TrackerDestination? = when (name.trim().lowercase()) {
+            "today" -> TODAY
+            "tasks", "projects" -> TASKS
+            "reports" -> REPORTS
+            "settings" -> PROJECTS
+            else -> null
+        }
+    }
 }
 
 /**
  * Root composable shared by Android, iOS and desktop.
  */
 @Composable
-fun App(container: AppContainer) {
+fun App(container: AppContainer, launchOptions: AppLaunchOptions = AppLaunchOptions.NONE) {
     MyApplicationTheme {
         val viewModel: TrackerViewModel = viewModel { container.createViewModel() }
         val settings by viewModel.settings.collectAsState()
         val translation = remember(settings.language) { Translations.forLanguage(Language.fromCode(settings.language)) }
         CompositionLocalProvider(LocalStrings provides translation) {
-            MainAppContent(viewModel = viewModel)
+            MainAppContent(viewModel = viewModel, initialDestination = launchOptions.initialTab ?: TrackerDestination.TODAY, askNotificationPermission = !launchOptions.demo)
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainAppContent(viewModel: TrackerViewModel) {
-    var currentDestination by remember { mutableStateOf(TrackerDestination.TODAY) }
+fun MainAppContent(viewModel: TrackerViewModel, initialDestination: TrackerDestination = TrackerDestination.TODAY, askNotificationPermission: Boolean = true) {
+    var currentDestination by remember { mutableStateOf(initialDestination) }
     val now by viewModel.now.collectAsState()
     val urgentTasks by viewModel.urgentTasks.collectAsState()
     val openSession by viewModel.openSession.collectAsState()
@@ -110,7 +121,8 @@ fun MainAppContent(viewModel: TrackerViewModel) {
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Ask for notification permission where needed, then surface urgent deadlines.
-    NotificationPermissionEffect { viewModel.checkUpcomingDeadlines() }
+    // Not in demo mode: the system permission dialog would sit on top of every store screenshot.
+    if (askNotificationPermission) NotificationPermissionEffect { viewModel.checkUpcomingDeadlines() }
 
     CompositionLocalProvider(LocalSnackbarHostState provides snackbarHostState) {
     BoxWithConstraints(

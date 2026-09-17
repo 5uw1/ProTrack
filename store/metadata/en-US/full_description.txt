@@ -1,0 +1,31 @@
+WorkTracker is a time tracker for engineers and consultants who have to book their hours on projects – and want to spend as little time doing it as possible.
+
+CLOCK IN, CLOCK OUT
+• One tap in the morning, one at lunch, one when you leave. Only clocked-in time counts.
+• Tag a pause as lunch or break; paid short breaks are credited automatically.
+• Forgot to clock out? The app reminds you and fixes it with one tap.
+
+TRACK PROJECTS AND TASKS
+• Pick a project and task while you work; switching starts the next activity.
+• Edit times afterwards – move the neighbouring activity along or leave a gap and assign it later. No minute is lost.
+• Clocked-in time without an activity is shown on the day's timeline and can be assigned in one tap.
+
+REPORTS THAT MATCH YOUR TIMESHEET
+• Day, week and month views with hours per project number, rounded to 0.25 h.
+• Target hours, overtime today and the running overtime balance.
+• Absences: sick, holiday, public holiday, compensation, education.
+• Export CSV for Excel or your ERP system.
+
+WORKING-TIME RULES
+• Configurable schedule per weekday (part-time friendly), legal maximum per week.
+• Warnings for missing breaks, long days and weeks over the limit (Swiss rules by default).
+
+WIDGETS
+• Home-screen widget with today's clocked-in time, the running activity, Clock in / Clock out and one-tap task switching.
+
+YOUR DATA STAYS YOURS
+• Everything is stored on your device. No account, no server, no tracking.
+• Optional automatic backup into a folder you choose – Google Drive, iCloud Drive or a local folder – and one-file restore on any device.
+• Also available for Windows, macOS and Linux.
+
+Languages: English, German, French.

@@ -1,0 +1,5 @@
+• Automatische Sicherung in einen Ordner deiner Wahl (Google Drive, iCloud Drive, lokal)
+• Eingestempelte Zeit ohne Tätigkeit direkt aus der Zeitleiste zuordnen
+• Zeiten bearbeiten: Nachbartätigkeit mitziehen oder Lücke lassen – keine Minute geht verloren
+• Erinnerung bei vergessenem Ausstempeln, Korrektur mit einem Tipp
+• Home-Screen-Widgets und Oberfläche auf Deutsch, Englisch und Französisch

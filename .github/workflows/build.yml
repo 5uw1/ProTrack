@@ -212,18 +212,30 @@ jobs:
           pattern: WorkTracker-*
           path: dist
           merge-multiple: true
+      # Create the release first (idempotent: re-running the job keeps the existing one), then upload
+      # every asset separately with retries – large uploads occasionally get an HTTP 500 from GitHub.
       - name: Create GitHub Release with auto-generated notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           FLAG=""
           if [[ "${{ needs.version.outputs.prerelease }}" == "true" ]]; then FLAG="--prerelease"; fi
-          # shellcheck disable=SC2086
-          gh release create "$GITHUB_REF_NAME" dist/* \
-            --repo "${{ github.repository }}" \
-            --title "$GITHUB_REF_NAME" \
-            --generate-notes \
-            $FLAG
+          if ! gh release view "$GITHUB_REF_NAME" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            # shellcheck disable=SC2086
+            gh release create "$GITHUB_REF_NAME" \
+              --repo "${{ github.repository }}" \
+              --title "$GITHUB_REF_NAME" \
+              --generate-notes \
+              $FLAG
+          fi
+          for f in dist/*; do
+            for attempt in 1 2 3 4 5; do
+              if gh release upload "$GITHUB_REF_NAME" "$f" --repo "${{ github.repository }}" --clobber; then break; fi
+              if [[ "$attempt" == "5" ]]; then echo "::error title=Asset upload failed::$f"; exit 1; fi
+              echo "upload of $f failed (attempt $attempt), retrying in $((attempt * 15))s"
+              sleep $((attempt * 15))
+            done
+          done
 
   # ---------------------------------------------------------------- google play (tags only, when configured)
   play-store:
