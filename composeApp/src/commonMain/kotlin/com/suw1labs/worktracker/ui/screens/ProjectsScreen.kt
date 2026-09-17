@@ -31,7 +31,8 @@ import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -243,7 +244,16 @@ fun ProjectsScreen(
                     TextButton(onClick = { showImportDialog = true }, modifier = Modifier.testTag("import_projects_open_button")) {
                         Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(t.importBtn, fontSize = 12.sp)
+                        Text(t.importBtn, fontSize = 12.sp, maxLines = 1)
+                    }
+                    FilledTonalButton(
+                        onClick = { showAddProjectDialog = true },
+                        contentPadding = ButtonDefaults.TextButtonContentPadding,
+                        modifier = Modifier.testTag("add_project_button")
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(t.add, fontSize = 12.sp, maxLines = 1)
                     }
                 }
             }
@@ -280,16 +290,7 @@ fun ProjectsScreen(
                 }
             }
 
-            item { Spacer(modifier = Modifier.height(80.dp)) }
-        }
-
-        FloatingActionButton(
-            onClick = { showAddProjectDialog = true },
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp).testTag("add_project_button")
-        ) {
-            Icon(Icons.Default.Add, contentDescription = t.addProject)
+            item { Spacer(modifier = Modifier.height(24.dp)) }
         }
     }
 

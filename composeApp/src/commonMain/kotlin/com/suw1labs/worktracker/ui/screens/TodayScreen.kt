@@ -322,7 +322,7 @@ fun TodayScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                     Text(t.activities, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Text(
                         t.activitiesSubtitle(todayEntries.size),
@@ -337,7 +337,7 @@ fun TodayScreen(
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(t.add, fontSize = 12.sp)
+                    Text(t.add, fontSize = 12.sp, maxLines = 1)
                 }
             }
         }

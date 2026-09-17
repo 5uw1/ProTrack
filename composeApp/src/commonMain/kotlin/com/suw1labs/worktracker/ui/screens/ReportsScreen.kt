@@ -350,7 +350,7 @@ fun ReportsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Text(t.clockInPeriods, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(t.clockInPeriods, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                             Row {
                                 TextButton(onClick = { showAddAbsence = true }, modifier = Modifier.testTag("add_absence_button")) {
                                     Icon(Icons.Default.EventBusy, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -387,7 +387,7 @@ fun ReportsScreen(
             }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text(t.activities, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(t.activities, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     TextButton(onClick = { showManualEntry = true }, modifier = Modifier.testTag("manual_time_entry_button")) {
                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))

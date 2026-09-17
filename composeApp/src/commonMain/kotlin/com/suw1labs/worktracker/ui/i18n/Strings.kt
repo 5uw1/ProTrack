@@ -472,7 +472,7 @@ object Translations {
         checkForgotClockOut = { if (it == 1) "1 day without clock-out" else "$it days without clock-out" }
         checkUnassigned = { "$it of work without a project – assign it in the day view" }
         checkRuleWarnings = { if (it == 1) "1 working-time warning" else "$it working-time warnings" }
-        checkRoundedTotal = { rounded, exact -> "$rounded h project hours rounded to 0.25 (exact $exact h)" }
+        checkRoundedTotal = { rounded, exact -> "Project hours rounded: $rounded h (exact $exact h)" }
         checkOpenToday = "Today is still open – the month is complete once you have clocked out."
         targetReachedBody = { "You have clocked in $it today. Time to go home?" }
         sapExport = "Export"
@@ -680,7 +680,7 @@ object Translations {
         paidBreakSummary = { "$it min paid break" }
         formatCsv = "CSV (comma)"; formatExcel = "Excel (semicolon)"
         backupTitle = "Backup & transfer"; backupSubtitle = "Save everything (projects, tasks, times, absences, settings) as one file and restore it on another device."
-        backupShare = "Share backup"; backupRestore = "Restore from file"
+        backupShare = "Share"; backupRestore = "Restore from file"
         backupExported = "Backup created"; backupRestored = "Backup restored"
         backupContents = { s -> "${s.projects} projects · ${s.tasks} tasks · ${s.timeEntries} activities · ${s.attendanceSessions} clock-in periods · ${s.dayRecords} absences" }
         restoreQuestion = { "Restore backup from $it?" }
@@ -759,7 +759,7 @@ object Translations {
         checkForgotClockOut = { if (it == 1) "1 Tag ohne Ausstempeln" else "$it Tage ohne Ausstempeln" }
         checkUnassigned = { "$it Arbeit ohne Projekt – in der Tagesansicht zuordnen" }
         checkRuleWarnings = { if (it == 1) "1 Arbeitszeit-Warnung" else "$it Arbeitszeit-Warnungen" }
-        checkRoundedTotal = { rounded, exact -> "$rounded h Projektstunden auf 0.25 gerundet (exakt $exact h)" }
+        checkRoundedTotal = { rounded, exact -> "Projektstunden gerundet: $rounded h (exakt $exact h)" }
         checkOpenToday = "Heute ist noch offen – der Monat ist komplett, sobald du ausgestempelt hast."
         targetReachedBody = { "Du bist heute $it eingestempelt. Zeit für den Feierabend?" }
         sapExport = "Export"
@@ -967,7 +967,7 @@ object Translations {
         paidBreakSummary = { "$it Min. bezahlte Pause" }
         formatCsv = "CSV (Komma)"; formatExcel = "Excel (Semikolon)"
         backupTitle = "Sicherung & Übertragung"; backupSubtitle = "Alles (Projekte, Aufgaben, Zeiten, Abwesenheiten, Einstellungen) als eine Datei sichern und auf einem anderen Gerät wiederherstellen."
-        backupShare = "Sicherung teilen"; backupRestore = "Aus Datei wiederherstellen"
+        backupShare = "Teilen"; backupRestore = "Aus Datei wiederherstellen"
         backupExported = "Sicherung erstellt"; backupRestored = "Sicherung wiederhergestellt"
         backupContents = { s -> "${s.projects} Projekte · ${s.tasks} Aufgaben · ${s.timeEntries} Tätigkeiten · ${s.attendanceSessions} Stempelzeiten · ${s.dayRecords} Abwesenheiten" }
         restoreQuestion = { "Sicherung vom $it wiederherstellen?" }
@@ -1046,7 +1046,7 @@ object Translations {
         checkForgotClockOut = { if (it == 1) "1 jour sans dépointage" else "$it jours sans dépointage" }
         checkUnassigned = { "$it de travail sans projet – à attribuer dans la vue du jour" }
         checkRuleWarnings = { if (it == 1) "1 avertissement de temps de travail" else "$it avertissements de temps de travail" }
-        checkRoundedTotal = { rounded, exact -> "$rounded h d'heures projet arrondies à 0.25 (exact $exact h)" }
+        checkRoundedTotal = { rounded, exact -> "Heures projet arrondies : $rounded h (exact $exact h)" }
         checkOpenToday = "Aujourd'hui est encore ouvert – le mois est complet une fois dépointé."
         targetReachedBody = { "Tu as pointé $it aujourd'hui. L'heure de rentrer ?" }
         sapExport = "Export"
@@ -1195,7 +1195,7 @@ object Translations {
         copied = "Copié !"
         copiedToClipboard = "Copié dans le presse-papiers !"
         saveShare = "Enregistrer / partager CSV"
-        saveFile = "Enregistrer le fichier"
+        saveFile = "Enregistrer"
         shareFile = "Partager (e-mail, Teams, …)"
         moreRows = "... [plus de lignes]"
         taskFilterTodo = "À faire"
@@ -1254,7 +1254,7 @@ object Translations {
         paidBreakSummary = { "$it min de pause payée" }
         formatCsv = "CSV (virgule)"; formatExcel = "Excel (point-virgule)"
         backupTitle = "Sauvegarde & transfert"; backupSubtitle = "Enregistrer tout (projets, tâches, temps, absences, réglages) dans un seul fichier et le restaurer sur un autre appareil."
-        backupShare = "Partager la sauvegarde"; backupRestore = "Restaurer depuis un fichier"
+        backupShare = "Partager"; backupRestore = "Restaurer depuis un fichier"
         backupExported = "Sauvegarde créée"; backupRestored = "Sauvegarde restaurée"
         backupContents = { s -> "${s.projects} projets · ${s.tasks} tâches · ${s.timeEntries} activités · ${s.attendanceSessions} périodes pointées · ${s.dayRecords} absences" }
         restoreQuestion = { "Restaurer la sauvegarde du $it ?" }
