@@ -239,6 +239,17 @@ class AppStrings(val language: Language) {
     lateinit var untilNow: String
     lateinit var durationChip: (String) -> String
     lateinit var quickDuration: String
+    // unassigned gaps and neighbour adjustment
+    lateinit var noActivityLogged: String
+    lateinit var assignGap: String
+    lateinit var previousActivityEnds: (String, String) -> String
+    lateinit var nextActivityStarts: (String, String) -> String
+    lateinit var gapBetween: (String) -> String
+    lateinit var overlapBetween: (String) -> String
+    lateinit var moveNeighbourTo: (String) -> String
+    lateinit var leaveGap: String
+    lateinit var keepOverlap: String
+    lateinit var neighbourWouldBeEmpty: String
     // session dialog
     lateinit var addPeriod: String
     lateinit var editPeriod: String
@@ -605,6 +616,16 @@ object Translations {
         untilNow = "Until now"
         durationChip = { "+$it" }
         quickDuration = "Duration"
+        noActivityLogged = "No activity logged"
+        assignGap = "Assign"
+        previousActivityEnds = { name, time -> "Before: $name (ends $time)" }
+        nextActivityStarts = { name, time -> "After: $name (starts $time)" }
+        gapBetween = { "Leaves $it with no activity." }
+        overlapBetween = { "Overlaps it by $it." }
+        moveNeighbourTo = { "Move it to $it" }
+        leaveGap = "Leave gap, assign later"
+        keepOverlap = "Keep as is"
+        neighbourWouldBeEmpty = "Moving it would leave it with no time; edit that activity instead."
         addPeriod = "Add clock-in period"
         editPeriod = "Edit clock-in period"
         clockInLabel = "Clock in"
@@ -892,6 +913,16 @@ object Translations {
         untilNow = "Bis jetzt"
         durationChip = { "+$it" }
         quickDuration = "Dauer"
+        noActivityLogged = "Keine Tätigkeit erfasst"
+        assignGap = "Zuordnen"
+        previousActivityEnds = { name, time -> "Davor: $name (endet $time)" }
+        nextActivityStarts = { name, time -> "Danach: $name (beginnt $time)" }
+        gapBetween = { "Lässt $it ohne Tätigkeit." }
+        overlapBetween = { "Überschneidet sich um $it." }
+        moveNeighbourTo = { "Auf $it verschieben" }
+        leaveGap = "Lücke lassen, später zuordnen"
+        keepOverlap = "So lassen"
+        neighbourWouldBeEmpty = "Beim Verschieben bliebe keine Zeit übrig; bearbeite stattdessen diese Tätigkeit."
         addPeriod = "Stempelzeit hinzufügen"
         editPeriod = "Stempelzeit bearbeiten"
         clockInLabel = "Einstempeln"
@@ -1179,6 +1210,16 @@ object Translations {
         untilNow = "Jusqu'à maintenant"
         durationChip = { "+$it" }
         quickDuration = "Durée"
+        noActivityLogged = "Aucune activité saisie"
+        assignGap = "Attribuer"
+        previousActivityEnds = { name, time -> "Avant : $name (finit à $time)" }
+        nextActivityStarts = { name, time -> "Après : $name (commence à $time)" }
+        gapBetween = { "Laisse $it sans activité." }
+        overlapBetween = { "Chevauche de $it." }
+        moveNeighbourTo = { "Déplacer à $it" }
+        leaveGap = "Laisser le trou, attribuer plus tard"
+        keepOverlap = "Laisser tel quel"
+        neighbourWouldBeEmpty = "En la déplaçant, il ne resterait aucun temps ; modifiez plutôt cette activité."
         addPeriod = "Ajouter une période pointée"
         editPeriod = "Modifier la période pointée"
         clockInLabel = "Pointer"

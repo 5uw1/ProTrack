@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -34,6 +35,9 @@ import com.suw1labs.worktracker.data.model.ClockOutReason
 import com.suw1labs.worktracker.data.model.Project
 import com.suw1labs.worktracker.data.model.TimeEntryWithDetails
 import com.suw1labs.worktracker.data.model.WorkTaskWithProject
+import com.suw1labs.worktracker.data.report.EntryNeighbours
+import com.suw1labs.worktracker.data.report.NeighbourAdjustment
+import com.suw1labs.worktracker.ui.theme.AmberWarning
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import com.suw1labs.worktracker.ui.components.FormDialog
@@ -83,6 +87,11 @@ private fun DateTimeField(
 
 /**
  * Add or edit an activity entry. For a running entry the end time stays open.
+ *
+ * When editing, [previous] / [next] are the activities that touch the entry's old start / end
+ * (see [EntryNeighbours]). Moving a boundary then asks whether that neighbour should move along
+ * (keeping the day contiguous) or stay, which leaves a gap to assign later or an overlap.
+ * The choice comes back in [onSave] as a [NeighbourAdjustment].
  */
 @Composable
 fun EntryFormDialog(
@@ -90,8 +99,10 @@ fun EntryFormDialog(
     projects: List<Project>,
     tasks: List<WorkTaskWithProject>,
     onDismiss: () -> Unit,
-    onSave: (projectId: Long?, taskId: Long?, description: String, start: Long, end: Long?) -> Unit,
+    onSave: (projectId: Long?, taskId: Long?, description: String, start: Long, end: Long?, adjust: NeighbourAdjustment) -> Unit,
     initialDayStart: Long? = null,
+    previous: TimeEntryWithDetails? = null,
+    next: TimeEntryWithDetails? = null,
     onQuickTask: ((projectId: Long, title: String, onCreated: (Long) -> Unit) -> Unit)? = null,
     /** Create a project from inside the dialog ("+ Add new project…"); the new project gets selected. */
     onQuickProject: ((code: String, name: String, client: String, colorHex: String, budgetHours: Double, isProductive: Boolean, onCreated: (Long) -> Unit) -> Unit)? = null,
@@ -111,15 +122,28 @@ fun EntryFormDialog(
     var description by remember { mutableStateOf(entry?.description ?: "") }
     var start by remember { mutableStateOf(entry?.startTime ?: defaultStart?.takeIf { it < defaultEnd } ?: (defaultEnd - 3600_000L)) }
     var end by remember { mutableStateOf<Long?>(if (isRunning) null else (entry?.endTime ?: defaultEnd)) }
+    // null = not decided yet: a neighbour is moved when the entry now overlaps it, left alone when a gap opens.
+    var movePrevious by remember { mutableStateOf<Boolean?>(null) }
+    var moveNext by remember { mutableStateOf<Boolean?>(null) }
 
     val projectTasks = remember(projectId, tasks) { tasks.filter { it.projectId == projectId && it.status != "DONE" } }
     val endValue = end
     val invalidRange = !isRunning && endValue != null && endValue <= start
 
+    // Neighbour handling only matters once the boundary next to it moved.
+    val previousTouched = entry != null && previous?.endTime != null && start != entry.startTime
+    val nextTouched = entry != null && next != null && endValue != null && endValue != entry.endTime
+    val previousDelta = if (previousTouched) start - previous!!.endTime!! else 0L
+    val nextDelta = if (nextTouched) next!!.startTime - endValue!! else 0L
+    val canMovePrevious = previousTouched && start > previous!!.startTime
+    val canMoveNext = nextTouched && (next!!.endTime == null || endValue!! < next.endTime)
+    val effectiveMovePrevious = canMovePrevious && (movePrevious ?: (previousDelta < 0))
+    val effectiveMoveNext = canMoveNext && (moveNext ?: (nextDelta < 0))
+
     FormDialog(
         title = if (entry == null) t.logActivity else t.editActivity,
         onDismiss = onDismiss,
-        onSave = { onSave(projectId, taskId, description.trim(), start, end) },
+        onSave = { onSave(projectId, taskId, description.trim(), start, end, NeighbourAdjustment(previous = effectiveMovePrevious, next = effectiveMoveNext)) },
         saveEnabled = !invalidRange && (isRunning || end != null),
         saveTestTag = "save_entry_button",
         modifier = Modifier.testTag("entry_form_dialog")
@@ -159,10 +183,32 @@ fun EntryFormDialog(
 
         Spacer(modifier = Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            DateTimeField(label = t.startLabel, millis = start, placeholder = t.pickStart, onPick = { start = it }, timeOnly = timeOnly, modifier = Modifier.weight(1f))
+            DateTimeField(label = t.startLabel, millis = start, placeholder = t.pickStart, onPick = { start = it; movePrevious = null }, timeOnly = timeOnly, modifier = Modifier.weight(1f))
             if (!isRunning) {
-                DateTimeField(label = t.endLabel, millis = end, placeholder = t.pickEnd, onPick = { end = it }, timeOnly = timeOnly, modifier = Modifier.weight(1f))
+                DateTimeField(label = t.endLabel, millis = end, placeholder = t.pickEnd, onPick = { end = it; moveNext = null }, timeOnly = timeOnly, modifier = Modifier.weight(1f))
             }
+        }
+        if (previousTouched && !invalidRange) {
+            NeighbourChoice(
+                heading = t.previousActivityEnds(previous!!.shortLabel(t), DateFormats.hourMinute(previous.endTime!!)),
+                deltaMillis = previousDelta,
+                boundary = start,
+                canMove = canMovePrevious,
+                move = effectiveMovePrevious,
+                onMove = { movePrevious = it },
+                testTag = "neighbour_previous"
+            )
+        }
+        if (nextTouched && !invalidRange) {
+            NeighbourChoice(
+                heading = t.nextActivityStarts(next!!.shortLabel(t), DateFormats.hourMinute(next.startTime)),
+                deltaMillis = nextDelta,
+                boundary = endValue!!,
+                canMove = canMoveNext,
+                move = effectiveMoveNext,
+                onMove = { moveNext = it },
+                testTag = "neighbour_next"
+            )
         }
         if (!isRunning) {
             // Quick durations: set the end relative to the start with one tap.
@@ -170,13 +216,13 @@ fun EntryFormDialog(
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
                 listOf(15 to "15m", 30 to "30m", 60 to "1h", 120 to "2h", 240 to "4h").forEach { (minutes, label) ->
                     AssistChip(
-                        onClick = { end = start + minutes * 60_000L },
+                        onClick = { end = start + minutes * 60_000L; moveNext = null },
                         label = { Text(t.durationChip(label), fontSize = 12.sp) },
                         modifier = Modifier.testTag("duration_chip_$minutes")
                     )
                 }
                 AssistChip(
-                    onClick = { end = currentTimeMillis() },
+                    onClick = { end = currentTimeMillis(); moveNext = null },
                     label = { Text(t.untilNow, fontSize = 12.sp) },
                     modifier = Modifier.testTag("duration_chip_now")
                 )
@@ -225,6 +271,57 @@ fun EntryFormDialog(
         )
     }
 
+}
+
+/** "0002 · VEGA / General" for the neighbour headings. */
+private fun TimeEntryWithDetails.shortLabel(t: com.suw1labs.worktracker.ui.i18n.AppStrings): String =
+    (projectCode ?: t.noProject) + " / " + (taskTitle ?: t.noSpecificTask)
+
+/**
+ * What happens to the activity next to a moved boundary. [deltaMillis] > 0 means a gap opened
+ * between the two, < 0 that they overlap now. Moving the neighbour puts its boundary at [boundary].
+ */
+@Composable
+private fun NeighbourChoice(
+    heading: String,
+    deltaMillis: Long,
+    boundary: Long,
+    canMove: Boolean,
+    move: Boolean,
+    onMove: (Boolean) -> Unit,
+    testTag: String
+) {
+    val t = strings
+    val amount = TimeFormat.hoursMinutes(kotlin.math.abs(deltaMillis) / 1000L)
+    val isGap = deltaMillis > 0
+    Spacer(modifier = Modifier.height(10.dp))
+    Column(modifier = Modifier.fillMaxWidth().testTag(testTag)) {
+        Text(heading, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            if (isGap) t.gapBetween(amount) else t.overlapBetween(amount),
+            fontSize = 12.sp,
+            color = if (isGap || move) MaterialTheme.colorScheme.onSurfaceVariant else AmberWarning
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+            FilterChip(
+                selected = move,
+                enabled = canMove,
+                onClick = { onMove(true) },
+                label = { Text(t.moveNeighbourTo(DateFormats.hourMinute(boundary)), fontSize = 12.sp) },
+                modifier = Modifier.testTag("${testTag}_move")
+            )
+            FilterChip(
+                selected = !move,
+                onClick = { onMove(false) },
+                label = { Text(if (isGap) t.leaveGap else t.keepOverlap, fontSize = 12.sp) },
+                modifier = Modifier.testTag("${testTag}_keep")
+            )
+        }
+        if (!canMove) {
+            Text(t.neighbourWouldBeEmpty, fontSize = 11.sp, color = AmberWarning)
+        }
+    }
 }
 
 /**

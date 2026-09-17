@@ -46,6 +46,10 @@ interface TimeEntryDao {
     @Update
     suspend fun updateEntry(entry: TimeEntry)
 
+    /** Several entries in one transaction (an edited entry together with the neighbours moved along with it). */
+    @Update
+    suspend fun updateEntries(entries: List<TimeEntry>)
+
     @Query("DELETE FROM time_entries WHERE id = :id")
     suspend fun deleteEntryById(id: Long)
 

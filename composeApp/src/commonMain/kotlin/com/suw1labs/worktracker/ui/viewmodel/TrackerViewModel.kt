@@ -381,8 +381,14 @@ class TrackerViewModel(
         }
     }
 
-    fun updateEntry(entry: TimeEntry) {
-        viewModelScope.launch { repository.updateTimeEntry(entry) }
+    /**
+     * Saves an edited entry together with [movedNeighbours]: the activities before / after it whose
+     * boundary the user chose to move along, so the day stays contiguous (see EntryNeighbours).
+     */
+    fun updateEntry(entry: TimeEntry, movedNeighbours: List<TimeEntry> = emptyList()) {
+        viewModelScope.launch {
+            if (movedNeighbours.isEmpty()) repository.updateTimeEntry(entry) else repository.updateTimeEntries(listOf(entry) + movedNeighbours)
+        }
     }
 
     fun deleteTimeEntry(entryId: Long) {

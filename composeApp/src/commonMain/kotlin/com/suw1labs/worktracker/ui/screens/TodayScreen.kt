@@ -87,7 +87,10 @@ import com.suw1labs.worktracker.ui.i18n.emoji
 import com.suw1labs.worktracker.data.model.Project
 import com.suw1labs.worktracker.data.model.TimeEntryWithDetails
 import com.suw1labs.worktracker.data.model.WorkTaskWithProject
+import com.suw1labs.worktracker.data.report.DayGaps
+import com.suw1labs.worktracker.data.report.EntryNeighbours
 import com.suw1labs.worktracker.data.report.PeriodReport
+import com.suw1labs.worktracker.data.report.UnassignedGap
 import com.suw1labs.worktracker.data.report.WarningKind
 import com.suw1labs.worktracker.ui.components.TaskDropdown
 import com.suw1labs.worktracker.ui.components.DeadlineUrgencyBadge
@@ -125,6 +128,7 @@ fun TodayScreen(
     var showActivitySelector by remember { mutableStateOf(false) }
     var showManualEntry by remember { mutableStateOf(false) }
     var editingEntry by remember { mutableStateOf<TimeEntryWithDetails?>(null) }
+    var assigningGap by remember { mutableStateOf<UnassignedGap?>(null) }
     var showAbsenceDialog by remember { mutableStateOf(false) }
     var showAddProjectDialog by remember { mutableStateOf(false) }
     var newlyCreatedProjectId by remember { mutableStateOf<Long?>(null) }
@@ -145,8 +149,10 @@ fun TodayScreen(
     // Hide the selector again once an activity started.
     LaunchedEffect(runningEntry?.id) { if (runningEntry != null) showActivitySelector = false }
 
-    // The day as one timeline, newest first: activities plus the clock-in / clock-out moments.
-    val timeline = remember(todayEntries, todaySessions) { buildTimeline(todayEntries, todaySessions) }
+    // The day as one timeline, newest first: activities, the clock-in / clock-out moments and the
+    // clocked-in stretches nothing was logged for (recomputed once a minute so an open gap keeps growing).
+    val nowMinute = now / 60_000L
+    val timeline = remember(todayEntries, todaySessions, nowMinute) { buildTimeline(todayEntries, todaySessions, now) }
 
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(horizontal = 12.dp),
@@ -372,6 +378,12 @@ fun TodayScreen(
                                     showColorBar = false
                                 )
                             }
+                            is TimelineItem.Gap -> TimelineRow(
+                                dotColor = MaterialTheme.colorScheme.outline,
+                                dotY = 24.dp,
+                                lineAbove = index > 0,
+                                lineBelow = index < timeline.lastIndex
+                            ) { GapRow(gap = item.gap, now = now, onAssign = { assigningGap = item.gap }) }
                             is TimelineItem.Attendance -> TimelineRow(
                                 dotColor = when {
                                     item.isClockIn -> EmeraldGreen
@@ -401,7 +413,7 @@ fun TodayScreen(
             projects = activeProjects,
             tasks = allTasks,
             onDismiss = { showManualEntry = false },
-            onSave = { projectId, taskId, description, start, end ->
+            onSave = { projectId, taskId, description, start, end, _ ->
                 if (end != null) viewModel.addManualEntry(projectId, taskId, description, start, end)
                 showManualEntry = false
             },
@@ -414,13 +426,35 @@ fun TodayScreen(
         )
     }
 
+    assigningGap?.let { gap ->
+        // Fill a clocked-in stretch that has no activity yet; the times are preset to the gap.
+        EntryFormDialog(
+            entry = null,
+            projects = activeProjects,
+            tasks = allTasks,
+            onDismiss = { assigningGap = null },
+            onSave = { projectId, taskId, description, start, end, _ ->
+                if (end != null) viewModel.addManualEntry(projectId, taskId, description, start, end)
+                assigningGap = null
+            },
+            initialDayStart = todayReport.range.start,
+            defaultStart = gap.start,
+            defaultEnd = gap.end ?: now,
+            onQuickTask = { projectId, title, onCreated -> viewModel.addQuickTask(projectId, title, onCreated) },
+            onQuickProject = { code, name, client, color, budget, productive, onCreated -> viewModel.addProject(code, name, client, color, budget, productive, onCreated) },
+            timeOnly = true
+        )
+    }
+
     editingEntry?.let { entry ->
+        val previous = remember(entry, todayEntries) { EntryNeighbours.previousOf(entry, todayEntries) }
+        val next = remember(entry, todayEntries) { EntryNeighbours.nextOf(entry, todayEntries) }
         EntryFormDialog(
             entry = entry,
             projects = activeProjects,
             tasks = allTasks,
             onDismiss = { editingEntry = null },
-            onSave = { projectId, taskId, description, start, end ->
+            onSave = { projectId, taskId, description, start, end, adjust ->
                 viewModel.updateEntry(
                     entry.toEntity().copy(
                         projectId = projectId,
@@ -428,11 +462,14 @@ fun TodayScreen(
                         description = description,
                         startTime = start,
                         endTime = end
-                    )
+                    ),
+                    movedNeighbours = EntryNeighbours.adjusted(previous, next, start, end, adjust).map { it.toEntity() }
                 )
                 editingEntry = null
             },
             initialDayStart = todayReport.range.start,
+            previous = previous,
+            next = next,
             onQuickTask = { projectId, title, onCreated -> viewModel.addQuickTask(projectId, title, onCreated) },
             onQuickProject = { code, name, client, color, budget, productive, onCreated -> viewModel.addProject(code, name, client, color, budget, productive, onCreated) },
             timeOnly = true
@@ -483,6 +520,12 @@ sealed interface TimelineItem {
         override val key: String get() = "entry-${entry.id}"
     }
 
+    /** Clocked-in time with no activity; tapping it logs one for exactly that stretch. */
+    data class Gap(val gap: UnassignedGap) : TimelineItem {
+        override val time: Long get() = gap.start
+        override val key: String get() = "gap-${gap.start}"
+    }
+
     data class Attendance(
         val session: AttendanceSession,
         override val time: Long,
@@ -497,10 +540,14 @@ sealed interface TimelineItem {
     }
 }
 
-/** Activities and clock-in / clock-out events merged, newest first; an activity that started at the same moment as a clock-in sits above it. */
-fun buildTimeline(entries: List<TimeEntryWithDetails>, sessions: List<AttendanceSession>): List<TimelineItem> {
+/**
+ * Activities, unassigned gaps and clock-in / clock-out events merged, newest first; an activity
+ * (or gap) that started at the same moment as a clock-in sits above it.
+ */
+fun buildTimeline(entries: List<TimeEntryWithDetails>, sessions: List<AttendanceSession>, now: Long): List<TimelineItem> {
     val items = mutableListOf<TimelineItem>()
     entries.mapTo(items) { TimelineItem.Activity(it) }
+    DayGaps.compute(entries, sessions, now).mapTo(items) { TimelineItem.Gap(it) }
     val ordered = sessions.sortedBy { it.clockIn }
     ordered.forEachIndexed { index, session ->
         items += TimelineItem.Attendance(session, session.clockIn, isClockIn = true)
@@ -537,6 +584,44 @@ private fun TimelineRow(
             drawCircle(dotColor, radius = 5.5.dp.toPx(), center = Offset(cx, y))
         }
         Box(modifier = Modifier.weight(1f).padding(bottom = 8.dp)) { content() }
+    }
+}
+
+/** "No activity logged · 08:16 – 08:19" with an Assign button; the whole row is tappable. */
+@Composable
+fun GapRow(gap: UnassignedGap, now: Long, onAssign: () -> Unit) {
+    val t = strings
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        onClick = onAssign,
+        modifier = Modifier.fillMaxWidth().testTag("gap_card_${gap.start}")
+    ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 8.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(t.noActivityLogged, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = muted)
+                Text(
+                    text = "${DateFormats.hourMinute(gap.start)} – ${gap.end?.let { DateFormats.hourMinute(it) } ?: t.running}",
+                    fontSize = 11.sp,
+                    color = muted.copy(alpha = 0.7f)
+                )
+            }
+            Text(
+                text = TimeFormat.hoursMinutes(gap.durationSeconds(now)) + if (gap.end == null) " …" else "",
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                color = muted
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            FilledTonalButton(onClick = onAssign, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 4.dp), modifier = Modifier.testTag("gap_assign_${gap.start}")) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(t.assignGap, fontSize = 12.sp, maxLines = 1)
+            }
+        }
     }
 }
 

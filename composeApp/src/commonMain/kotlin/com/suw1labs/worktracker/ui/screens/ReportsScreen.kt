@@ -63,6 +63,9 @@ import com.suw1labs.worktracker.data.model.AbsenceType
 import com.suw1labs.worktracker.data.model.AttendanceSession
 import com.suw1labs.worktracker.data.model.DayRecord
 import com.suw1labs.worktracker.data.model.TimeEntryWithDetails
+import com.suw1labs.worktracker.data.report.DayGaps
+import com.suw1labs.worktracker.data.report.EntryNeighbours
+import com.suw1labs.worktracker.data.report.UnassignedGap
 import com.suw1labs.worktracker.data.report.DayRow
 import com.suw1labs.worktracker.data.report.PeriodReport
 import com.suw1labs.worktracker.data.report.WarningKind
@@ -111,6 +114,7 @@ fun ReportsScreen(
     var editingSession by remember { mutableStateOf<AttendanceSession?>(null) }
     var showManualEntry by remember { mutableStateOf(false) }
     var editingEntry by remember { mutableStateOf<TimeEntryWithDetails?>(null) }
+    var assigningGap by remember { mutableStateOf<UnassignedGap?>(null) }
     var deletingSession by remember { mutableStateOf<AttendanceSession?>(null) }
     var deletingAbsence by remember { mutableStateOf<DayRecord?>(null) }
     val snackbarHost = LocalSnackbarHostState.current
@@ -395,11 +399,17 @@ fun ReportsScreen(
                     }
                 }
             }
-            if (dayEntries.isEmpty()) {
+            // Activities and the clocked-in stretches without one, newest first; a gap can be assigned in place.
+            val dayGaps = DayGaps.compute(dayEntries, daySessions, now)
+            if (dayEntries.isEmpty() && dayGaps.isEmpty()) {
                 item { Text(t.noActivitiesOnDay, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             } else {
-                items(dayEntries, key = { it.id }) { entry ->
-                    TimeEntryRowCard(entry = entry, now = now, onEdit = { editingEntry = entry }, onDelete = { deleteWithUndo(entry) })
+                val rows = (dayEntries.map { it.startTime to it } + dayGaps.map { it.start to it }).sortedByDescending { it.first }
+                items(rows, key = { (_, row) -> if (row is UnassignedGap) "gap-${row.start}" else (row as TimeEntryWithDetails).id }) { (_, row) ->
+                    when (row) {
+                        is TimeEntryWithDetails -> TimeEntryRowCard(entry = row, now = now, onEdit = { editingEntry = row }, onDelete = { deleteWithUndo(row) })
+                        is UnassignedGap -> GapRow(gap = row, now = now, onAssign = { assigningGap = row })
+                    }
                 }
             }
         }
@@ -491,6 +501,25 @@ fun ReportsScreen(
         )
     }
 
+    assigningGap?.let { gap ->
+        EntryFormDialog(
+            entry = null,
+            projects = activeProjects,
+            tasks = allTasks,
+            initialDayStart = periodAnchor,
+            defaultStart = gap.start,
+            defaultEnd = gap.end ?: now,
+            onDismiss = { assigningGap = null },
+            onSave = { projectId, taskId, description, start, end, _ ->
+                if (end != null) viewModel.addManualEntry(projectId, taskId, description, start, end)
+                assigningGap = null
+            },
+            onQuickTask = { projectId, title, onCreated -> viewModel.addQuickTask(projectId, title, onCreated) },
+            onQuickProject = { code, name, client, color, budget, productive, onCreated -> viewModel.addProject(code, name, client, color, budget, productive, onCreated) },
+            timeOnly = true
+        )
+    }
+
     if (showManualEntry) {
         EntryFormDialog(
             entry = null,
@@ -498,7 +527,7 @@ fun ReportsScreen(
             tasks = allTasks,
             initialDayStart = periodAnchor,
             onDismiss = { showManualEntry = false },
-            onSave = { projectId, taskId, description, start, end ->
+            onSave = { projectId, taskId, description, start, end, _ ->
                 if (end != null) viewModel.addManualEntry(projectId, taskId, description, start, end)
                 showManualEntry = false
             },
@@ -509,14 +538,21 @@ fun ReportsScreen(
     }
 
     editingEntry?.let { entry ->
+        val previous = remember(entry, dayEntries) { EntryNeighbours.previousOf(entry, dayEntries) }
+        val next = remember(entry, dayEntries) { EntryNeighbours.nextOf(entry, dayEntries) }
         EntryFormDialog(
             entry = entry,
             projects = activeProjects,
             tasks = allTasks,
             initialDayStart = periodAnchor,
+            previous = previous,
+            next = next,
             onDismiss = { editingEntry = null },
-            onSave = { projectId, taskId, description, start, end ->
-                viewModel.updateEntry(entry.toEntity().copy(projectId = projectId, taskId = taskId, description = description, startTime = start, endTime = end))
+            onSave = { projectId, taskId, description, start, end, adjust ->
+                viewModel.updateEntry(
+                    entry.toEntity().copy(projectId = projectId, taskId = taskId, description = description, startTime = start, endTime = end),
+                    movedNeighbours = EntryNeighbours.adjusted(previous, next, start, end, adjust).map { it.toEntity() }
+                )
                 editingEntry = null
             },
             onQuickTask = { projectId, title, onCreated -> viewModel.addQuickTask(projectId, title, onCreated) },

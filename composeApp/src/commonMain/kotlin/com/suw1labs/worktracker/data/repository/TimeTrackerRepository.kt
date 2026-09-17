@@ -85,6 +85,7 @@ class TimeTrackerRepository(
     suspend fun closeRunningEntries(endTime: Long) = timeEntryDao.closeRunningEntries(endTime)
     suspend fun insertTimeEntry(entry: TimeEntry): Long = timeEntryDao.insertEntry(entry)
     suspend fun updateTimeEntry(entry: TimeEntry) = timeEntryDao.updateEntry(entry)
+    suspend fun updateTimeEntries(entries: List<TimeEntry>) = timeEntryDao.updateEntries(entries)
     suspend fun deleteTimeEntryById(id: Long) = timeEntryDao.deleteEntryById(id)
 
     // Attendance

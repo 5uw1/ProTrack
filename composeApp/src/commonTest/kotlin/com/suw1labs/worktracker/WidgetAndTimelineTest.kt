@@ -61,10 +61,10 @@ class WidgetAndTimelineTest {
         )
         val entries = listOf(entry(10, at(13.0), null), entry(11, at(8.0), at(12.0)))
 
-        val keys = buildTimeline(entries, sessions).map { it.key }
+        val keys = buildTimeline(entries, sessions, now = at(14.0)).map { it.key }
         assertEquals(listOf("entry-10", "session-2-in", "session-1-out", "entry-11", "session-1-in"), keys)
 
-        val clockOut = buildTimeline(entries, sessions).filterIsInstance<TimelineItem.Attendance>().first { !it.isClockIn }
+        val clockOut = buildTimeline(entries, sessions, now = at(14.0)).filterIsInstance<TimelineItem.Attendance>().first { !it.isClockIn }
         assertEquals("LUNCH", clockOut.session.clockOutReason)
     }
 
