@@ -902,23 +902,24 @@ fun DaySummaryCard(
                 Spacer(modifier = Modifier.height(8.dp))
             }
             // Clocked in = project work + unproductive + time with no activity running.
+            // Optional rows appear once they hold at least a minute (whole seconds would print as 0h 00m).
             SummaryRow(t.clockedIn, report.attendanceSeconds, MaterialTheme.colorScheme.onSurface)
             SummaryRow(t.projectWork, report.productiveSeconds, EmeraldGreen)
-            if (report.unassignedProductiveSeconds > 0) {
+            if (report.unassignedProductiveSeconds >= 60) {
                 SummaryRow("↳ ${t.unassignedProject}", report.unassignedProductiveSeconds, AmberWarning, indent = true)
             }
-            if (report.noTaskProductiveSeconds > 0) {
+            if (report.noTaskProductiveSeconds >= 60) {
                 SummaryRow("↳ ${t.generalTaskTime}", report.noTaskProductiveSeconds, MaterialTheme.colorScheme.onSurfaceVariant, indent = true)
             }
             SummaryRow(t.unproductive, report.unproductiveSeconds, AmberWarning)
-            if (report.unallocatedSeconds > 0) {
+            if (report.unallocatedSeconds >= 60) {
                 SummaryRow(t.noActivity, report.unallocatedSeconds, MaterialTheme.colorScheme.onSurfaceVariant)
             }
             // Credited on top of the clocked-in time; lunch is shown for information only.
-            if (report.paidBreakSeconds > 0) {
+            if (report.paidBreakSeconds >= 60) {
                 SummaryRow("+ ${t.paidBreak}", report.paidBreakSeconds, EmeraldGreen)
             }
-            if (report.lunchSeconds > 0) {
+            if (report.lunchSeconds >= 60) {
                 SummaryRow(t.reasonLunch, report.lunchSeconds, MaterialTheme.colorScheme.onSurfaceVariant)
             }
             // Overtime only once the day's target is exceeded; until then the target row says what is left.
