@@ -16,49 +16,39 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Task
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,21 +57,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import com.suw1labs.worktracker.data.model.Project
 import com.suw1labs.worktracker.data.model.WorkTask
 import com.suw1labs.worktracker.data.model.WorkTaskWithProject
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import com.suw1labs.worktracker.ui.components.ConfirmDeleteDialog
 import com.suw1labs.worktracker.ui.components.DateTimePickerDialog
+import com.suw1labs.worktracker.ui.components.FormDialog
 import com.suw1labs.worktracker.ui.components.LabeledDropdown
 import com.suw1labs.worktracker.ui.components.DeadlineUrgencyBadge
 import com.suw1labs.worktracker.ui.components.EmptyStateCard
 import com.suw1labs.worktracker.ui.components.displayLabel
 import com.suw1labs.worktracker.ui.components.PriorityBadge
-import com.suw1labs.worktracker.ui.components.StatusBadge
-import com.suw1labs.worktracker.ui.components.dismissKeyboardOnTap
 import com.suw1labs.worktracker.ui.theme.AmberWarning
 import com.suw1labs.worktracker.ui.theme.EmeraldGreen
-import com.suw1labs.worktracker.ui.theme.RoseUrgent
 import com.suw1labs.worktracker.ui.viewmodel.TrackerViewModel
 import com.suw1labs.worktracker.util.DateFormats
 import com.suw1labs.worktracker.util.formatFixed
@@ -103,6 +94,7 @@ fun TasksScreen(
     var addTaskProjectId by remember { mutableStateOf<Long?>(null) }
     var editingTask by remember { mutableStateOf<WorkTaskWithProject?>(null) }
     var movingTask by remember { mutableStateOf<WorkTaskWithProject?>(null) }
+    var deletingTask by remember { mutableStateOf<WorkTaskWithProject?>(null) }
 
     val filteredTasks = remember(allTasks, statusFilter) {
         when (statusFilter) {
@@ -160,11 +152,23 @@ fun TasksScreen(
                 onTrack = onTrackTask,
                 onMove = { movingTask = it },
                 onEdit = { editingTask = it },
-                onDelete = { viewModel.deleteTask(it.id) }
+                onDelete = { deletingTask = it }
             )
         }
 
         item { Spacer(modifier = Modifier.height(24.dp)) }
+    }
+
+    deletingTask?.let { task ->
+        ConfirmDeleteDialog(
+            title = t.deleteTaskQuestion(task.title),
+            message = t.deleteTaskWarning,
+            onConfirm = {
+                viewModel.deleteTask(task.id)
+                deletingTask = null
+            },
+            onDismiss = { deletingTask = null }
+        )
     }
 
     addTaskProjectId?.let { projectId ->
@@ -328,18 +332,36 @@ private fun TaskRow(
             }
         }
         if (!isDone) {
-            IconButton(onClick = onTrack, modifier = Modifier.size(32.dp).testTag("track_task_${task.id}")) {
-                Icon(Icons.Default.PlayArrow, contentDescription = t.track, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+            IconButton(onClick = onTrack, modifier = Modifier.size(36.dp).testTag("track_task_${task.id}")) {
+                Icon(Icons.Default.PlayArrow, contentDescription = t.track, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
             }
         }
-        IconButton(onClick = onMove, modifier = Modifier.size(32.dp).testTag("move_task_${task.id}")) {
-            Icon(Icons.Default.DriveFileMove, contentDescription = t.moveTask, modifier = Modifier.size(18.dp))
-        }
-        IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
-            Icon(Icons.Default.Edit, contentDescription = t.edit, modifier = Modifier.size(16.dp))
-        }
-        IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-            Icon(Icons.Default.Delete, contentDescription = t.delete, tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f), modifier = Modifier.size(16.dp))
+        // Rare actions live in an overflow menu so the row stays readable on a phone.
+        Box {
+            var menuOpen by remember { mutableStateOf(false) }
+            IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(36.dp).testTag("task_menu_${task.id}")) {
+                Icon(Icons.Default.MoreVert, contentDescription = t.moreActions, modifier = Modifier.size(20.dp))
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    text = { Text(t.edit) },
+                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                    onClick = { menuOpen = false; onEdit() },
+                    modifier = Modifier.testTag("edit_task_${task.id}")
+                )
+                DropdownMenuItem(
+                    text = { Text(t.moveTask) },
+                    leadingIcon = { Icon(Icons.Default.DriveFileMove, contentDescription = null) },
+                    onClick = { menuOpen = false; onMove() },
+                    modifier = Modifier.testTag("move_task_${task.id}")
+                )
+                DropdownMenuItem(
+                    text = { Text(t.delete, color = MaterialTheme.colorScheme.error) },
+                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                    onClick = { menuOpen = false; onDelete() },
+                    modifier = Modifier.testTag("delete_task_${task.id}")
+                )
+            }
         }
     }
 }
@@ -354,35 +376,23 @@ private fun MoveTaskDialog(
 ) {
     val t = strings
     var targetId by remember { mutableStateOf(projects.firstOrNull()?.id) }
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            modifier = Modifier.fillMaxWidth().padding(4.dp).testTag("move_task_dialog")
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Text(t.moveTask, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text(task.title, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(14.dp))
-                LabeledDropdown(
-                    label = t.moveTaskTo,
-                    selectedText = projects.find { it.id == targetId }?.displayLabel() ?: t.selectProject,
-                    options = projects,
-                    optionText = { it.displayLabel() },
-                    onSelect = { targetId = it.id },
-                    testTag = "move_target_dropdown"
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text(t.cancel) }
-                    Button(
-                        onClick = { targetId?.let(onMove) },
-                        enabled = targetId != null,
-                        modifier = Modifier.weight(1f).testTag("confirm_move_button")
-                    ) { Text(t.save) }
-                }
-            }
-        }
+    FormDialog(
+        title = t.moveTask,
+        subtitle = task.title,
+        onDismiss = onDismiss,
+        onSave = { targetId?.let(onMove) },
+        saveEnabled = targetId != null,
+        saveTestTag = "confirm_move_button",
+        modifier = Modifier.testTag("move_task_dialog")
+    ) {
+        LabeledDropdown(
+            label = t.moveTaskTo,
+            selectedText = projects.find { it.id == targetId }?.displayLabel() ?: t.selectProject,
+            options = projects,
+            optionText = { it.displayLabel() },
+            onSelect = { targetId = it.id },
+            testTag = "move_target_dropdown"
+        )
     }
 }
 
@@ -400,133 +410,114 @@ fun TaskFormDialog(
     var title by remember { mutableStateOf(task?.title ?: "") }
     var description by remember { mutableStateOf(task?.description ?: "") }
     var priority by remember { mutableStateOf(task?.priority ?: "MEDIUM") }
-    var estimatedHoursStr by remember { mutableStateOf(task?.estimatedHours?.toString() ?: "4.0") }
+    var estimatedHoursStr by remember { mutableStateOf(TimeFormat.sapHours(task?.estimatedHours ?: 4.0)) }
     var deadlineTimestamp by remember { mutableStateOf<Long?>(task?.deadlineTimestamp) }
     var reminderLeadHours by remember { mutableStateOf(task?.reminderLeadHours ?: 24) }
     var showDeadlinePicker by remember { mutableStateOf(false) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            modifier = Modifier.fillMaxWidth().padding(4.dp).testTag("task_form_dialog").dismissKeyboardOnTap()
+    val canSave = title.isNotBlank() && selectedProjectId > 0
+    FormDialog(
+        title = if (task == null) t.newTask else t.editTask,
+        onDismiss = onDismiss,
+        onSave = {
+            val est = estimatedHoursStr.replace(',', '.').toDoubleOrNull() ?: 0.0
+            onSave(selectedProjectId, title.trim(), description.trim(), priority, est, deadlineTimestamp, reminderLeadHours)
+        },
+        saveEnabled = canSave,
+        saveLabel = t.saveTask,
+        saveTestTag = "save_task_button",
+        modifier = Modifier.testTag("task_form_dialog")
+    ) {
+        LabeledDropdown(
+            label = t.sapProject + " *",
+            selectedText = projects.find { it.id == selectedProjectId }?.displayLabel() ?: t.selectProject,
+            options = projects,
+            optionText = { it.displayLabel() },
+            onSelect = { selectedProjectId = it.id },
+            testTag = "task_project_dropdown"
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        OutlinedTextField(
+            value = title,
+            onValueChange = { title = it },
+            label = { Text(t.taskTitle) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            modifier = Modifier.fillMaxWidth().testTag("task_title_input")
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        OutlinedTextField(
+            value = description,
+            onValueChange = { description = it },
+            label = { Text(t.descriptionNotes) },
+            minLines = 2,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Text(
-                    text = if (task == null) t.newTask else t.editTask,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
+            LabeledDropdown(
+                label = t.priority,
+                selectedText = t.priorityName(priority),
+                options = listOf("LOW", "MEDIUM", "HIGH", "URGENT"),
+                optionText = { t.priorityName(it) },
+                onSelect = { priority = it },
+                modifier = Modifier.weight(1f)
+            )
 
-                Spacer(modifier = Modifier.height(14.dp))
+            OutlinedTextField(
+                value = estimatedHoursStr,
+                onValueChange = { estimatedHoursStr = it },
+                label = { Text(t.estHours) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+                modifier = Modifier.weight(1f)
+            )
+        }
 
-                // Project Selector
-                LabeledDropdown(
-                    label = t.sapProject + " *",
-                    selectedText = projects.find { it.id == selectedProjectId }?.displayLabel() ?: t.selectProject,
-                    options = projects,
-                    optionText = { it.displayLabel() },
-                    onSelect = { selectedProjectId = it.id },
-                    testTag = "task_project_dropdown"
-                )
+        Spacer(modifier = Modifier.height(14.dp))
 
-                Spacer(modifier = Modifier.height(10.dp))
+        // Deadline
+        Text(
+            text = t.deadlineReminders,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            val deadlineDateText = deadlineTimestamp?.let { DateFormats.dateTime(it) } ?: t.noDeadline
 
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text(t.taskTitle) },
-                    modifier = Modifier.fillMaxWidth().testTag("task_title_input")
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text(t.descriptionNotes) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    // Priority
-                    LabeledDropdown(
-                        label = t.priority,
-                        selectedText = t.priorityName(priority),
-                        options = listOf("LOW", "MEDIUM", "HIGH", "URGENT"),
-                        optionText = { t.priorityName(it) },
-                        onSelect = { priority = it },
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    OutlinedTextField(
-                        value = estimatedHoursStr,
-                        onValueChange = { estimatedHoursStr = it },
-                        label = { Text(t.estHours) },
-                        modifier = Modifier.weight(1f)
-                    )
+            Text(
+                text = deadlineDateText,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = if (deadlineTimestamp != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+            if (deadlineTimestamp != null) {
+                IconButton(onClick = { deadlineTimestamp = null }, modifier = Modifier.size(36.dp).testTag("clear_deadline_button")) {
+                    Icon(Icons.Default.Close, contentDescription = t.noDeadline, modifier = Modifier.size(18.dp))
                 }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Deadline Picker Row
-                Text(
-                    text = t.deadlineReminders,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    val deadlineDateText = deadlineTimestamp?.let { DateFormats.dateTime(it) } ?: t.noDeadline
-
-                    Text(
-                        text = deadlineDateText,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = if (deadlineTimestamp != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    OutlinedButton(
-                        onClick = { showDeadlinePicker = true },
-                        modifier = Modifier.testTag("set_deadline_button")
-                    ) {
-                        Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(t.setDeadline, fontSize = 12.sp)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text(t.cancel)
-                    }
-                    Button(
-                        onClick = {
-                            if (title.isNotBlank() && selectedProjectId > 0) {
-                                val est = estimatedHoursStr.toDoubleOrNull() ?: 0.0
-                                onSave(selectedProjectId, title, description, priority, est, deadlineTimestamp, reminderLeadHours)
-                            }
-                        },
-                        enabled = title.isNotBlank() && selectedProjectId > 0,
-                        modifier = Modifier.weight(1f).testTag("save_task_button")
-                    ) {
-                        Text(t.saveTask)
-                    }
-                }
+            }
+            OutlinedButton(
+                onClick = { showDeadlinePicker = true },
+                modifier = Modifier.testTag("set_deadline_button")
+            ) {
+                Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(t.setDeadline, fontSize = 12.sp)
             }
         }
     }

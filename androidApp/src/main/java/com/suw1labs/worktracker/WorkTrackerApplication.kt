@@ -5,6 +5,7 @@ import android.content.Context
 import com.suw1labs.worktracker.data.androidDatabaseBuilder
 import com.suw1labs.worktracker.platform.AndroidFileExporter
 import com.suw1labs.worktracker.platform.AndroidReminderScheduler
+import com.suw1labs.worktracker.platform.AndroidWidgetBridge
 
 class WorkTrackerApplication : Application() {
 
@@ -26,7 +27,8 @@ class WorkTrackerApplication : Application() {
                     AppContainer(
                         databaseBuilder = androidDatabaseBuilder(context),
                         reminderScheduler = AndroidReminderScheduler(context.applicationContext),
-                        fileExporter = exporter
+                        fileExporter = exporter,
+                        widgetBridge = AndroidWidgetBridge(context.applicationContext)
                     ).also { instance = it }
                 }
             }

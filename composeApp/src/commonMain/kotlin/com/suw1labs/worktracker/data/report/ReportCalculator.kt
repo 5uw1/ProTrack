@@ -2,6 +2,7 @@ package com.suw1labs.worktracker.data.report
 
 import com.suw1labs.worktracker.data.model.AppSettings
 import com.suw1labs.worktracker.data.model.AttendanceSession
+import com.suw1labs.worktracker.data.model.ClockOutReason
 import com.suw1labs.worktracker.data.model.DayRecord
 import com.suw1labs.worktracker.data.model.TimeEntryWithDetails
 import com.suw1labs.worktracker.util.DateRange
@@ -93,16 +94,23 @@ data class DayRow(
     /** Sum of the gaps between clock-in periods on this day (lunch, coffee, ...). */
     val breakSeconds: Long,
     val absence: DayRecord?,
-    val cells: List<DayCell>
+    val cells: List<DayCell>,
+    /** The part of [breakSeconds] that followed a clock-out marked as lunch. */
+    val lunchSeconds: Long = 0L,
+    /** Short breaks (coffee, smoke) the company credits as working time today, already capped. */
+    val paidBreakSeconds: Long = 0L
 ) {
+    /** What counts as worked: clocked-in time plus the credited short breaks. */
+    val accountedSeconds: Long get() = attendanceSeconds + paidBreakSeconds
+
     val productiveSeconds: Long get() = cells.filter { it.isProductive }.sumOf { it.seconds }
     val unproductiveSeconds: Long get() = cells.filter { !it.isProductive }.sumOf { it.seconds }
     val allocatedSeconds: Long get() = productiveSeconds + unproductiveSeconds
     val unallocatedSeconds: Long get() = max(0L, attendanceSeconds - allocatedSeconds)
     val creditedSeconds: Long get() = absence?.creditedSeconds ?: 0L
 
-    /** Worked + credited absence − target. Positive = overtime. */
-    val overtimeSeconds: Long get() = attendanceSeconds + creditedSeconds - targetSeconds
+    /** Worked (incl. paid breaks) + credited absence − target. Positive = overtime. */
+    val overtimeSeconds: Long get() = accountedSeconds + creditedSeconds - targetSeconds
     val requiredBreakSeconds: Long get() = WorkRules.requiredBreakSeconds(attendanceSeconds)
     val breakRuleViolated: Boolean get() = requiredBreakSeconds > 0 && breakSeconds < requiredBreakSeconds
 }
@@ -127,13 +135,19 @@ data class PeriodReport(
     val categories: List<CategoryHours>,
     val days: List<DayRow>,
     val weeks: List<WeekSummary>,
-    val warnings: List<ComplianceWarning>
+    val warnings: List<ComplianceWarning>,
+    /** Lunch breaks in the period (gaps after a clock-out marked as lunch). */
+    val lunchSeconds: Long = 0L,
+    /** Short breaks credited as working time in the period (sum of the daily capped amounts). */
+    val paidBreakSeconds: Long = 0L
 ) {
     val allocatedSeconds: Long get() = productiveSeconds + unproductiveSeconds
     val unallocatedSeconds: Long get() = max(0L, attendanceSeconds - allocatedSeconds)
+    /** What counts as worked: clocked-in time plus the credited short breaks. */
+    val accountedSeconds: Long get() = attendanceSeconds + paidBreakSeconds
 
-    /** Worked + credited absences − target for the period. Positive = overtime. */
-    val overtimeSeconds: Long get() = attendanceSeconds + creditedSeconds - targetSeconds
+    /** Worked (incl. paid breaks) + credited absences − target for the period. Positive = overtime. */
+    val overtimeSeconds: Long get() = accountedSeconds + creditedSeconds - targetSeconds
     val absences: List<DayRecord> get() = days.mapNotNull { it.absence }
 
     /** Productive work that has no project yet (order received before the project was known / added). */
@@ -172,6 +186,32 @@ object ReportCalculator {
             if (gap > 0) total += gap / 1000L
         }
         return total
+    }
+
+    /** Gaps that follow a clock-out marked as lunch (the return clock-in must be on the same day). */
+    fun lunchSeconds(sessions: List<AttendanceSession>, range: DateRange, now: Long): Long =
+        taggedBreakSeconds(sessions, range, now, ClockOutReason.LUNCH)
+
+    /** Gaps that follow a clock-out tagged with [reason] (the return clock-in must be on the same day). */
+    fun taggedBreakSeconds(sessions: List<AttendanceSession>, range: DateRange, now: Long, reason: ClockOutReason): Long {
+        val daySessions = sessions
+            .filter { overlapSeconds(it.clockIn, it.clockOut ?: now, range.start, range.endExclusive) > 0 }
+            .sortedBy { it.clockIn }
+        var total = 0L
+        for (i in 1 until daySessions.size) {
+            val previous = daySessions[i - 1]
+            if (previous.clockOutReason != reason.name) continue
+            val gap = daySessions[i].clockIn - (previous.clockOut ?: now)
+            if (gap > 0) total += gap / 1000L
+        }
+        return total
+    }
+
+    /** Short breaks (coffee, smoke) credited as working time: the tagged ones, capped by the daily allowance. */
+    fun paidBreakSeconds(sessions: List<AttendanceSession>, range: DateRange, now: Long, settings: AppSettings): Long {
+        val allowance = settings.paidBreakSecondsPerDay
+        if (allowance <= 0) return 0L
+        return min(allowance, taggedBreakSeconds(sessions, range, now, ClockOutReason.BREAK))
     }
 
     fun isWorkday(dayStart: Long, settings: AppSettings): Boolean =
@@ -215,7 +255,9 @@ object ReportCalculator {
                 attendanceSeconds = attendanceSeconds(sessions, dayRange, now),
                 breakSeconds = breakSeconds(sessions, dayRange, now),
                 absence = recordsByDay[dayRange.start],
-                cells = cellMap.values.sortedWith(compareBy({ it.projectId == null }, { it.projectCode }, { it.taskName }))
+                cells = cellMap.values.sortedWith(compareBy({ it.projectId == null }, { it.projectCode }, { it.taskName })),
+                lunchSeconds = lunchSeconds(sessions, dayRange, now),
+                paidBreakSeconds = paidBreakSeconds(sessions, dayRange, now, settings)
             )
         }
 
@@ -290,7 +332,9 @@ object ReportCalculator {
             categories = categories,
             days = days,
             weeks = weeks,
-            warnings = warnings.sortedBy { it.dayStart }
+            warnings = warnings.sortedBy { it.dayStart },
+            lunchSeconds = days.sumOf { it.lunchSeconds },
+            paidBreakSeconds = days.sumOf { it.paidBreakSeconds }
         )
     }
 

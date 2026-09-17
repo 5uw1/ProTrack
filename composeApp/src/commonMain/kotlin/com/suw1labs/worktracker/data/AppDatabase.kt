@@ -4,6 +4,8 @@ import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
+import androidx.room.migration.Migration
+import androidx.sqlite.execSQL
 import androidx.sqlite.SQLiteConnection
 import com.suw1labs.worktracker.data.dao.AttendanceDao
 import com.suw1labs.worktracker.data.dao.DayRecordDao
@@ -26,7 +28,7 @@ const val DATABASE_NAME = "work_tracker.db"
 
 @Database(
     entities = [Project::class, WorkTask::class, TimeEntry::class, AttendanceSession::class, DayRecord::class, AppSettings::class],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 @ConstructedBy(AppDatabaseConstructor::class)
@@ -98,7 +100,16 @@ fun RoomDatabase.Builder<AppDatabase>.buildAppDatabase(
     creationTracker: DatabaseCreationTracker,
     queryDispatcher: CoroutineDispatcher = Dispatchers.IO
 ): AppDatabase = addCallback(creationTracker)
+    .addMigrations(MIGRATION_6_7)
     // Schema v2 replaced the billing-oriented model; the old demo data is not worth migrating.
+    // Newer schema changes must add a migration above so real data survives an update.
     .fallbackToDestructiveMigration(dropAllTables = true)
     .setQueryCoroutineContext(queryDispatcher)
     .build()
+
+/** v7: paid short breaks per day (company rule) on the settings row. */
+val MIGRATION_6_7: Migration = object : Migration(6, 7) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE app_settings ADD COLUMN paidBreakMinutes INTEGER NOT NULL DEFAULT 0")
+    }
+}

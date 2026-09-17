@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Settings
@@ -27,15 +28,17 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -51,6 +54,7 @@ import com.suw1labs.worktracker.ui.i18n.LocalStrings
 import com.suw1labs.worktracker.ui.i18n.Translations
 import com.suw1labs.worktracker.ui.i18n.strings
 import com.suw1labs.worktracker.platform.NotificationPermissionEffect
+import com.suw1labs.worktracker.ui.components.LocalSnackbarHostState
 import com.suw1labs.worktracker.ui.components.dismissKeyboardOnScroll
 import com.suw1labs.worktracker.ui.components.dismissKeyboardOnTap
 import com.suw1labs.worktracker.ui.screens.ProjectsScreen
@@ -103,10 +107,12 @@ fun MainAppContent(viewModel: TrackerViewModel) {
     val urgentTasks by viewModel.urgentTasks.collectAsState()
     val openSession by viewModel.openSession.collectAsState()
     val runningEntry by viewModel.runningEntry.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // Ask for notification permission where needed, then surface urgent deadlines.
     NotificationPermissionEffect { viewModel.checkUpcomingDeadlines() }
 
+    CompositionLocalProvider(LocalSnackbarHostState provides snackbarHostState) {
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize().dismissKeyboardOnScroll().dismissKeyboardOnTap()
     ) {
@@ -118,15 +124,20 @@ fun MainAppContent(viewModel: TrackerViewModel) {
                 NavigationRail(
                     modifier = Modifier.testTag("desktop_navigation_rail"),
                 ) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "WorkTracker",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
+                    // App mark: the rail is too narrow for the full name.
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = MaterialTheme.shapes.medium,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Timer,
+                            contentDescription = "WorkTracker",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(10.dp),
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     TrackerDestination.entries.forEach { destination ->
                         NavigationRailItem(
@@ -161,13 +172,15 @@ fun MainAppContent(viewModel: TrackerViewModel) {
                     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
                     Scaffold(
                         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+                        snackbarHost = { SnackbarHost(snackbarHostState) },
                         topBar = {
                             TopAppBar(
                                 title = {
                                     Text(
                                         text = if (currentDestination == TrackerDestination.TODAY) DateFormats.weekdayLongDate(now) else currentDestination.title(),
-                                        fontWeight = FontWeight.Bold,
+                                        fontWeight = FontWeight.ExtraBold,
                                         fontSize = 17.sp,
+                                        color = MaterialTheme.colorScheme.primary,
                                     )
                                 },
                                 colors = TopAppBarDefaults.topAppBarColors(
@@ -178,12 +191,15 @@ fun MainAppContent(viewModel: TrackerViewModel) {
                             )
                         }
                     ) { innerPadding ->
-                        DestinationContent(
-                            destination = currentDestination,
-                            viewModel = viewModel,
-                            onNavigateToTimer = { currentDestination = TrackerDestination.TODAY },
-                            modifier = Modifier.padding(innerPadding)
-                        )
+                        // Cards stay readable on a wide window: content is capped and centred.
+                        Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.TopCenter) {
+                            DestinationContent(
+                                destination = currentDestination,
+                                viewModel = viewModel,
+                                onNavigateToTimer = { currentDestination = TrackerDestination.TODAY },
+                                modifier = Modifier.widthIn(max = 720.dp).fillMaxHeight()
+                            )
+                        }
                     }
                 }
             }
@@ -193,6 +209,7 @@ fun MainAppContent(viewModel: TrackerViewModel) {
             val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
             Scaffold(
                 modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+                snackbarHost = { SnackbarHost(snackbarHostState) },
                 topBar = {
                     TopAppBar(
                         title = {
@@ -288,6 +305,7 @@ fun MainAppContent(viewModel: TrackerViewModel) {
                 )
             }
         }
+    }
     }
 }
 

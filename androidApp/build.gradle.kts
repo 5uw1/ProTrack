@@ -91,6 +91,9 @@ dependencies {
   implementation(libs.androidx.activity.compose)
   implementation(libs.androidx.core.ktx)
   implementation(libs.kotlinx.coroutines.android)
+  // Home-screen widget (Jetpack Glance).
+  implementation(libs.androidx.glance.appwidget)
+  implementation(libs.androidx.glance.material3)
 
   testImplementation(libs.junit)
   testImplementation(libs.androidx.core)

@@ -6,10 +6,13 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +27,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Coffee
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Alarm
@@ -39,33 +45,43 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.suw1labs.worktracker.data.model.AbsenceType
+import com.suw1labs.worktracker.data.model.AttendanceSession
+import com.suw1labs.worktracker.data.model.ClockOutReason
 import com.suw1labs.worktracker.data.model.DayRecord
 import com.suw1labs.worktracker.ui.i18n.emoji
 import com.suw1labs.worktracker.data.model.Project
@@ -75,6 +91,7 @@ import com.suw1labs.worktracker.data.report.PeriodReport
 import com.suw1labs.worktracker.ui.components.TaskDropdown
 import com.suw1labs.worktracker.ui.components.DeadlineUrgencyBadge
 import com.suw1labs.worktracker.ui.components.EmptyStateCard
+import com.suw1labs.worktracker.ui.components.LocalSnackbarHostState
 import com.suw1labs.worktracker.ui.components.ProjectDropdown
 import com.suw1labs.worktracker.ui.theme.AmberWarning
 import com.suw1labs.worktracker.ui.theme.EmeraldGreen
@@ -85,6 +102,7 @@ import com.suw1labs.worktracker.util.TimeFormat
 import com.suw1labs.worktracker.util.parseHexColor
 import com.suw1labs.worktracker.util.projectColor
 import com.suw1labs.worktracker.ui.i18n.strings
+import kotlinx.coroutines.launch
 
 @Composable
 fun TodayScreen(
@@ -97,6 +115,7 @@ fun TodayScreen(
     val runningEntry by viewModel.runningEntry.collectAsState()
     val todayReport by viewModel.todayReport.collectAsState()
     val todayEntries by viewModel.todayEntries.collectAsState()
+    val todaySessions by viewModel.todaySessions.collectAsState()
     val activeProjects by viewModel.activeProjects.collectAsState()
     val allTasks by viewModel.allTasks.collectAsState()
     val urgentTasks by viewModel.urgentTasks.collectAsState()
@@ -110,9 +129,23 @@ fun TodayScreen(
     var newlyCreatedProjectId by remember { mutableStateOf<Long?>(null) }
 
     val isClockedIn = openSession != null
+    val snackbarHost = LocalSnackbarHostState.current
+    val scope = rememberCoroutineScope()
+
+    // Activities are deleted immediately; the snackbar offers to put them back.
+    fun deleteWithUndo(entry: TimeEntryWithDetails) {
+        viewModel.deleteTimeEntry(entry.id)
+        scope.launch {
+            val result = snackbarHost.showSnackbar(message = t.activityDeleted, actionLabel = t.undo, duration = SnackbarDuration.Long)
+            if (result == SnackbarResult.ActionPerformed) viewModel.restoreEntry(entry)
+        }
+    }
 
     // Hide the selector again once an activity started.
     LaunchedEffect(runningEntry?.id) { if (runningEntry != null) showActivitySelector = false }
+
+    // The day as one timeline, newest first: activities plus the clock-in / clock-out moments.
+    val timeline = remember(todayEntries, todaySessions) { buildTimeline(todayEntries, todaySessions) }
 
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(horizontal = 12.dp),
@@ -181,8 +214,11 @@ fun TodayScreen(
                 isClockedIn = isClockedIn,
                 clockedInSince = openSession?.clockIn,
                 attendanceSeconds = todayReport.attendanceSeconds,
+                // While clocked out, the last period of today tells whether this is a lunch / break.
+                lastClosedSession = if (isClockedIn) null else todaySessions.filter { it.clockOut != null }.maxByOrNull { it.clockOut!! },
+                now = now,
                 onClockIn = { viewModel.clockIn() },
-                onClockOut = { viewModel.clockOut() }
+                onClockOut = { reason -> viewModel.clockOut(reason) }
             )
         }
 
@@ -283,7 +319,7 @@ fun TodayScreen(
             }
         }
 
-        if (todayEntries.isEmpty()) {
+        if (timeline.isEmpty()) {
             item {
                 EmptyStateCard(
                     icon = Icons.Default.Work,
@@ -292,15 +328,42 @@ fun TodayScreen(
                 )
             }
         } else {
-            items(todayEntries, key = { it.id }) { entry ->
-                TimeEntryRowCard(
-                    entry = entry,
-                    now = now,
-                    onEdit = { editingEntry = entry },
-                    onDelete = { viewModel.deleteTimeEntry(entry.id) },
-                    onContinue = if (entry.isRunning) null else ({ viewModel.continueEntry(entry) }),
-                    isSomethingRunning = runningEntry != null
-                )
+            // One block so the rail between the dots is continuous.
+            item {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    timeline.forEachIndexed { index, item ->
+                        when (item) {
+                            is TimelineItem.Activity -> TimelineRow(
+                                dotColor = item.entry.projectColor?.let { projectColor(it) } ?: MaterialTheme.colorScheme.tertiary,
+                                dotY = 30.dp,
+                                lineAbove = index > 0,
+                                lineBelow = index < timeline.lastIndex
+                            ) {
+                                TimeEntryRowCard(
+                                    entry = item.entry,
+                                    now = now,
+                                    onEdit = { editingEntry = item.entry },
+                                    onDelete = { deleteWithUndo(item.entry) },
+                                    onContinue = if (item.entry.isRunning) null else ({ viewModel.continueEntry(item.entry) }),
+                                    isSomethingRunning = runningEntry != null,
+                                    showColorBar = false
+                                )
+                            }
+                            is TimelineItem.Attendance -> TimelineRow(
+                                dotColor = when {
+                                    item.isClockIn -> EmeraldGreen
+                                    ClockOutReason.fromName(item.session.clockOutReason)?.let { it == ClockOutReason.LUNCH || it == ClockOutReason.BREAK } == true -> AmberWarning
+                                    else -> RoseUrgent
+                                },
+                                dotY = 16.dp,
+                                // The rail is broken while clocked out: nothing below a clock-in
+                                // (newest first, so the pause is below it) and nothing above a clock-out.
+                                lineAbove = index > 0 && item.isClockIn,
+                                lineBelow = index < timeline.lastIndex && !item.isClockIn
+                            ) { AttendanceEventRow(item, now) }
+                        }
+                    }
+                }
             }
         }
 
@@ -380,15 +443,145 @@ fun TodayScreen(
 
 }
 
+/** Symbol for a tagged pause: a meal for lunch, a coffee cup for a break, otherwise the door. */
+fun ClockOutReason.icon(): ImageVector = when (this) {
+    ClockOutReason.LUNCH -> Icons.Default.Restaurant
+    ClockOutReason.BREAK -> Icons.Default.Coffee
+    else -> Icons.Default.Logout
+}
+
+/** One row of the day's timeline. */
+sealed interface TimelineItem {
+    val time: Long
+    val key: String
+
+    data class Activity(val entry: TimeEntryWithDetails) : TimelineItem {
+        override val time: Long get() = entry.startTime
+        override val key: String get() = "entry-${entry.id}"
+    }
+
+    data class Attendance(
+        val session: AttendanceSession,
+        override val time: Long,
+        val isClockIn: Boolean,
+        /** For a clock-out: when the next period of the day started, or null while still out. */
+        val nextClockIn: Long? = null
+    ) : TimelineItem {
+        override val key: String get() = "session-${session.id}-${if (isClockIn) "in" else "out"}"
+
+        /** Length of the pause that started with this clock-out (ongoing until [now] when not back yet). */
+        fun pauseSeconds(now: Long): Long? = if (isClockIn) null else (((nextClockIn ?: now) - time) / 1000L).coerceAtLeast(0L)
+    }
+}
+
+/** Activities and clock-in / clock-out events merged, newest first; an activity that started at the same moment as a clock-in sits above it. */
+fun buildTimeline(entries: List<TimeEntryWithDetails>, sessions: List<AttendanceSession>): List<TimelineItem> {
+    val items = mutableListOf<TimelineItem>()
+    entries.mapTo(items) { TimelineItem.Activity(it) }
+    val ordered = sessions.sortedBy { it.clockIn }
+    ordered.forEachIndexed { index, session ->
+        items += TimelineItem.Attendance(session, session.clockIn, isClockIn = true)
+        session.clockOut?.let { out ->
+            items += TimelineItem.Attendance(session, out, isClockIn = false, nextClockIn = ordered.getOrNull(index + 1)?.clockIn)
+        }
+    }
+    return items.sortedWith(compareByDescending<TimelineItem> { it.time }.thenBy { it is TimelineItem.Attendance && it.isClockIn })
+}
+
+/**
+ * One step of the day's timeline: a dot on a vertical rail and the content to its right. The rail
+ * segments above and below are drawn only when asked, so gaps (clocked-out time) stay visible.
+ * [dotY] is where the dot sits so it lines up with the content's first line.
+ */
+@Composable
+private fun TimelineRow(
+    dotColor: Color,
+    dotY: androidx.compose.ui.unit.Dp,
+    lineAbove: Boolean,
+    lineBelow: Boolean,
+    content: @Composable () -> Unit
+) {
+    val railColor = MaterialTheme.colorScheme.outlineVariant
+    val ringColor = MaterialTheme.colorScheme.background
+    Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+        Canvas(modifier = Modifier.width(26.dp).fillMaxHeight()) {
+            val cx = size.width / 2f
+            val y = dotY.toPx()
+            val stroke = 2.dp.toPx()
+            if (lineAbove) drawLine(railColor, Offset(cx, 0f), Offset(cx, y), stroke)
+            if (lineBelow) drawLine(railColor, Offset(cx, y), Offset(cx, size.height), stroke)
+            drawCircle(ringColor, radius = 8.dp.toPx(), center = Offset(cx, y))
+            drawCircle(dotColor, radius = 5.5.dp.toPx(), center = Offset(cx, y))
+        }
+        Box(modifier = Modifier.weight(1f).padding(bottom = 8.dp)) { content() }
+    }
+}
+
+/** Plain, read-only "Clocked in 08:02" / "Clocked out · Lunch 12:00" line on the rail (periods are edited in Reports). */
+@Composable
+private fun AttendanceEventRow(item: TimelineItem.Attendance, now: Long) {
+    val t = strings
+    val reason = if (item.isClockIn) null else ClockOutReason.fromName(item.session.clockOutReason)
+    val pause = item.pauseSeconds(now)
+    val color = when {
+        item.isClockIn -> EmeraldGreen
+        reason == ClockOutReason.LUNCH || reason == ClockOutReason.BREAK -> AmberWarning
+        else -> RoseUrgent
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = 6.dp, end = 14.dp, top = 8.dp, bottom = 8.dp).testTag(item.key),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            if (item.isClockIn) Icons.Default.Login else (reason?.icon() ?: Icons.Default.Logout),
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = (if (item.isClockIn) t.eventClockedIn else t.eventClockedOut) + (reason?.let { " · ${t.reasonLabel(it)}" } ?: ""),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = color,
+            modifier = Modifier.weight(1f)
+        )
+        if (pause != null && pause > 0) {
+            // How long the pause lasted (or has lasted so far).
+            Text(
+                text = TimeFormat.hoursMinutes(pause) + if (item.nextClockIn == null) " …" else "",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(end = 10.dp).testTag("${item.key}-pause")
+            )
+        }
+        Text(
+            text = DateFormats.hourMinute(item.time),
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
 @Composable
 private fun AttendanceCard(
     isClockedIn: Boolean,
     clockedInSince: Long?,
     attendanceSeconds: Long,
+    lastClosedSession: AttendanceSession?,
+    now: Long,
     onClockIn: () -> Unit,
-    onClockOut: () -> Unit
+    /** null = plain clock-out; LUNCH / BREAK tag the pause. */
+    onClockOut: (ClockOutReason?) -> Unit
 ) {
     val t = strings
+    var reasonMenuOpen by remember { mutableStateOf(false) }
+    // A tagged pause (lunch, break) that is still going on: show what it is and how long already.
+    val pauseReason = lastClosedSession?.let { ClockOutReason.fromName(it.clockOutReason) }
+        ?.takeIf { it == ClockOutReason.LUNCH || it == ClockOutReason.BREAK }
+    val pauseSeconds = if (pauseReason != null) ((now - (lastClosedSession?.clockOut ?: now)) / 1000L).coerceAtLeast(0L) else 0L
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -396,7 +589,11 @@ private fun AttendanceCard(
         animationSpec = infiniteRepeatable(animation = tween(1000, easing = FastOutSlowInEasing), repeatMode = RepeatMode.Reverse),
         label = "scale",
     )
-    val statusColor = if (isClockedIn) EmeraldGreen else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+    val statusColor = when {
+        isClockedIn -> EmeraldGreen
+        pauseReason != null -> AmberWarning
+        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+    }
 
     Card(
         shape = RoundedCornerShape(20.dp),
@@ -406,14 +603,24 @@ private fun AttendanceCard(
     ) {
         Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(10.dp).scale(pulseScale).clip(CircleShape).background(statusColor))
+                if (pauseReason != null) {
+                    Icon(pauseReason.icon(), contentDescription = null, tint = statusColor, modifier = Modifier.size(14.dp))
+                } else {
+                    Box(modifier = Modifier.size(10.dp).scale(pulseScale).clip(CircleShape).background(statusColor))
+                }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isClockedIn) t.clockedInSince(DateFormats.hourMinute(clockedInSince ?: 0L)) else t.clockedOut,
+                    text = when {
+                        isClockedIn -> t.clockedInSince(DateFormats.hourMinute(clockedInSince ?: 0L))
+                        // e.g. "LUNCH · since 12:02 · 0h 23m"
+                        pauseReason != null -> "${t.reasonLabel(pauseReason).uppercase()} · ${t.since(DateFormats.hourMinute(lastClosedSession?.clockOut ?: now))} · ${TimeFormat.hoursMinutes(pauseSeconds)}"
+                        else -> t.clockedOut
+                    },
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.2.sp,
-                    color = statusColor
+                    color = statusColor,
+                    modifier = Modifier.testTag("attendance_status_text")
                 )
             }
             Spacer(modifier = Modifier.height(6.dp))
@@ -444,15 +651,41 @@ private fun AttendanceCard(
                     Text(t.clockIn, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
             } else {
-                Button(
-                    onClick = onClockOut,
-                    colors = ButtonDefaults.buttonColors(containerColor = RoseUrgent),
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.fillMaxWidth().height(48.dp).testTag("clock_out_button")
-                ) {
-                    Icon(Icons.Default.Logout, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(t.clockOut, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                // One tap simply clocks out; the small trailing button offers "Lunch" and "Break"
+                // so the pause can be tagged (and lunch time summed) when it matters.
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { onClockOut(null) },
+                        colors = ButtonDefaults.buttonColors(containerColor = RoseUrgent),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f).height(48.dp).testTag("clock_out_button")
+                    ) {
+                        Icon(Icons.Default.Logout, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(t.clockOut, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    }
+                    Box {
+                        FilledTonalIconButton(
+                            onClick = { reasonMenuOpen = true },
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.size(48.dp).testTag("clock_out_reason_button")
+                        ) {
+                            Icon(Icons.Default.MoreHoriz, contentDescription = t.clockOutReason)
+                        }
+                        DropdownMenu(expanded = reasonMenuOpen, onDismissRequest = { reasonMenuOpen = false }) {
+                            listOf(ClockOutReason.LUNCH, ClockOutReason.BREAK).forEach { reason ->
+                                DropdownMenuItem(
+                                    text = { Text(t.reasonLabel(reason)) },
+                                    leadingIcon = { Icon(reason.icon(), contentDescription = null) },
+                                    onClick = {
+                                        reasonMenuOpen = false
+                                        onClockOut(reason)
+                                    },
+                                    modifier = Modifier.testTag("clock_out_reason_${reason.name}")
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -662,14 +895,52 @@ fun DaySummaryCard(
                 }
                 Spacer(modifier = Modifier.height(6.dp))
             }
+            if (report.targetSeconds > 0) {
+                TargetProgress(attendanceSeconds = report.accountedSeconds, targetSeconds = report.targetSeconds)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
             SummaryRow(t.clockedIn, report.attendanceSeconds, MaterialTheme.colorScheme.onSurface)
             SummaryRow(t.projectWork, report.productiveSeconds, EmeraldGreen)
             if (report.unassignedProductiveSeconds > 0) {
                 SummaryRow("↳ ${t.unassignedProject}", report.unassignedProductiveSeconds, AmberWarning)
             }
             SummaryRow(t.unproductive, report.unproductiveSeconds, AmberWarning)
+            if (report.lunchSeconds > 0) {
+                SummaryRow(t.reasonLunch, report.lunchSeconds, MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (report.paidBreakSeconds > 0) {
+                SummaryRow("+ ${t.paidBreak}", report.paidBreakSeconds, EmeraldGreen)
+            }
             SignedRow(t.overtimeToday, report.overtimeSeconds)
         }
+    }
+}
+
+/** Clocked-in time against today's target: bar plus "2h 10m to go" / "Target reached". */
+@Composable
+private fun TargetProgress(attendanceSeconds: Long, targetSeconds: Long) {
+    val t = strings
+    val reached = attendanceSeconds >= targetSeconds
+    val remaining = (targetSeconds - attendanceSeconds).coerceAtLeast(0)
+    val progress = (attendanceSeconds.toFloat() / targetSeconds).coerceIn(0f, 1f)
+    Column {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(t.targetLabel(TimeFormat.hoursMinutes(targetSeconds)), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                text = if (reached) t.targetReached else t.remainingToTarget(TimeFormat.hoursMinutes(remaining)),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (reached) EmeraldGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag("target_remaining_text")
+            )
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        LinearProgressIndicator(
+            progress = { progress },
+            color = if (reached) EmeraldGreen else MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).testTag("target_progress_bar")
+        )
     }
 }
 
@@ -734,7 +1005,9 @@ fun TimeEntryRowCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onContinue: (() -> Unit)? = null,
-    isSomethingRunning: Boolean = false
+    isSomethingRunning: Boolean = false,
+    /** The project colour bar on the left; off inside the timeline, whose dot already carries the colour. */
+    showColorBar: Boolean = true
 ) {
     val t = strings
     val projColor = entry.projectColor?.let { projectColor(it) } ?: MaterialTheme.colorScheme.tertiary
@@ -785,8 +1058,10 @@ fun TimeEntryRowCard(
         modifier = Modifier.fillMaxWidth().testTag("time_entry_card_${entry.id}")
     ) {
         Row(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.width(4.dp).height(44.dp).clip(RoundedCornerShape(2.dp)).background(projColor))
-            Spacer(modifier = Modifier.width(12.dp))
+            if (showColorBar) {
+                Box(modifier = Modifier.width(4.dp).height(44.dp).clip(RoundedCornerShape(2.dp)).background(projColor))
+                Spacer(modifier = Modifier.width(12.dp))
+            }
 
             Column(modifier = Modifier.weight(1f)) {
                 val unassigned = entry.isUnassigned
@@ -810,30 +1085,22 @@ fun TimeEntryRowCard(
                 )
             }
 
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = TimeFormat.hoursMinutes(seconds),
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
-                )
-                Row {
-                    if (onContinue != null) {
-                        IconButton(onClick = onContinue, modifier = Modifier.size(32.dp).testTag("continue_entry_${entry.id}")) {
-                            Icon(
-                                if (isSomethingRunning) Icons.Default.SwapHoriz else Icons.Default.PlayArrow,
-                                contentDescription = switchLabel,
-                                tint = EmeraldGreen,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                    IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Edit, contentDescription = t.edit, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                    }
-                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Delete, contentDescription = t.delete, tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f), modifier = Modifier.size(16.dp))
-                    }
+            Text(
+                text = TimeFormat.hoursMinutes(seconds),
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp
+            )
+            // One-tap continue / switch stays on the row; edit and delete are in the tap sheet.
+            if (onContinue != null) {
+                Spacer(modifier = Modifier.width(4.dp))
+                IconButton(onClick = onContinue, modifier = Modifier.size(40.dp).testTag("continue_entry_${entry.id}")) {
+                    Icon(
+                        if (isSomethingRunning) Icons.Default.SwapHoriz else Icons.Default.PlayArrow,
+                        contentDescription = switchLabel,
+                        tint = EmeraldGreen,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
             }
         }

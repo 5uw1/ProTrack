@@ -151,6 +151,17 @@ class AppStrings(
     }
     var formatCsv = ""; var formatExcel = ""
 
+    // Delete / undo / target progress. Body fields: the constructor is at the JVM limit of 255 parameters.
+    var undo = ""; var activityDeleted = ""; var moreActions = ""
+    var deleteProjectQuestion: (String) -> String = { it }; var deleteProjectWarning = ""
+    var deleteTaskQuestion: (String) -> String = { it }; var deleteTaskWarning = ""
+    var deletePeriodQuestion = ""; var deleteAbsenceQuestion = ""
+    var targetLabel: (String) -> String = { it }; var remainingToTarget: (String) -> String = { it }; var targetReached = ""
+    // Clock-in / clock-out events in the day's activity list.
+    var eventClockedIn = ""; var eventClockedOut = ""
+    // Paid short breaks (company rule).
+    var paidBreak = ""; var paidBreakPerDay = ""; var paidBreakHint = ""; var paidBreakSummary: (String) -> String = { it }
+
     fun projectStatus(status: String): String = when (status) {
         "ACTIVE" -> statusActive
         "ON_HOLD" -> statusOnHold
@@ -258,7 +269,7 @@ object Translations {
         projectList = "Project list", importPlaceholder = "P-2026-0142;Spindle retrofit;Customer AG\nP-2026-0150;New HMI",
         noneRecognised = "No projects recognised yet.", recognised = { n, list -> "$n project(s) recognised: $list" }, importN = { "Import $it" },
         logActivity = "Log activity", editActivity = "Edit activity", sapProject = "Project", category = "Task",
-        selectCategory = "Select task", taskOptional = "Task (optional)", noSpecificTask = "General (no specific task)",
+        selectCategory = "Select task", taskOptional = "Task (optional)", noSpecificTask = "General",
         whatDidYouDo = "What did you do?", startLabel = "Start", endLabel = "End", pickStart = "Pick start", pickEnd = "Pick end",
         stillRunning = "This activity is still running.", endAfterStart = "End must be after start.", duration = { "Duration: $it" },
         noProjectOption = "No project yet / not in app", unproductiveSuffix = "(unproductive)",
@@ -288,6 +299,18 @@ object Translations {
         reasonLunch = "Lunch"; reasonBreak = "Break"; reasonOut = "Out of office"; reasonHome = "Go home"
         periodDay = "Day"; periodWeek = "Week"; periodMonth = "Month"
         exportSummary = "Summary per project"; exportTimesheet = "Daily timesheet"; exportAttendance = "Attendance & overtime"
+        undo = "Undo"; activityDeleted = "Activity deleted"; moreActions = "More actions"
+        deleteProjectQuestion = { "Delete project $it?" }
+        deleteProjectWarning = "Its tasks are deleted. Time already booked on it is kept but loses its project and must be re-assigned."
+        deleteTaskQuestion = { "Delete task \"$it\"?" }
+        deleteTaskWarning = "Time booked on this task is kept but loses its task."
+        deletePeriodQuestion = "Delete this clock-in period? The clocked-in time and overtime of the day change."
+        deleteAbsenceQuestion = "Delete this absence? Its hours are no longer credited."
+        targetLabel = { "Target $it" }; remainingToTarget = { "$it to go" }; targetReached = "Target reached"
+        eventClockedIn = "Clocked in"; eventClockedOut = "Clocked out"
+        paidBreak = "Paid breaks"; paidBreakPerDay = "Paid break per day (min)"
+        paidBreakHint = "Coffee / smoke breaks tagged as Break count as working time up to this many minutes a day. 0 = unpaid."
+        paidBreakSummary = { "$it min paid break" }
         formatCsv = "CSV (comma)"; formatExcel = "Excel (semicolon)"
     }
 
@@ -353,7 +376,7 @@ object Translations {
         projectList = "Projektliste", importPlaceholder = "P-2026-0142;Spindel Retrofit;Kunde AG\nP-2026-0150;Neues HMI",
         noneRecognised = "Noch keine Projekte erkannt.", recognised = { n, list -> "$n Projekt(e) erkannt: $list" }, importN = { "$it importieren" },
         logActivity = "Tätigkeit erfassen", editActivity = "Tätigkeit bearbeiten", sapProject = "Projekt", category = "Aufgabe",
-        selectCategory = "Aufgabe wählen", taskOptional = "Aufgabe (optional)", noSpecificTask = "Allgemein (keine bestimmte Aufgabe)",
+        selectCategory = "Aufgabe wählen", taskOptional = "Aufgabe (optional)", noSpecificTask = "Allgemein",
         whatDidYouDo = "Was hast du gemacht?", startLabel = "Start", endLabel = "Ende", pickStart = "Start wählen", pickEnd = "Ende wählen",
         stillRunning = "Diese Tätigkeit läuft noch.", endAfterStart = "Ende muss nach Start liegen.", duration = { "Dauer: $it" },
         noProjectOption = "Noch kein Projekt / nicht in der App", unproductiveSuffix = "(unproduktiv)",
@@ -383,6 +406,18 @@ object Translations {
         reasonLunch = "Mittag"; reasonBreak = "Pause"; reasonOut = "Ausser Haus"; reasonHome = "Feierabend"
         periodDay = "Tag"; periodWeek = "Woche"; periodMonth = "Monat"
         exportSummary = "Summe pro Projekt"; exportTimesheet = "Tagesrapport"; exportAttendance = "Anwesenheit & Überzeit"
+        undo = "Rückgängig"; activityDeleted = "Tätigkeit gelöscht"; moreActions = "Weitere Aktionen"
+        deleteProjectQuestion = { "Projekt $it löschen?" }
+        deleteProjectWarning = "Die Aufgaben werden gelöscht. Bereits gebuchte Zeit bleibt erhalten, verliert aber das Projekt und muss neu zugeordnet werden."
+        deleteTaskQuestion = { "Aufgabe «$it» löschen?" }
+        deleteTaskWarning = "Auf diese Aufgabe gebuchte Zeit bleibt erhalten, verliert aber die Aufgabe."
+        deletePeriodQuestion = "Diese Stempelzeit löschen? Eingestempelte Zeit und Überzeit des Tages ändern sich."
+        deleteAbsenceQuestion = "Diese Abwesenheit löschen? Die Stunden werden nicht mehr gutgeschrieben."
+        targetLabel = { "Soll $it" }; remainingToTarget = { "noch $it" }; targetReached = "Soll erreicht"
+        eventClockedIn = "Eingestempelt"; eventClockedOut = "Ausgestempelt"
+        paidBreak = "Bezahlte Pausen"; paidBreakPerDay = "Bezahlte Pause pro Tag (Min.)"
+        paidBreakHint = "Als Pause markierte Kaffee-/Raucherpausen zählen bis zu so vielen Minuten pro Tag als Arbeitszeit. 0 = unbezahlt."
+        paidBreakSummary = { "$it Min. bezahlte Pause" }
         formatCsv = "CSV (Komma)"; formatExcel = "Excel (Semikolon)"
     }
 
@@ -448,7 +483,7 @@ object Translations {
         projectList = "Liste de projets", importPlaceholder = "P-2026-0142;Rétrofit broche;Client SA\nP-2026-0150;Nouvelle IHM",
         noneRecognised = "Aucun projet reconnu pour l'instant.", recognised = { n, list -> "$n projet(s) reconnu(s) : $list" }, importN = { "Importer $it" },
         logActivity = "Saisir une activité", editActivity = "Modifier l'activité", sapProject = "Projet", category = "Tâche",
-        selectCategory = "Choisir une tâche", taskOptional = "Tâche (optionnel)", noSpecificTask = "Général (aucune tâche précise)",
+        selectCategory = "Choisir une tâche", taskOptional = "Tâche (optionnel)", noSpecificTask = "Général",
         whatDidYouDo = "Qu'as-tu fait ?", startLabel = "Début", endLabel = "Fin", pickStart = "Choisir le début", pickEnd = "Choisir la fin",
         stillRunning = "Cette activité est encore en cours.", endAfterStart = "La fin doit être après le début.", duration = { "Durée : $it" },
         noProjectOption = "Projet inconnu / pas encore dans l'app", unproductiveSuffix = "(improductif)",
@@ -478,6 +513,18 @@ object Translations {
         reasonLunch = "Midi"; reasonBreak = "Pause"; reasonOut = "Hors bureau"; reasonHome = "Fin de journée"
         periodDay = "Jour"; periodWeek = "Semaine"; periodMonth = "Mois"
         exportSummary = "Résumé par projet"; exportTimesheet = "Feuille journalière"; exportAttendance = "Présence & heures sup."
+        undo = "Annuler"; activityDeleted = "Activité supprimée"; moreActions = "Plus d'actions"
+        deleteProjectQuestion = { "Supprimer le projet $it ?" }
+        deleteProjectWarning = "Ses tâches sont supprimées. Le temps déjà imputé est conservé mais perd son projet et devra être réattribué."
+        deleteTaskQuestion = { "Supprimer la tâche « $it » ?" }
+        deleteTaskWarning = "Le temps imputé sur cette tâche est conservé mais perd sa tâche."
+        deletePeriodQuestion = "Supprimer cette période pointée ? Le temps pointé et les heures sup. du jour changent."
+        deleteAbsenceQuestion = "Supprimer cette absence ? Ses heures ne sont plus créditées."
+        targetLabel = { "Objectif $it" }; remainingToTarget = { "encore $it" }; targetReached = "Objectif atteint"
+        eventClockedIn = "Pointé"; eventClockedOut = "Dépointé"
+        paidBreak = "Pauses payées"; paidBreakPerDay = "Pause payée par jour (min)"
+        paidBreakHint = "Les pauses café / cigarette marquées « Pause » comptent comme temps de travail jusqu'à ce nombre de minutes par jour. 0 = non payées."
+        paidBreakSummary = { "$it min de pause payée" }
         formatCsv = "CSV (virgule)"; formatExcel = "Excel (point-virgule)"
     }
 }

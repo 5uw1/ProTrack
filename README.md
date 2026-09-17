@@ -21,6 +21,10 @@ as files.
 * **Swiss working-time rules (canton of Bern)** – configurable schedule (default 40 h/week at
   100 %, legal maximum 45 h/week). Warnings when more than 5 h were worked with less than 30 min
   break, more than 9 h with less than 1 h break, a week exceeds 45 h, or a clock-out was forgotten.
+* **Lunch and breaks** – clock out with one tap, or tag the pause as lunch or break from the "···"
+  menu. Lunch time is summed per day / week / month. Companies that credit short breaks (e.g. 10
+  minutes of coffee / smoke breaks a day) set "Paid break per day" in the work schedule: breaks
+  tagged as Break then count as working time up to that allowance (7 h 50 + 2 × 5 min = 8 h).
 * **Absences** – sick, holiday (own vacation), public holiday (paid by company), compensation
   (taken from overtime), education, or any custom reason. Paid absences count towards the target.
 * **Home-screen widgets (Android & iOS)** – clocked-in time today, target progress, the running

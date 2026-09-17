@@ -259,19 +259,7 @@ class TrackerViewModel(
      * (same project, task and note), so a lunch break does not require re-selecting the work.
      */
     fun clockIn() {
-        viewModelScope.launch {
-            val now = currentTimeMillis()
-            if (repository.getOpenSession() != null) return@launch
-            repository.insertSession(AttendanceSession(clockIn = now))
-            if (repository.getRunningEntry() != null) return@launch
-            val today = DateRanges.dayRange(now)
-            val last = allEntries.value
-                .filter { it.endTime != null && it.startTime >= today.start }
-                .maxByOrNull { it.endTime ?: 0L } ?: return@launch
-            repository.insertTimeEntry(
-                TimeEntry(projectId = last.projectId, taskId = last.taskId, description = last.description, startTime = now, endTime = null)
-            )
-        }
+        viewModelScope.launch { repository.clockIn(currentTimeMillis()) }
     }
 
     /** Starts a new activity with the same project, task and note as [entry] (clocks in if needed). */
@@ -280,12 +268,9 @@ class TrackerViewModel(
     }
 
     /** Clocks out; the running activity is stopped at the same moment so nothing is counted while away. */
+    /** Clocks out; [reason] tags the pause (lunch, break) and is null for a plain clock-out. */
     fun clockOut(reason: ClockOutReason? = null) {
-        viewModelScope.launch {
-            val now = currentTimeMillis()
-            repository.closeRunningEntries(now)
-            repository.closeOpenSessions(now, reason?.name)
-        }
+        viewModelScope.launch { repository.clockOut(currentTimeMillis(), reason?.name) }
     }
 
     fun updateSession(session: AttendanceSession) {
@@ -309,22 +294,7 @@ class TrackerViewModel(
      * starting work from a task is a single tap.
      */
     fun startActivity(projectId: Long?, taskId: Long? = null, description: String = "") {
-        viewModelScope.launch {
-            val now = currentTimeMillis()
-            if (repository.getOpenSession() == null) {
-                repository.insertSession(AttendanceSession(clockIn = now))
-            }
-            repository.closeRunningEntries(now)
-            repository.insertTimeEntry(
-                TimeEntry(
-                    projectId = projectId,
-                    taskId = taskId,
-                    description = description,
-                    startTime = now,
-                    endTime = null
-                )
-            )
-        }
+        viewModelScope.launch { repository.startActivity(projectId, taskId, description, currentTimeMillis()) }
     }
 
     fun startActivityFromTask(task: WorkTaskWithProject) {
@@ -378,6 +348,11 @@ class TrackerViewModel(
 
     fun deleteTimeEntry(entryId: Long) {
         viewModelScope.launch { repository.deleteTimeEntryById(entryId) }
+    }
+
+    /** Puts a just-deleted entry back (undo from the snackbar); the original id is kept. */
+    fun restoreEntry(entry: TimeEntryWithDetails) {
+        viewModelScope.launch { repository.insertTimeEntry(entry.toEntity()) }
     }
 
     // --- Projects & categories ---

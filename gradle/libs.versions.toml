@@ -11,6 +11,7 @@ kotlinxDatetime = "0.8.0"
 jetbrainsLifecycle = "2.11.0"
 materialIcons = "1.7.3"
 activityCompose = "1.10.1"
+glance = "1.1.1"
 coreKtx = "1.18.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
@@ -49,6 +50,8 @@ sqlite-framework = { group = "androidx.sqlite", name = "sqlite-framework", versi
 # Android only
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+androidx-glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version.ref = "glance" }
+androidx-glance-material3 = { group = "androidx.glance", name = "glance-material3", version.ref = "glance" }
 
 # Android testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }

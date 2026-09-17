@@ -35,15 +35,19 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,6 +64,8 @@ import com.suw1labs.worktracker.data.model.DayRecord
 import com.suw1labs.worktracker.data.model.TimeEntryWithDetails
 import com.suw1labs.worktracker.data.report.DayRow
 import com.suw1labs.worktracker.data.report.PeriodReport
+import com.suw1labs.worktracker.ui.components.ConfirmDeleteDialog
+import com.suw1labs.worktracker.ui.components.LocalSnackbarHostState
 import com.suw1labs.worktracker.ui.components.SessionRow
 import com.suw1labs.worktracker.ui.i18n.emoji
 import com.suw1labs.worktracker.ui.theme.AmberWarning
@@ -70,10 +76,10 @@ import com.suw1labs.worktracker.util.DateFormats
 import com.suw1labs.worktracker.util.DateRanges
 import com.suw1labs.worktracker.util.ReportPeriodType
 import com.suw1labs.worktracker.util.TimeFormat
-import com.suw1labs.worktracker.util.currentTimeMillis
 import com.suw1labs.worktracker.util.parseHexColor
 import com.suw1labs.worktracker.util.toLocalDate
 import com.suw1labs.worktracker.ui.i18n.strings
+import kotlinx.coroutines.launch
 import kotlinx.datetime.isoDayNumber
 
 @Composable
@@ -103,6 +109,18 @@ fun ReportsScreen(
     var editingSession by remember { mutableStateOf<AttendanceSession?>(null) }
     var showManualEntry by remember { mutableStateOf(false) }
     var editingEntry by remember { mutableStateOf<TimeEntryWithDetails?>(null) }
+    var deletingSession by remember { mutableStateOf<AttendanceSession?>(null) }
+    var deletingAbsence by remember { mutableStateOf<DayRecord?>(null) }
+    val snackbarHost = LocalSnackbarHostState.current
+    val scope = rememberCoroutineScope()
+
+    fun deleteWithUndo(entry: TimeEntryWithDetails) {
+        viewModel.deleteTimeEntry(entry.id)
+        scope.launch {
+            val result = snackbarHost.showSnackbar(message = t.activityDeleted, actionLabel = t.undo, duration = SnackbarDuration.Long)
+            if (result == SnackbarResult.ActionPerformed) viewModel.restoreEntry(entry)
+        }
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(horizontal = 12.dp),
@@ -178,6 +196,8 @@ fun ReportsScreen(
                     PlainRow(t.clockedIn, TimeFormat.hoursMinutes(report.attendanceSeconds))
                     PlainRow(t.projectWork, TimeFormat.hoursMinutes(report.productiveSeconds), EmeraldGreen)
                     PlainRow(t.unproductive, TimeFormat.hoursMinutes(report.unproductiveSeconds), AmberWarning)
+                    if (report.lunchSeconds > 0) PlainRow(t.reasonLunch, TimeFormat.hoursMinutes(report.lunchSeconds), MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (report.paidBreakSeconds > 0) PlainRow("+ ${t.paidBreak}", TimeFormat.hoursMinutes(report.paidBreakSeconds), EmeraldGreen)
                     if (report.creditedSeconds > 0) PlainRow(t.absencesCredited, TimeFormat.hoursMinutes(report.creditedSeconds))
                     PlainRow(t.target, TimeFormat.hoursMinutes(report.targetSeconds))
                     HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
@@ -213,10 +233,12 @@ fun ReportsScreen(
                     if (projectRows.isEmpty()) {
                         Text(t.noProjectHours, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
+                        val totalProjectSeconds = projectRows.sumOf { it.seconds }.coerceAtLeast(1)
                         projectRows.forEachIndexed { index, p ->
-                            if (index > 0) HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            if (index > 0) HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
+                            val color = parseHexColor(p.colorHex) ?: MaterialTheme.colorScheme.primary
                             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(parseHexColor(p.colorHex) ?: MaterialTheme.colorScheme.primary))
+                                Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(color))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(p.code, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 13.sp)
@@ -224,6 +246,13 @@ fun ReportsScreen(
                                 }
                                 Text(TimeFormat.hoursMinutes(p.seconds), fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, color = MaterialTheme.colorScheme.primary)
                             }
+                            // Share of the project total, so the split is visible at a glance.
+                            LinearProgressIndicator(
+                                progress = { (p.seconds.toFloat() / totalProjectSeconds).coerceIn(0f, 1f) },
+                                color = color,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.fillMaxWidth().padding(start = 18.dp, top = 6.dp).height(4.dp).clip(RoundedCornerShape(2.dp))
+                            )
                         }
                         HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
                         PlainRow(t.total, TimeFormat.hoursMinutes(projectRows.sumOf { it.seconds }))
@@ -279,7 +308,7 @@ fun ReportsScreen(
                         if (absences.isEmpty()) {
                             Text(t.noneInPeriod, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         } else {
-                            absences.forEach { a -> AbsenceRow(a, onEdit = { editingAbsence = a }, onDelete = { viewModel.deleteDayRecord(a.id) }) }
+                            absences.forEach { a -> AbsenceRow(a, onEdit = { editingAbsence = a }, onDelete = { deletingAbsence = a }) }
                         }
                     }
                 }
@@ -311,16 +340,22 @@ fun ReportsScreen(
                                 }
                             }
                         }
-                        day?.absence?.let { a -> AbsenceRow(a, onEdit = { editingAbsence = a }, onDelete = { viewModel.deleteDayRecord(a.id) }) }
+                        day?.absence?.let { a -> AbsenceRow(a, onEdit = { editingAbsence = a }, onDelete = { deletingAbsence = a }) }
                         if (daySessions.isEmpty()) {
                             Text(t.notClockedInOnDay, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 6.dp))
                         } else {
                             daySessions.forEachIndexed { index, session ->
                                 if (index > 0) HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
-                                SessionRow(session = session, now = now, onEdit = { editingSession = session }, onDelete = { viewModel.deleteSession(session.id) })
+                                SessionRow(session = session, now = now, onEdit = { editingSession = session }, onDelete = { deletingSession = session })
                             }
                             if (day != null && day.breakSeconds > 0) {
-                                Text("${t.breaks}: ${TimeFormat.hoursMinutes(day.breakSeconds)}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                                Text(
+                                    "${t.breaks}: ${TimeFormat.hoursMinutes(day.breakSeconds)}" +
+                                        if (day.lunchSeconds > 0) " · ${t.reasonLunch} ${TimeFormat.hoursMinutes(day.lunchSeconds)}" else "",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
                             }
                         }
                     }
@@ -340,12 +375,36 @@ fun ReportsScreen(
                 item { Text(t.noActivitiesOnDay, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             } else {
                 items(dayEntries, key = { it.id }) { entry ->
-                    TimeEntryRowCard(entry = entry, now = now, onEdit = { editingEntry = entry }, onDelete = { viewModel.deleteTimeEntry(entry.id) })
+                    TimeEntryRowCard(entry = entry, now = now, onEdit = { editingEntry = entry }, onDelete = { deleteWithUndo(entry) })
                 }
             }
         }
 
         item { Spacer(modifier = Modifier.height(20.dp)) }
+    }
+
+    deletingSession?.let { session ->
+        ConfirmDeleteDialog(
+            title = t.clockInPeriods,
+            message = t.deletePeriodQuestion,
+            onConfirm = {
+                viewModel.deleteSession(session.id)
+                deletingSession = null
+            },
+            onDismiss = { deletingSession = null }
+        )
+    }
+
+    deletingAbsence?.let { record ->
+        ConfirmDeleteDialog(
+            title = t.absence,
+            message = t.deleteAbsenceQuestion,
+            onConfirm = {
+                viewModel.deleteDayRecord(record.id)
+                deletingAbsence = null
+            },
+            onDismiss = { deletingAbsence = null }
+        )
     }
 
     if (showExportDialog) {

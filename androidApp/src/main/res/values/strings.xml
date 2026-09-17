@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">WorkTracker</string>
+    <string name="widget_label">WorkTracker</string>
+    <string name="widget_description">Clocked-in time today, the running activity and a clock in / clock out button.</string>
 </resources>

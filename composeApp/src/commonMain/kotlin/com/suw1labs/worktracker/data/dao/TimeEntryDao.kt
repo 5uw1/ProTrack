@@ -36,6 +36,10 @@ interface TimeEntryDao {
     @Query("SELECT * FROM time_entries WHERE id = :id")
     suspend fun getEntryById(id: Long): TimeEntry?
 
+    /** The most recently finished activity that started at or after [since] (used to continue it after a break). */
+    @Query("SELECT * FROM time_entries WHERE endTime IS NOT NULL AND startTime >= :since ORDER BY endTime DESC LIMIT 1")
+    suspend fun getLastClosedEntrySince(since: Long): TimeEntry?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEntry(entry: TimeEntry): Long
 

@@ -11,14 +11,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,22 +26,24 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import com.suw1labs.worktracker.data.import.ProjectImporter
 import com.suw1labs.worktracker.data.model.AbsenceType
 import com.suw1labs.worktracker.data.model.AppSettings
 import com.suw1labs.worktracker.data.model.DayRecord
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import com.suw1labs.worktracker.ui.components.FormDialog
 import com.suw1labs.worktracker.ui.components.LabeledDropdown
-import com.suw1labs.worktracker.ui.components.dismissKeyboardOnTap
 import com.suw1labs.worktracker.ui.i18n.strings
 import com.suw1labs.worktracker.ui.theme.RoseUrgent
 import com.suw1labs.worktracker.util.DateFormats
@@ -118,74 +115,56 @@ fun DayRecordDialog(
     val hours = hoursText.replace(',', '.').toDoubleOrNull()
     val valid = hours != null && hours > 0 && (type != AbsenceType.OTHER || label.isNotBlank())
 
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            modifier = Modifier.fillMaxWidth().padding(4.dp).testTag("day_record_dialog").dismissKeyboardOnTap()
-        ) {
-            Column(modifier = Modifier.padding(20.dp).verticalScroll(rememberScrollState())) {
-                Text(
-                    text = if (record == null) t.bookAbsence else t.editAbsence,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-                DayPickerField(label = t.day, dayStart = dayStart, onPick = { dayStart = it })
-                Spacer(modifier = Modifier.height(10.dp))
-                LabeledDropdown(
-                    label = t.reason,
-                    selectedText = t.absenceLabel(type),
-                    options = AbsenceType.entries,
-                    optionText = { t.absenceLabel(it) },
-                    onSelect = { type = it },
-                    testTag = "absence_type_dropdown"
-                )
-                if (type == AbsenceType.OTHER) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    OutlinedTextField(
-                        value = label,
-                        onValueChange = { label = it },
-                        label = { Text(t.reasonRequired) },
-                        placeholder = { Text(t.reasonPlaceholder) },
-                        modifier = Modifier.fillMaxWidth().testTag("absence_label_input")
-                    )
-                }
-                Spacer(modifier = Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = hoursText,
-                    onValueChange = { hoursText = it },
-                    label = { Text(t.hoursFullDay(TimeFormat.sapHours(defaultHours))) },
-                    modifier = Modifier.fillMaxWidth().testTag("absence_hours_input")
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = if (type.creditsHours) t.creditsHint else t.fromOvertimeHint,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = note,
-                    onValueChange = { note = it },
-                    label = { Text(t.noteOptional) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                if (hours == null || hours <= 0) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(t.enterHours, fontSize = 12.sp, color = RoseUrgent)
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text(t.cancel) }
-                    Button(
-                        onClick = { if (valid) onSave(dayStart, type, hours ?: 0.0, label, note) },
-                        enabled = valid,
-                        modifier = Modifier.weight(1f).testTag("save_day_record_button")
-                    ) { Text(t.save) }
-                }
-            }
+    FormDialog(
+        title = if (record == null) t.bookAbsence else t.editAbsence,
+        onDismiss = onDismiss,
+        onSave = { if (valid) onSave(dayStart, type, hours ?: 0.0, label, note) },
+        saveEnabled = valid,
+        saveTestTag = "save_day_record_button",
+        modifier = Modifier.testTag("day_record_dialog")
+    ) {
+        DayPickerField(label = t.day, dayStart = dayStart, onPick = { dayStart = it })
+        Spacer(modifier = Modifier.height(10.dp))
+        LabeledDropdown(
+            label = t.reason,
+            selectedText = t.absenceLabel(type),
+            options = AbsenceType.entries,
+            optionText = { t.absenceLabel(it) },
+            onSelect = { type = it },
+            testTag = "absence_type_dropdown"
+        )
+        if (type == AbsenceType.OTHER) {
+            Spacer(modifier = Modifier.height(10.dp))
+            OutlinedTextField(
+                value = label,
+                onValueChange = { label = it },
+                label = { Text(t.reasonRequired) },
+                placeholder = { Text(t.reasonPlaceholder) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                modifier = Modifier.fillMaxWidth().testTag("absence_label_input")
+            )
         }
+        Spacer(modifier = Modifier.height(10.dp))
+        OutlinedTextField(
+            value = hoursText,
+            onValueChange = { hoursText = it },
+            label = { Text(t.hoursFullDay(TimeFormat.sapHours(defaultHours))) },
+            singleLine = true,
+            isError = hours == null || hours <= 0,
+            supportingText = { Text(if (hours == null || hours <= 0) t.enterHours else if (type.creditsHours) t.creditsHint else t.fromOvertimeHint) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+            modifier = Modifier.fillMaxWidth().testTag("absence_hours_input")
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        OutlinedTextField(
+            value = note,
+            onValueChange = { note = it },
+            label = { Text(t.noteOptional) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -200,12 +179,15 @@ fun WorkScheduleDialog(
     var fullTime by remember { mutableStateOf(TimeFormat.sapHours(settings.fullTimeWeeklyHours)) }
     var maxWeekly by remember { mutableStateOf(TimeFormat.sapHours(settings.maxWeeklyHours)) }
     var dayHours by remember { mutableStateOf(settings.weekdayHoursList.map { TimeFormat.sapHours(it) }) }
+    var paidBreak by remember { mutableStateOf(settings.paidBreakMinutes.toString()) }
+    val paidBreakValue = paidBreak.trim().let { if (it.isEmpty()) 0 else it.toIntOrNull() }
 
     val fullTimeValue = fullTime.replace(',', '.').toDoubleOrNull()
     val maxValue = maxWeekly.replace(',', '.').toDoubleOrNull()
     val dayValues = dayHours.map { it.replace(',', '.').trim().let { v -> if (v.isEmpty()) 0.0 else v.toDoubleOrNull() } }
     val valid = fullTimeValue != null && fullTimeValue > 0 && maxValue != null && maxValue > 0 &&
-        dayValues.all { it != null && it >= 0 } && dayValues.any { (it ?: 0.0) > 0 }
+        dayValues.all { it != null && it >= 0 } && dayValues.any { (it ?: 0.0) > 0 } &&
+        paidBreakValue != null && paidBreakValue >= 0
 
     val preview = if (valid) {
         val s = AppSettings(
@@ -216,56 +198,57 @@ fun WorkScheduleDialog(
         t.schedulePreview(TimeFormat.sapHours(s.weeklyTargetHours), TimeFormat.sapHours(s.workloadPercent), s.workDaysPerWeek)
     } else t.checkValues
 
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            modifier = Modifier.fillMaxWidth().padding(4.dp).testTag("work_schedule_dialog").dismissKeyboardOnTap()
-        ) {
-            Column(modifier = Modifier.padding(20.dp).verticalScroll(rememberScrollState())) {
-                Text(t.workSchedule, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text(t.scheduleSubtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(14.dp))
-                OutlinedTextField(value = fullTime, onValueChange = { fullTime = it }, singleLine = true, label = { Text(t.hoursPerWeekAt100) }, modifier = Modifier.fillMaxWidth().testTag("weekly_hours_input"))
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = maxWeekly, onValueChange = { maxWeekly = it }, singleLine = true, label = { Text(t.legalMaxPerWeek) }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(t.hoursPerDay, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                Text(t.hoursPerDayHint, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
-                    (0 until 7).forEach { index ->
-                        Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(t.weekdaysTwo[index], fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            CompactNumberField(
-                                value = dayHours[index],
-                                onValueChange = { v -> dayHours = dayHours.toMutableList().also { it[index] = v } },
-                                modifier = Modifier.fillMaxWidth().testTag("day_hours_${index + 1}")
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(preview, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (valid) MaterialTheme.colorScheme.primary else RoseUrgent)
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text(t.cancel) }
-                    Button(
-                        onClick = {
-                            if (valid) onSave(
-                                settings.copy(
-                                    fullTimeWeeklyHours = fullTimeValue!!,
-                                    weekdayHours = AppSettings.weekdayHoursString(dayValues.map { it ?: 0.0 }),
-                                    maxWeeklyHours = maxValue!!
-                                )
-                            )
-                        },
-                        enabled = valid,
-                        modifier = Modifier.weight(1f).testTag("save_schedule_button")
-                    ) { Text(t.save) }
+    FormDialog(
+        title = t.workSchedule,
+        subtitle = t.scheduleSubtitle,
+        onDismiss = onDismiss,
+        onSave = {
+            if (valid) onSave(
+                settings.copy(
+                    fullTimeWeeklyHours = fullTimeValue!!,
+                    weekdayHours = AppSettings.weekdayHoursString(dayValues.map { it ?: 0.0 }),
+                    maxWeeklyHours = maxValue!!,
+                    paidBreakMinutes = paidBreakValue ?: 0
+                )
+            )
+        },
+        saveEnabled = valid,
+        saveTestTag = "save_schedule_button",
+        modifier = Modifier.testTag("work_schedule_dialog")
+    ) {
+        val decimal = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next)
+        OutlinedTextField(value = fullTime, onValueChange = { fullTime = it }, singleLine = true, keyboardOptions = decimal, label = { Text(t.hoursPerWeekAt100) }, modifier = Modifier.fillMaxWidth().testTag("weekly_hours_input"))
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(value = maxWeekly, onValueChange = { maxWeekly = it }, singleLine = true, keyboardOptions = decimal, label = { Text(t.legalMaxPerWeek) }, modifier = Modifier.fillMaxWidth())
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(t.hoursPerDay, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+        Text(t.hoursPerDayHint, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(modifier = Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
+            (0 until 7).forEach { index ->
+                Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(t.weekdaysTwo[index], fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    CompactNumberField(
+                        value = dayHours[index],
+                        onValueChange = { v -> dayHours = dayHours.toMutableList().also { it[index] = v } },
+                        modifier = Modifier.fillMaxWidth().testTag("day_hours_${index + 1}")
+                    )
                 }
             }
         }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(preview, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (valid) MaterialTheme.colorScheme.primary else RoseUrgent)
+        Spacer(modifier = Modifier.height(12.dp))
+        OutlinedTextField(
+            value = paidBreak,
+            onValueChange = { paidBreak = it },
+            singleLine = true,
+            isError = paidBreakValue == null,
+            label = { Text(t.paidBreakPerDay) },
+            supportingText = { Text(t.paidBreakHint) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+            modifier = Modifier.fillMaxWidth().testTag("paid_break_input")
+        )
     }
 }
 
@@ -305,41 +288,30 @@ fun ImportProjectsDialog(
     var text by remember { mutableStateOf("") }
     val parsed = remember(text) { onPreview(text) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            modifier = Modifier.fillMaxWidth().padding(4.dp).testTag("import_projects_dialog").dismissKeyboardOnTap()
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Text(t.importProjects, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text(t.importDescription, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    label = { Text(t.projectList) },
-                    placeholder = { Text(t.importPlaceholder) },
-                    minLines = 5,
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp).testTag("import_text_input")
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = if (parsed.isEmpty()) t.noneRecognised else t.recognised(parsed.size, parsed.take(3).joinToString(", ") { it.code } + if (parsed.size > 3) ", …" else ""),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text(t.cancel) }
-                    Button(
-                        onClick = { onImport(text) },
-                        enabled = parsed.isNotEmpty(),
-                        modifier = Modifier.weight(1f).testTag("import_projects_button")
-                    ) { Text(t.importN(parsed.size)) }
-                }
-            }
-        }
+    FormDialog(
+        title = t.importProjects,
+        subtitle = t.importDescription,
+        onDismiss = onDismiss,
+        onSave = { onImport(text) },
+        saveEnabled = parsed.isNotEmpty(),
+        saveLabel = t.importN(parsed.size),
+        saveTestTag = "import_projects_button",
+        modifier = Modifier.testTag("import_projects_dialog")
+    ) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it },
+            label = { Text(t.projectList) },
+            placeholder = { Text(t.importPlaceholder) },
+            minLines = 5,
+            modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp).testTag("import_text_input")
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = if (parsed.isEmpty()) t.noneRecognised else t.recognised(parsed.size, parsed.take(3).joinToString(", ") { it.code } + if (parsed.size > 3) ", …" else ""),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = if (parsed.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary
+        )
     }
 }

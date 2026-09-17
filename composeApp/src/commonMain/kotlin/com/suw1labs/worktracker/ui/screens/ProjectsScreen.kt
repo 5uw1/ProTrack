@@ -1,6 +1,5 @@
 package com.suw1labs.worktracker.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -26,50 +24,48 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Upload
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import com.suw1labs.worktracker.data.model.Project
 import com.suw1labs.worktracker.data.model.ProjectSummary
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import com.suw1labs.worktracker.ui.components.ColorPaletteSelector
+import com.suw1labs.worktracker.ui.components.ConfirmDeleteDialog
+import com.suw1labs.worktracker.ui.components.FormDialog
 import com.suw1labs.worktracker.ui.components.EmptyStateCard
 import com.suw1labs.worktracker.ui.components.HoursProgressBar
 import com.suw1labs.worktracker.ui.components.LabeledDropdown
 import com.suw1labs.worktracker.ui.components.StatusBadge
 import com.suw1labs.worktracker.ui.i18n.Language
-import com.suw1labs.worktracker.ui.components.dismissKeyboardOnTap
 import com.suw1labs.worktracker.ui.theme.AmberWarning
 import com.suw1labs.worktracker.ui.theme.EmeraldGreen
 import com.suw1labs.worktracker.ui.viewmodel.TrackerViewModel
 import com.suw1labs.worktracker.util.TimeFormat
-import com.suw1labs.worktracker.util.parseHexColor
 import com.suw1labs.worktracker.util.projectColor
 import com.suw1labs.worktracker.ui.i18n.strings
 
@@ -83,6 +79,7 @@ fun ProjectsScreen(
     var selectedFilter by remember { mutableStateOf("ALL") }
     var showAddProjectDialog by remember { mutableStateOf(false) }
     var editingProject by remember { mutableStateOf<ProjectSummary?>(null) }
+    var deletingProject by remember { mutableStateOf<ProjectSummary?>(null) }
     var showScheduleDialog by remember { mutableStateOf(false) }
     var showImportDialog by remember { mutableStateOf(false) }
     var importResult by remember { mutableStateOf<String?>(null) }
@@ -119,7 +116,8 @@ fun ProjectsScreen(
                             Text(
                                 "${TimeFormat.sapHours(settings.workloadPercent)} % · ${TimeFormat.sapHours(settings.weeklyTargetHours)} ${t.perWeek} · " +
                                     settings.weekdayHoursList.mapIndexedNotNull { i, h -> if (h > 0) "${t.weekdaysTwo[i]} ${TimeFormat.sapHours(h)}" else null }.joinToString(" ") +
-                                    " · ${t.maxPerWeek} ${TimeFormat.sapHours(settings.maxWeeklyHours)} ${t.perWeek}",
+                                    " · ${t.maxPerWeek} ${TimeFormat.sapHours(settings.maxWeeklyHours)} ${t.perWeek}" +
+                                    if (settings.paidBreakMinutes > 0) " · ${t.paidBreakSummary(settings.paidBreakMinutes.toString())}" else "",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -200,7 +198,7 @@ fun ProjectsScreen(
                     ProjectCard(
                         summary = summary,
                         onEdit = { editingProject = summary },
-                        onDelete = { viewModel.deleteProject(summary.id) }
+                        onDelete = { deletingProject = summary }
                     )
                 }
             }
@@ -257,6 +255,18 @@ fun ProjectsScreen(
                 )
                 editingProject = null
             }
+        )
+    }
+
+    deletingProject?.let { summary ->
+        ConfirmDeleteDialog(
+            title = t.deleteProjectQuestion("${summary.code} · ${summary.name}"),
+            message = t.deleteProjectWarning,
+            onConfirm = {
+                viewModel.deleteProject(summary.id)
+                deletingProject = null
+            },
+            onDismiss = { deletingProject = null }
         )
     }
 
@@ -396,85 +406,74 @@ fun ProjectFormDialog(
 
     val valid = code.isNotBlank() && name.isNotBlank()
 
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            modifier = Modifier.fillMaxWidth().padding(4.dp).testTag("project_form_dialog").dismissKeyboardOnTap()
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Text(
-                    text = if (project == null) t.newProject else t.editProject,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-
-                OutlinedTextField(
-                    value = code,
-                    onValueChange = { code = it },
-                    label = { Text(t.projectNumber) },
-                    placeholder = { Text(t.projectNumberHint) },
-                    modifier = Modifier.fillMaxWidth().testTag("project_code_input")
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(t.projectName) },
-                    modifier = Modifier.fillMaxWidth().testTag("project_name_input")
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = client,
-                    onValueChange = { client = it },
-                    label = { Text(t.customer) },
-                    modifier = Modifier.fillMaxWidth().testTag("project_client_input")
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    OutlinedTextField(
-                        value = budgetHoursStr,
-                        onValueChange = { budgetHoursStr = it },
-                        label = { Text(t.plannedHours) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    LabeledDropdown(
-                        label = t.status,
-                        selectedText = t.projectStatus(status),
-                        options = listOf("ACTIVE", "ON_HOLD", "COMPLETED"),
-                        optionText = { t.projectStatus(it) },
-                        onSelect = { status = it },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(if (isProductive) t.productiveWork else t.unproductiveTime, fontWeight = FontWeight.Medium)
-                        Text(if (isProductive) t.productiveHint else t.unproductiveHint, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Switch(checked = isProductive, onCheckedChange = { isProductive = it }, modifier = Modifier.testTag("project_productive_switch"))
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(t.colourTag, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                ColorPaletteSelector(selectedColorHex = colorHex, onColorSelected = { colorHex = it })
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text(t.cancel) }
-                    Button(
-                        onClick = {
-                            if (valid) onSave(code, name, client, colorHex, budgetHoursStr.toDoubleOrNull() ?: 0.0, status, isProductive)
-                        },
-                        enabled = valid,
-                        modifier = Modifier.weight(1f).testTag("save_project_button")
-                    ) { Text(t.save) }
-                }
-            }
+    FormDialog(
+        title = if (project == null) t.newProject else t.editProject,
+        onDismiss = onDismiss,
+        onSave = { onSave(code, name, client, colorHex, budgetHoursStr.replace(',', '.').toDoubleOrNull() ?: 0.0, status, isProductive) },
+        saveEnabled = valid,
+        saveTestTag = "save_project_button",
+        modifier = Modifier.testTag("project_form_dialog")
+    ) {
+        OutlinedTextField(
+            value = code,
+            onValueChange = { code = it },
+            label = { Text(t.projectNumber) },
+            placeholder = { Text(t.projectNumberHint) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            modifier = Modifier.fillMaxWidth().testTag("project_code_input")
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = { Text(t.projectName) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            modifier = Modifier.fillMaxWidth().testTag("project_name_input")
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        OutlinedTextField(
+            value = client,
+            onValueChange = { client = it },
+            label = { Text(t.customer) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            modifier = Modifier.fillMaxWidth().testTag("project_client_input")
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            OutlinedTextField(
+                value = budgetHoursStr,
+                onValueChange = { budgetHoursStr = it },
+                label = { Text(t.plannedHours) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+                modifier = Modifier.weight(1f)
+            )
+            LabeledDropdown(
+                label = t.status,
+                selectedText = t.projectStatus(status),
+                options = listOf("ACTIVE", "ON_HOLD", "COMPLETED"),
+                optionText = { t.projectStatus(it) },
+                onSelect = { status = it },
+                modifier = Modifier.weight(1f)
+            )
         }
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(if (isProductive) t.productiveWork else t.unproductiveTime, fontWeight = FontWeight.Medium)
+                Text(if (isProductive) t.productiveHint else t.unproductiveHint, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Switch(checked = isProductive, onCheckedChange = { isProductive = it }, modifier = Modifier.testTag("project_productive_switch"))
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(t.colourTag, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+        ColorPaletteSelector(selectedColorHex = colorHex, onColorSelected = { colorHex = it })
     }
 }
