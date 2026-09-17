@@ -89,6 +89,19 @@ class AppStrings(val language: Language) {
     lateinit var credited: String
     lateinit var fromOvertime: String
     lateinit var targetReachedTitle: String
+    // still clocked in safety net + forgotten clock-out fix
+    lateinit var stillClockedInTitle: String
+    lateinit var stillClockedInBody: (String) -> String
+    lateinit var clockOutAt: (String) -> String
+    // month-end check (Reports, month scope)
+    lateinit var monthEndCheck: String
+    lateinit var readyToBook: String
+    lateinit var thingsToFix: (Int) -> String
+    lateinit var checkForgotClockOut: (Int) -> String
+    lateinit var checkUnassigned: (String) -> String
+    lateinit var checkRuleWarnings: (Int) -> String
+    lateinit var checkRoundedTotal: (rounded: String, exact: String) -> String
+    lateinit var checkOpenToday: String
     lateinit var targetReachedBody: (String) -> String
     // reports
     lateinit var sapExport: String
@@ -450,6 +463,17 @@ object Translations {
         credited = "credited"
         fromOvertime = "from overtime"
         targetReachedTitle = "Daily target reached 🎉"
+        stillClockedInTitle = "Still clocked in?"
+        stillClockedInBody = { "You have been clocked in for over $it. Forgot to clock out?" }
+        clockOutAt = { "Clock out at $it" }
+        monthEndCheck = "Month-end check"
+        readyToBook = "Ready to book into SAP"
+        thingsToFix = { if (it == 1) "1 thing to fix before booking" else "$it things to fix before booking" }
+        checkForgotClockOut = { if (it == 1) "1 day without clock-out" else "$it days without clock-out" }
+        checkUnassigned = { "$it of work without a project – assign it in the day view" }
+        checkRuleWarnings = { if (it == 1) "1 working-time warning" else "$it working-time warnings" }
+        checkRoundedTotal = { rounded, exact -> "$rounded h project hours rounded to 0.25 (exact $exact h)" }
+        checkOpenToday = "Today is still open – the month is complete once you have clocked out."
         targetReachedBody = { "You have clocked in $it today. Time to go home?" }
         sapExport = "Export"
         target = "Target"
@@ -726,6 +750,17 @@ object Translations {
         credited = "gutgeschrieben"
         fromOvertime = "aus Überzeit"
         targetReachedTitle = "Tagessoll erreicht 🎉"
+        stillClockedInTitle = "Noch eingestempelt?"
+        stillClockedInBody = { "Du bist seit über $it eingestempelt. Ausstempeln vergessen?" }
+        clockOutAt = { "Um $it ausstempeln" }
+        monthEndCheck = "Monatsabschluss-Check"
+        readyToBook = "Bereit zum Buchen in SAP"
+        thingsToFix = { if (it == 1) "1 Punkt vor dem Buchen korrigieren" else "$it Punkte vor dem Buchen korrigieren" }
+        checkForgotClockOut = { if (it == 1) "1 Tag ohne Ausstempeln" else "$it Tage ohne Ausstempeln" }
+        checkUnassigned = { "$it Arbeit ohne Projekt – in der Tagesansicht zuordnen" }
+        checkRuleWarnings = { if (it == 1) "1 Arbeitszeit-Warnung" else "$it Arbeitszeit-Warnungen" }
+        checkRoundedTotal = { rounded, exact -> "$rounded h Projektstunden auf 0.25 gerundet (exakt $exact h)" }
+        checkOpenToday = "Heute ist noch offen – der Monat ist komplett, sobald du ausgestempelt hast."
         targetReachedBody = { "Du bist heute $it eingestempelt. Zeit für den Feierabend?" }
         sapExport = "Export"
         target = "Soll"
@@ -1002,6 +1037,17 @@ object Translations {
         credited = "crédité"
         fromOvertime = "des heures sup."
         targetReachedTitle = "Objectif du jour atteint 🎉"
+        stillClockedInTitle = "Toujours pointé ?"
+        stillClockedInBody = { "Tu es pointé depuis plus de $it. Oublié de dépointer ?" }
+        clockOutAt = { "Dépointer à $it" }
+        monthEndCheck = "Contrôle de fin de mois"
+        readyToBook = "Prêt à saisir dans SAP"
+        thingsToFix = { if (it == 1) "1 point à corriger avant la saisie" else "$it points à corriger avant la saisie" }
+        checkForgotClockOut = { if (it == 1) "1 jour sans dépointage" else "$it jours sans dépointage" }
+        checkUnassigned = { "$it de travail sans projet – à attribuer dans la vue du jour" }
+        checkRuleWarnings = { if (it == 1) "1 avertissement de temps de travail" else "$it avertissements de temps de travail" }
+        checkRoundedTotal = { rounded, exact -> "$rounded h d'heures projet arrondies à 0.25 (exact $exact h)" }
+        checkOpenToday = "Aujourd'hui est encore ouvert – le mois est complet une fois dépointé."
         targetReachedBody = { "Tu as pointé $it aujourd'hui. L'heure de rentrer ?" }
         sapExport = "Export"
         target = "Objectif"

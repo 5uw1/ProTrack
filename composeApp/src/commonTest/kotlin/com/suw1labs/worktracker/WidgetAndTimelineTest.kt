@@ -153,6 +153,17 @@ class WidgetAndTimelineTest {
         assertEquals(r.attendanceSeconds, r.productiveSeconds + r.unproductiveSeconds + r.unallocatedSeconds)
     }
 
+    @Test
+    fun forgottenClockOut_usesLastActivityEndOrTarget() {
+        val open = AttendanceSession(id = 1, clockIn = at(8.0), clockOut = null)
+        // Last activity of that day ended at 16:30 -> clock out there.
+        val entries = listOf(entry(1, at(8.0), at(12.0)), entry(2, at(13.0), at(16.5)))
+        assertEquals(at(16.5), ReportCalculator.forgottenClockOutTime(open, entries, AppSettings()))
+        // No closed activity -> clock-in plus the day's target (8 h on a weekday, capped to the day).
+        val guess = ReportCalculator.forgottenClockOutTime(open, emptyList(), AppSettings())
+        assertTrue(guess == at(16.0) || guess == DateRanges.dayRange(dayStart).endExclusive - 1)
+    }
+
     private companion object {
         const val HOUR = 3600_000L
     }

@@ -8,6 +8,7 @@ import com.suw1labs.worktracker.data.dao.TimeEntryDao
 import com.suw1labs.worktracker.data.dao.WorkTaskDao
 import com.suw1labs.worktracker.data.model.AppSettings
 import com.suw1labs.worktracker.data.model.AttendanceSession
+import com.suw1labs.worktracker.data.model.ClockOutReason
 import com.suw1labs.worktracker.data.model.DayRecord
 import com.suw1labs.worktracker.data.model.Project
 import com.suw1labs.worktracker.data.model.ProjectSummary
@@ -111,6 +112,16 @@ class TimeTrackerRepository(
         if (attendanceDao.getOpenSession() == null) attendanceDao.insertSession(AttendanceSession(clockIn = now))
         timeEntryDao.closeRunningEntries(now)
         timeEntryDao.insertEntry(TimeEntry(projectId = projectId, taskId = taskId, description = description, startTime = now, endTime = null))
+    }
+
+    /**
+     * Closes a clock-in period that was left open on an earlier day, at [clockOut] (chosen by
+     * [ReportCalculator.forgottenClockOutTime]); activities still running from that day end there too.
+     */
+    suspend fun closeForgottenSession(session: AttendanceSession, clockOut: Long) {
+        if (session.clockOut != null || clockOut <= session.clockIn) return
+        timeEntryDao.closeRunningEntries(clockOut)
+        attendanceDao.updateSession(session.copy(clockOut = clockOut, clockOutReason = ClockOutReason.END_OF_DAY.name))
     }
 
     /** Clocks out at [now]; the running activity stops at the same moment so nothing counts while away. */

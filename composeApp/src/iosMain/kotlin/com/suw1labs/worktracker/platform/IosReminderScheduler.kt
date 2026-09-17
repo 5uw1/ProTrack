@@ -66,8 +66,22 @@ class IosReminderScheduler : ReminderScheduler {
         }
     }
 
-    override fun scheduleDailyTargetReminder(triggerAtMillis: Long, title: String, message: String) {
-        cancelDailyTargetReminder()
+    override fun scheduleDailyTargetReminder(triggerAtMillis: Long, title: String, message: String) =
+        scheduleSingleShot(DAILY_TARGET_ID, triggerAtMillis, title, message)
+
+    override fun cancelDailyTargetReminder() {
+        center.removePendingNotificationRequestsWithIdentifiers(listOf(DAILY_TARGET_ID))
+    }
+
+    override fun scheduleStillClockedInReminder(triggerAtMillis: Long, title: String, message: String) =
+        scheduleSingleShot(STILL_CLOCKED_IN_ID, triggerAtMillis, title, message)
+
+    override fun cancelStillClockedInReminder() {
+        center.removePendingNotificationRequestsWithIdentifiers(listOf(STILL_CLOCKED_IN_ID))
+    }
+
+    private fun scheduleSingleShot(id: String, triggerAtMillis: Long, title: String, message: String) {
+        center.removePendingNotificationRequestsWithIdentifiers(listOf(id))
         val delaySeconds = ((triggerAtMillis - currentTimeMillis()) / 1000.0).coerceAtLeast(1.0)
         val content = UNMutableNotificationContent().apply {
             setTitle(title)
@@ -75,18 +89,15 @@ class IosReminderScheduler : ReminderScheduler {
             setSound(UNNotificationSound.defaultSound())
         }
         val trigger = UNTimeIntervalNotificationTrigger.triggerWithTimeInterval(delaySeconds, repeats = false)
-        val request = UNNotificationRequest.requestWithIdentifier(DAILY_TARGET_ID, content, trigger)
+        val request = UNNotificationRequest.requestWithIdentifier(id, content, trigger)
         center.addNotificationRequest(request) { error ->
-            if (error != null) NSLog("DeadlineScheduler: failed to schedule daily target reminder: ${error.localizedDescription}")
+            if (error != null) NSLog("DeadlineScheduler: failed to schedule $id: ${error.localizedDescription}")
         }
-    }
-
-    override fun cancelDailyTargetReminder() {
-        center.removePendingNotificationRequestsWithIdentifiers(listOf(DAILY_TARGET_ID))
     }
 
     private companion object {
         const val DAILY_TARGET_ID = "daily-target-reached"
+        const val STILL_CLOCKED_IN_ID = "still-clocked-in"
     }
 
     private fun reminderId(taskId: Long) = "task-reminder-$taskId"

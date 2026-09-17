@@ -88,6 +88,7 @@ import com.suw1labs.worktracker.data.model.Project
 import com.suw1labs.worktracker.data.model.TimeEntryWithDetails
 import com.suw1labs.worktracker.data.model.WorkTaskWithProject
 import com.suw1labs.worktracker.data.report.PeriodReport
+import com.suw1labs.worktracker.data.report.WarningKind
 import com.suw1labs.worktracker.ui.components.TaskDropdown
 import com.suw1labs.worktracker.ui.components.DeadlineUrgencyBadge
 import com.suw1labs.worktracker.ui.components.EmptyStateCard
@@ -283,7 +284,22 @@ fun TodayScreen(
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
                                 Icon(Icons.Default.Warning, contentDescription = null, tint = AmberWarning, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(warning.message, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                Text(t.warning(warning), fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                            }
+                            if (warning.kind == WarningKind.STILL_CLOCKED_IN_PAST_DAY) {
+                                // One tap closes the forgotten period at the most plausible time.
+                                val at = viewModel.forgottenClockOutTimeFor(warning.dayStart)
+                                if (at != null) {
+                                    FilledTonalButton(
+                                        onClick = { viewModel.fixForgottenClockOut(warning.dayStart) },
+                                        contentPadding = ButtonDefaults.TextButtonContentPadding,
+                                        modifier = Modifier.padding(start = 26.dp, bottom = 4.dp).testTag("fix_clock_out_${warning.dayStart}")
+                                    ) {
+                                        Icon(Icons.Default.Logout, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(t.clockOutAt(DateFormats.hourMinute(at)), fontSize = 12.sp)
+                                    }
+                                }
                             }
                         }
                     }

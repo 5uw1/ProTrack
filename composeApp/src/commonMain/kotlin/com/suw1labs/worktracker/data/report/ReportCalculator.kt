@@ -218,6 +218,21 @@ object ReportCalculator {
         return min(allowance, taggedBreakSeconds(sessions, range, now, ClockOutReason.BREAK))
     }
 
+    /**
+     * Best guess for when a forgotten clock-out should have happened: the end of the last activity
+     * that was closed on that day, otherwise clock-in plus that day's target (or 8 h on a day off).
+     */
+    fun forgottenClockOutTime(session: AttendanceSession, entries: List<TimeEntryWithDetails>, settings: AppSettings): Long {
+        val day = DateRanges.dayRange(session.clockIn)
+        val lastActivityEnd = entries
+            .filter { it.endTime != null && it.startTime >= session.clockIn && it.endTime!! < day.endExclusive }
+            .maxOfOrNull { it.endTime!! }
+        if (lastActivityEnd != null && lastActivityEnd > session.clockIn) return lastActivityEnd
+        val target = settings.targetSecondsFor(day.start.toLocalDate().dayOfWeek.isoDayNumber)
+        val length = (if (target > 0) target else 8 * 3600L) * 1000L
+        return minOf(session.clockIn + length, day.endExclusive - 1)
+    }
+
     fun isWorkday(dayStart: Long, settings: AppSettings): Boolean =
         settings.isWorkDay(dayStart.toLocalDate().dayOfWeek.isoDayNumber)
 

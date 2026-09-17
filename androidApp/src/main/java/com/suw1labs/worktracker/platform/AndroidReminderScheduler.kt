@@ -16,15 +16,26 @@ class AndroidReminderScheduler(private val context: Context) : ReminderScheduler
     private companion object {
         const val TAG = "DeadlineScheduler"
         const val TARGET_REQUEST_CODE = 900_001
+        const val STILL_CLOCKED_IN_REQUEST_CODE = 900_002
     }
 
-    override fun scheduleDailyTargetReminder(triggerAtMillis: Long, title: String, message: String) {
+    override fun scheduleDailyTargetReminder(triggerAtMillis: Long, title: String, message: String) =
+        scheduleSingleShot(TARGET_REQUEST_CODE, targetIntent(), triggerAtMillis, title, message)
+
+    override fun cancelDailyTargetReminder() = cancelSingleShot(TARGET_REQUEST_CODE, targetIntent())
+
+    override fun scheduleStillClockedInReminder(triggerAtMillis: Long, title: String, message: String) =
+        scheduleSingleShot(STILL_CLOCKED_IN_REQUEST_CODE, stillClockedInIntent(), triggerAtMillis, title, message)
+
+    override fun cancelStillClockedInReminder() = cancelSingleShot(STILL_CLOCKED_IN_REQUEST_CODE, stillClockedInIntent())
+
+    private fun scheduleSingleShot(requestCode: Int, intent: Intent, triggerAtMillis: Long, title: String, message: String) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            TARGET_REQUEST_CODE,
-            targetIntent().apply {
-                putExtra(DeadlineAlertReceiver.EXTRA_TASK_ID, TARGET_REQUEST_CODE.toLong())
+            requestCode,
+            intent.apply {
+                putExtra(DeadlineAlertReceiver.EXTRA_TASK_ID, requestCode.toLong())
                 putExtra(DeadlineAlertReceiver.EXTRA_TASK_TITLE, title)
                 putExtra(DeadlineAlertReceiver.EXTRA_PROJECT_NAME, "")
                 putExtra(DeadlineAlertReceiver.EXTRA_URGENCY, message)
@@ -36,22 +47,23 @@ class AndroidReminderScheduler(private val context: Context) : ReminderScheduler
             // Inexact alarm: fires within a few minutes and needs no SCHEDULE_EXACT_ALARM permission
             // (Play restricts exact alarms to alarm-clock / calendar apps).
             alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
-            Log.d(TAG, "Scheduled daily target reminder at $triggerAtMillis")
+            Log.d(TAG, "Scheduled reminder $requestCode at $triggerAtMillis")
         } catch (e: Exception) {
-            Log.w(TAG, "Cannot schedule daily target reminder: ${e.message}")
+            Log.w(TAG, "Cannot schedule reminder $requestCode: ${e.message}")
         }
     }
 
-    override fun cancelDailyTargetReminder() {
+    private fun cancelSingleShot(requestCode: Int, intent: Intent) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
         val pendingIntent = PendingIntent.getBroadcast(
-            context, TARGET_REQUEST_CODE, targetIntent(), PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+            context, requestCode, intent, PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
         ) ?: return
         alarmManager.cancel(pendingIntent)
         pendingIntent.cancel()
     }
 
     private fun targetIntent() = Intent(context, DeadlineAlertReceiver::class.java).setAction("com.suw1labs.worktracker.DAILY_TARGET")
+    private fun stillClockedInIntent() = Intent(context, DeadlineAlertReceiver::class.java).setAction("com.suw1labs.worktracker.STILL_CLOCKED_IN")
 
     override fun scheduleTaskReminder(task: WorkTaskWithProject) {
         val reminder = DeadlinePolicy.pendingReminder(task)

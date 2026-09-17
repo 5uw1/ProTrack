@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EventBusy
@@ -64,6 +65,7 @@ import com.suw1labs.worktracker.data.model.DayRecord
 import com.suw1labs.worktracker.data.model.TimeEntryWithDetails
 import com.suw1labs.worktracker.data.report.DayRow
 import com.suw1labs.worktracker.data.report.PeriodReport
+import com.suw1labs.worktracker.data.report.WarningKind
 import com.suw1labs.worktracker.ui.components.ConfirmDeleteDialog
 import com.suw1labs.worktracker.ui.components.LocalSnackbarHostState
 import com.suw1labs.worktracker.ui.components.SessionRow
@@ -182,6 +184,19 @@ fun ReportsScreen(
             }
         }
 
+        // Month-end check: what still needs fixing before the hours go into SAP.
+        if (periodType == ReportPeriodType.MONTH) {
+            item {
+                MonthEndCheckCard(
+                    report = report,
+                    isCurrentMonth = report.range.start <= now && now < report.range.endExclusive,
+                    stillClockedInToday = viewModel.openSession.collectAsState().value != null,
+                    onFixClockOut = { viewModel.fixForgottenClockOut(it) },
+                    clockOutTimeFor = { viewModel.forgottenClockOutTimeFor(it) }
+                )
+            }
+        }
+
         // Summary for the selected scope
         item {
             Card(
@@ -278,9 +293,17 @@ fun ReportsScreen(
                         }
                         Spacer(modifier = Modifier.height(6.dp))
                         report.warnings.forEach { w ->
-                            Row(modifier = Modifier.padding(vertical = 2.dp)) {
+                            Row(modifier = Modifier.padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text(DateFormats.monthDay(w.dayStart), fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(56.dp))
-                                Text(t.warning(w), fontSize = 12.sp)
+                                Text(t.warning(w), fontSize = 12.sp, modifier = Modifier.weight(1f))
+                                if (w.kind == WarningKind.STILL_CLOCKED_IN_PAST_DAY) {
+                                    val at = viewModel.forgottenClockOutTimeFor(w.dayStart)
+                                    if (at != null) {
+                                        TextButton(onClick = { viewModel.fixForgottenClockOut(w.dayStart) }, modifier = Modifier.testTag("fix_clock_out_${w.dayStart}")) {
+                                            Text(t.clockOutAt(DateFormats.hourMinute(at)), fontSize = 12.sp)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -500,6 +523,81 @@ fun ReportsScreen(
             onQuickProject = { code, name, client, color, budget, productive, onCreated -> viewModel.addProject(code, name, client, color, budget, productive, onCreated) },
             timeOnly = true
         )
+    }
+}
+
+/**
+ * "Ready to book" or the list of things to fix first: forgotten clock-outs (with a one-tap fix),
+ * productive time without a project, working-time warnings, and the rounded project total.
+ */
+@Composable
+private fun MonthEndCheckCard(
+    report: PeriodReport,
+    isCurrentMonth: Boolean,
+    stillClockedInToday: Boolean,
+    onFixClockOut: (Long) -> Unit,
+    clockOutTimeFor: (Long) -> Long?
+) {
+    val t = strings
+    val forgotten = report.warnings.filter { it.kind == WarningKind.STILL_CLOCKED_IN_PAST_DAY }
+    val ruleWarnings = report.warnings.size - forgotten.size
+    val unassigned = report.unassignedProductiveSeconds
+    val issues = (if (forgotten.isNotEmpty()) 1 else 0) + (if (unassigned >= 60) 1 else 0) + (if (ruleWarnings > 0) 1 else 0)
+    val ready = issues == 0
+    val color = if (ready) EmeraldGreen else AmberWarning
+    val unproductiveIds = report.days.flatMap { it.cells }.filter { !it.isProductive }.map { it.projectId }.toSet()
+    val projectSeconds = report.projects.filter { it.projectId != null && it.projectId !in unproductiveIds }.map { it.seconds }
+    val exact = projectSeconds.sumOf { TimeFormat.decimalHours(it) }
+    val rounded = projectSeconds.sumOf { TimeFormat.quarterHours(it) }
+
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.10f)),
+        modifier = Modifier.fillMaxWidth().testTag("month_end_check_card")
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(if (ready) Icons.Default.CheckCircle else Icons.Default.Warning, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(t.monthEndCheck, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(if (ready) t.readyToBook else t.thingsToFix(issues), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = color, modifier = Modifier.testTag("month_end_status"))
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            if (forgotten.isNotEmpty()) {
+                CheckRow(t.checkForgotClockOut(forgotten.size), ok = false)
+                forgotten.forEach { w ->
+                    val at = clockOutTimeFor(w.dayStart)
+                    if (at != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 26.dp)) {
+                            Text(DateFormats.monthDay(w.dayStart), fontSize = 12.sp, modifier = Modifier.width(56.dp))
+                            TextButton(onClick = { onFixClockOut(w.dayStart) }, modifier = Modifier.testTag("month_fix_clock_out_${w.dayStart}")) {
+                                Text(t.clockOutAt(DateFormats.hourMinute(at)), fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+            if (unassigned >= 60) CheckRow(t.checkUnassigned(TimeFormat.hoursMinutes(unassigned)), ok = false)
+            if (ruleWarnings > 0) CheckRow(t.checkRuleWarnings(ruleWarnings), ok = false)
+            CheckRow(t.checkRoundedTotal(TimeFormat.sapHours(rounded), TimeFormat.sapHours(exact)), ok = true)
+            if (isCurrentMonth && stillClockedInToday) CheckRow(t.checkOpenToday, ok = true, muted = true)
+        }
+    }
+}
+
+@Composable
+private fun CheckRow(text: String, ok: Boolean, muted: Boolean = false) {
+    Row(verticalAlignment = Alignment.Top, modifier = Modifier.padding(vertical = 2.dp)) {
+        Icon(
+            if (ok) Icons.Default.CheckCircle else Icons.Default.Warning,
+            contentDescription = null,
+            tint = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else if (ok) EmeraldGreen else AmberWarning,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(text, fontSize = 12.sp, color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
     }
 }
 

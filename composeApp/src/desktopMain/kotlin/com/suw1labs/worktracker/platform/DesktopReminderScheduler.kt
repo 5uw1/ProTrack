@@ -59,6 +59,22 @@ class DesktopReminderScheduler : ReminderScheduler {
         dailyTargetJob = null
     }
 
+    private var stillClockedInJob: Job? = null
+
+    override fun scheduleStillClockedInReminder(triggerAtMillis: Long, title: String, message: String) {
+        stillClockedInJob?.cancel()
+        stillClockedInJob = scope.launch {
+            val wait = triggerAtMillis - currentTimeMillis()
+            if (wait > 0) delay(wait)
+            showNotification(title, message)
+        }
+    }
+
+    override fun cancelStillClockedInReminder() {
+        stillClockedInJob?.cancel()
+        stillClockedInJob = null
+    }
+
     override fun cancelTaskReminder(taskId: Long) {
         pendingJobs.remove(taskId)?.cancel()
     }

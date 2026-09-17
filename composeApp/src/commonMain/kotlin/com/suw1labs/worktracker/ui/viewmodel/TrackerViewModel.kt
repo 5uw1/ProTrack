@@ -240,6 +240,7 @@ class TrackerViewModel(
                 .collect { (open, sessions, s) ->
                     if (open == null) {
                         reminderScheduler.cancelDailyTargetReminder()
+                        reminderScheduler.cancelStillClockedInReminder()
                         return@collect
                     }
                     val now = currentTimeMillis()
@@ -248,18 +249,47 @@ class TrackerViewModel(
                     val target = s.targetSecondsFor(iso)
                     val worked = ReportCalculator.attendanceSeconds(sessions, today, now)
                     val remaining = target - worked
+                    val t = com.suw1labs.worktracker.ui.i18n.Translations.forLanguage(com.suw1labs.worktracker.ui.i18n.Language.fromCode(s.language))
                     if (target <= 0 || remaining <= 0) {
                         reminderScheduler.cancelDailyTargetReminder()
                     } else {
-                        val t = com.suw1labs.worktracker.ui.i18n.Translations.forLanguage(com.suw1labs.worktracker.ui.i18n.Language.fromCode(s.language))
                         reminderScheduler.scheduleDailyTargetReminder(
                             triggerAtMillis = now + remaining * 1000L,
                             title = t.targetReachedTitle,
                             message = t.targetReachedBody(com.suw1labs.worktracker.util.TimeFormat.hoursMinutes(target))
                         )
                     }
+                    // Safety net: still clocked in well past the target (or 9 h on a day off)? Probably forgotten.
+                    val stillInAfter = if (target > 0) target + STILL_CLOCKED_IN_MARGIN_SECONDS else 9 * 3600L
+                    val stillInAt = now + (stillInAfter - worked).coerceAtLeast(60L) * 1000L
+                    reminderScheduler.scheduleStillClockedInReminder(
+                        triggerAtMillis = stillInAt,
+                        title = t.stillClockedInTitle,
+                        message = t.stillClockedInBody(com.suw1labs.worktracker.util.TimeFormat.hoursMinutes(stillInAfter))
+                    )
                 }
         }
+    }
+
+    /** Closes the clock-in period left open on [dayStart] at the most plausible time (see [ReportCalculator.forgottenClockOutTime]). */
+    fun fixForgottenClockOut(dayStart: Long) {
+        viewModelScope.launch {
+            val day = DateRanges.dayRange(dayStart)
+            val session = allSessions.value.firstOrNull { it.clockOut == null && it.clockIn >= day.start && it.clockIn < day.endExclusive } ?: return@launch
+            repository.closeForgottenSession(session, ReportCalculator.forgottenClockOutTime(session, allEntries.value, settings.value))
+        }
+    }
+
+    /** When the open period's day is over, the time at which "Clock out at …" would close it. */
+    fun forgottenClockOutTimeFor(dayStart: Long): Long? {
+        val day = DateRanges.dayRange(dayStart)
+        val session = allSessions.value.firstOrNull { it.clockOut == null && it.clockIn >= day.start && it.clockIn < day.endExclusive } ?: return null
+        return ReportCalculator.forgottenClockOutTime(session, allEntries.value, settings.value)
+    }
+
+    private companion object {
+        /** How long past the daily target the "still clocked in?" reminder fires. */
+        const val STILL_CLOCKED_IN_MARGIN_SECONDS = 45 * 60L
     }
 
     // --- Attendance ---

@@ -16,6 +16,10 @@ interface ReminderScheduler {
     /** Notifies once at [triggerAtMillis] that today's target hours are reached (while clocked in). */
     fun scheduleDailyTargetReminder(triggerAtMillis: Long, title: String, message: String)
     fun cancelDailyTargetReminder()
+
+    /** Safety net: notifies once at [triggerAtMillis] when still clocked in well past the target. */
+    fun scheduleStillClockedInReminder(triggerAtMillis: Long, title: String, message: String)
+    fun cancelStillClockedInReminder()
 }
 
 /** Used when a platform has no notification support (or in tests). */
@@ -25,6 +29,8 @@ object NoOpReminderScheduler : ReminderScheduler {
     override fun checkAndNotifyUrgentDeadlines(tasks: List<WorkTaskWithProject>) = Unit
     override fun scheduleDailyTargetReminder(triggerAtMillis: Long, title: String, message: String) = Unit
     override fun cancelDailyTargetReminder() = Unit
+    override fun scheduleStillClockedInReminder(triggerAtMillis: Long, title: String, message: String) = Unit
+    override fun cancelStillClockedInReminder() = Unit
 }
 
 /** A reminder that a platform scheduler should deliver at [triggerAtMillis]. */
