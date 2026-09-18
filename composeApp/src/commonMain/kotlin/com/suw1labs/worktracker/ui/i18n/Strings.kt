@@ -61,6 +61,8 @@ class AppStrings(val language: Language) {
     lateinit var clockOut: String
     lateinit var currentActivity: String
     lateinit var whatWorkingOn: String
+    lateinit var searchProjectsTasks: String
+    lateinit var noMatches: String
     lateinit var switchActivity: String
     lateinit var switchShort: String
     lateinit var start: String
@@ -472,6 +474,8 @@ object Translations {
         clockOut = "CLOCK OUT"
         currentActivity = "CURRENT ACTIVITY"
         whatWorkingOn = "WHAT ARE YOU WORKING ON?"
+        searchProjectsTasks = "Search project or task…"
+        noMatches = "No project or task matches."
         switchActivity = "SWITCH ACTIVITY"
         switchShort = "Switch"
         start = "Start"
@@ -793,6 +797,8 @@ object Translations {
         clockOut = "AUSSTEMPELN"
         currentActivity = "AKTUELLE TÄTIGKEIT"
         whatWorkingOn = "WORAN ARBEITEST DU?"
+        searchProjectsTasks = "Projekt oder Aufgabe suchen…"
+        noMatches = "Kein Projekt und keine Aufgabe passt."
         switchActivity = "TÄTIGKEIT WECHSELN"
         switchShort = "Wechseln"
         start = "Start"
@@ -1114,6 +1120,8 @@ object Translations {
         clockOut = "DÉPOINTER"
         currentActivity = "ACTIVITÉ EN COURS"
         whatWorkingOn = "SUR QUOI TRAVAILLES-TU ?"
+        searchProjectsTasks = "Rechercher un projet ou une tâche…"
+        noMatches = "Aucun projet ni tâche ne correspond."
         switchActivity = "CHANGER D'ACTIVITÉ"
         switchShort = "Changer"
         start = "Démarrer"

@@ -27,6 +27,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Restaurant
@@ -905,6 +911,11 @@ private fun ActivitySelector(
 
     val projectTasks = remember(projectId, tasks) { tasks.filter { it.projectId == projectId && it.status != "DONE" } }
 
+    // Type-ahead over projects (code, name, client) and open tasks (title, project): picking a
+    // match fills the two dropdowns below, which stay available for browsing.
+    var query by remember { mutableStateOf("") }
+    val matches = remember(query, projects, tasks) { searchProjectsAndTasks(query, projects, tasks) }
+
     Text(
         text = if (isSwitching) t.switchActivity else t.whatWorkingOn,
         fontSize = 12.sp,
@@ -913,6 +924,35 @@ private fun ActivitySelector(
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
     Spacer(modifier = Modifier.height(12.dp))
+    OutlinedTextField(
+        value = query,
+        onValueChange = { query = it },
+        placeholder = { Text(t.searchProjectsTasks, fontSize = 13.sp) },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
+        trailingIcon = if (query.isNotEmpty()) ({
+            IconButton(onClick = { query = "" }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Close, contentDescription = t.cancel, modifier = Modifier.size(16.dp)) }
+        }) else null,
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        modifier = Modifier.fillMaxWidth().testTag("activity_search_input")
+    )
+    if (query.isNotBlank()) {
+        Spacer(modifier = Modifier.height(6.dp))
+        if (matches.isEmpty()) {
+            Text(t.noMatches, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 4.dp))
+        }
+        matches.forEach { match ->
+            SearchMatchRow(
+                match = match,
+                onClick = {
+                    projectId = match.projectId
+                    taskId = match.taskId
+                    query = ""
+                }
+            )
+        }
+    }
+    Spacer(modifier = Modifier.height(8.dp))
     ProjectDropdown(
         projects = projects,
         selectedProjectId = projectId,
@@ -957,6 +997,55 @@ private fun ActivitySelector(
                 showQuickTask = false
             }
         )
+    }
+}
+
+/** One hit of the activity search: a task on its project, or a project on its own. */
+data class ActivityMatch(val projectId: Long, val taskId: Long?, val title: String, val subtitle: String, val colorHex: String)
+
+/**
+ * Case-insensitive search over project code / name / client and open task titles. Every word of
+ * [query] must appear somewhere in the match's texts, so "vega comm" finds "Commissioning" on VEGA.
+ * Tasks come first, then projects; at most [limit] hits.
+ */
+fun searchProjectsAndTasks(query: String, projects: List<Project>, tasks: List<WorkTaskWithProject>, limit: Int = 8): List<ActivityMatch> {
+    val words = query.trim().lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
+    if (words.isEmpty()) return emptyList()
+    fun hit(vararg texts: String): Boolean {
+        val haystack = texts.joinToString(" ").lowercase()
+        return words.all { it in haystack }
+    }
+    val taskHits = tasks
+        .filter { it.status != "DONE" && hit(it.title, it.projectCode, it.projectName, it.client) }
+        .sortedWith(compareBy({ !hit(it.title) }, { it.title }))
+        .map { ActivityMatch(it.projectId, it.id, it.title, "${it.projectCode} · ${it.projectName}", it.projectColor) }
+    val projectHits = projects
+        .filter { hit(it.code, it.name, it.client) }
+        .sortedBy { it.code }
+        .map { ActivityMatch(it.id, null, "${it.code} · ${it.name}", it.client, it.colorHex) }
+    return (taskHits + projectHits).take(limit)
+}
+
+@Composable
+private fun SearchMatchRow(match: ActivityMatch, onClick: () -> Unit) {
+    val t = strings
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 8.dp).testTag("activity_match_${match.projectId}_${match.taskId ?: 0}")
+    ) {
+        Box(modifier = Modifier.width(4.dp).height(28.dp).clip(RoundedCornerShape(2.dp)).background(projectColor(match.colorHex)))
+        Spacer(modifier = Modifier.width(10.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(match.title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1)
+            Text(
+                if (match.taskId == null && match.subtitle.isBlank()) t.noSpecificTask else match.subtitle,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+        }
+        Icon(Icons.Default.PlayArrow, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
     }
 }
 

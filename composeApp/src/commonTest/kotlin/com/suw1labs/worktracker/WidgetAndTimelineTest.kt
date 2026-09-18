@@ -168,3 +168,31 @@ class WidgetAndTimelineTest {
         const val HOUR = 3600_000L
     }
 }
+
+class ActivitySearchTest {
+    private fun task(id: Long, title: String, projectId: Long, code: String, name: String, status: String = "TODO") =
+        com.suw1labs.worktracker.data.model.WorkTaskWithProject(
+            id = id, projectId = projectId, projectCode = code, projectName = name, projectColor = "#000000", client = "Nordwind",
+            title = title, description = "", priority = "LOW", status = status, estimatedHours = 0.0, deadlineTimestamp = null,
+            reminderLeadHours = 0, reminderEnabled = false, createdAt = 0
+        )
+
+    @kotlin.test.Test
+    fun search_matchesEveryWordAcrossTaskAndProjectTexts_tasksFirst() {
+        val projects = listOf(
+            com.suw1labs.worktracker.data.model.Project(id = 1, code = "4711", name = "Aurora", client = "Nordwind AG"),
+            com.suw1labs.worktracker.data.model.Project(id = 2, code = "2380", name = "Helix", client = "Baumann")
+        )
+        val tasks = listOf(task(10, "Commissioning", 1, "4711", "Aurora"), task(11, "Commissioning", 2, "2380", "Helix"), task(12, "Old", 1, "4711", "Aurora", status = "DONE"))
+
+        val hits = com.suw1labs.worktracker.ui.screens.searchProjectsAndTasks("aur comm", projects, tasks)
+        kotlin.test.assertEquals(listOf(10L), hits.map { it.taskId })
+
+        val byCode = com.suw1labs.worktracker.ui.screens.searchProjectsAndTasks("2380", projects, tasks)
+        kotlin.test.assertEquals(listOf(11L, null), byCode.map { it.taskId })
+        kotlin.test.assertEquals(2L, byCode.last().projectId)
+
+        kotlin.test.assertTrue(com.suw1labs.worktracker.ui.screens.searchProjectsAndTasks("old", projects, tasks).isEmpty(), "done tasks are not offered")
+        kotlin.test.assertTrue(com.suw1labs.worktracker.ui.screens.searchProjectsAndTasks("   ", projects, tasks).isEmpty())
+    }
+}
