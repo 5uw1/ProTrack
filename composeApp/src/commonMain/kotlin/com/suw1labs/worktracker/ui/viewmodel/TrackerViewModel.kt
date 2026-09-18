@@ -220,8 +220,10 @@ class TrackerViewModel(
         _periodType.value = type
     }
 
+    /** Tapping a date in the calendar or the week strip opens that day in the day view. */
     fun selectDay(dayStart: Long) {
         _periodAnchor.value = DateRanges.dayRange(dayStart).start
+        _periodType.value = ReportPeriodType.DAY
     }
 
     fun shiftCalendarMonth(delta: Int) {
