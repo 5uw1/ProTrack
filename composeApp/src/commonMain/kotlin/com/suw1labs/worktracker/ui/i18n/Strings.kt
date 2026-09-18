@@ -143,6 +143,7 @@ class AppStrings(val language: Language) {
     lateinit var done: String
     lateinit var newProject: String
     lateinit var editProject: String
+    lateinit var deleteProject: String
     lateinit var projectNumber: String
     lateinit var projectNumberHint: String
     lateinit var projectName: String
@@ -538,6 +539,7 @@ object Translations {
         done = "done"
         newProject = "New project"
         editProject = "Edit project"
+        deleteProject = "Delete project"
         projectNumber = "Project number *"
         projectNumberHint = "e.g. P-2026-0142"
         projectName = "Project name *"
@@ -848,6 +850,7 @@ object Translations {
         done = "erledigt"
         newProject = "Neues Projekt"
         editProject = "Projekt bearbeiten"
+        deleteProject = "Projekt löschen"
         projectNumber = "Projektnummer *"
         projectNumberHint = "z.B. P-2026-0142"
         projectName = "Projektname *"
@@ -1158,6 +1161,7 @@ object Translations {
         done = "terminées"
         newProject = "Nouveau projet"
         editProject = "Modifier le projet"
+        deleteProject = "Supprimer le projet"
         projectNumber = "Numéro de projet *"
         projectNumberHint = "p.ex. P-2026-0142"
         projectName = "Nom du projet *"

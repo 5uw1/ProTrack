@@ -29,11 +29,14 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Task
+import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.HorizontalDivider
@@ -49,6 +52,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +63,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.suw1labs.worktracker.data.model.Project
+import com.suw1labs.worktracker.data.model.ProjectSummary
 import com.suw1labs.worktracker.data.model.WorkTask
 import com.suw1labs.worktracker.data.model.WorkTaskWithProject
 import androidx.compose.foundation.text.KeyboardOptions
@@ -69,6 +75,9 @@ import com.suw1labs.worktracker.ui.components.FormDialog
 import com.suw1labs.worktracker.ui.components.LabeledDropdown
 import com.suw1labs.worktracker.ui.components.DeadlineUrgencyBadge
 import com.suw1labs.worktracker.ui.components.EmptyStateCard
+import com.suw1labs.worktracker.ui.components.HoursProgressBar
+import com.suw1labs.worktracker.ui.components.LocalSnackbarHostState
+import com.suw1labs.worktracker.ui.components.StatusBadge
 import com.suw1labs.worktracker.ui.components.displayLabel
 import com.suw1labs.worktracker.ui.components.PriorityBadge
 import com.suw1labs.worktracker.ui.theme.AmberWarning
@@ -89,8 +98,16 @@ fun TasksScreen(
     val t = strings
     val allTasks by viewModel.allTasks.collectAsState()
     val allProjects by viewModel.allProjects.collectAsState()
+    val projectSummaries by viewModel.projectSummaries.collectAsState()
+    val summariesById = remember(projectSummaries) { projectSummaries.associateBy { it.id } }
+    val snackbarHost = LocalSnackbarHostState.current
+    val scope = rememberCoroutineScope()
 
     var statusFilter by remember { mutableStateOf("ALL") }
+    var showAddProjectDialog by remember { mutableStateOf(false) }
+    var showImportDialog by remember { mutableStateOf(false) }
+    var editingProject by remember { mutableStateOf<Project?>(null) }
+    var deletingProject by remember { mutableStateOf<Project?>(null) }
     var addTaskProjectId by remember { mutableStateOf<Long?>(null) }
     var editingTask by remember { mutableStateOf<WorkTaskWithProject?>(null) }
     var movingTask by remember { mutableStateOf<WorkTaskWithProject?>(null) }
@@ -114,6 +131,26 @@ fun TasksScreen(
         modifier = modifier.fillMaxSize().padding(horizontal = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        // Import (paste a project list) and new project; tasks are added on their project card.
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { showImportDialog = true }, modifier = Modifier.testTag("import_projects_open_button")) {
+                    Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(t.importBtn, fontSize = 12.sp, maxLines = 1)
+                }
+                FilledTonalButton(
+                    onClick = { showAddProjectDialog = true },
+                    contentPadding = ButtonDefaults.TextButtonContentPadding,
+                    modifier = Modifier.testTag("add_project_button")
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(t.newProject, fontSize = 12.sp, maxLines = 1)
+                }
+            }
+        }
+
         // Filter status chips
         item {
             Row(
@@ -144,8 +181,11 @@ fun TasksScreen(
         items(orderedProjects, key = { it.id }) { project ->
             ProjectTasksCard(
                 project = project,
+                summary = summariesById[project.id],
                 tasks = tasksByProject[project.id].orEmpty(),
                 onAddTask = { addTaskProjectId = project.id },
+                onEditProject = { editingProject = project },
+                onDeleteProject = { deletingProject = project },
                 onToggleDone = { task ->
                     viewModel.updateTaskStatus(task.id, if (task.status == "DONE") "TODO" else "DONE")
                 },
@@ -157,6 +197,55 @@ fun TasksScreen(
         }
 
         item { Spacer(modifier = Modifier.height(24.dp)) }
+    }
+
+    if (showAddProjectDialog) {
+        ProjectFormDialog(
+            project = null,
+            onDismiss = { showAddProjectDialog = false },
+            onSave = { code, name, client, colorHex, budgetHours, _, isProductive ->
+                viewModel.addProject(code, name, client, colorHex, budgetHours, isProductive)
+                showAddProjectDialog = false
+            }
+        )
+    }
+
+    editingProject?.let { project ->
+        ProjectFormDialog(
+            project = project,
+            onDismiss = { editingProject = null },
+            onSave = { code, name, client, colorHex, budgetHours, status, isProductive ->
+                viewModel.updateProject(
+                    project.copy(code = code.trim(), name = name.trim(), client = client.trim(), colorHex = colorHex, budgetHours = budgetHours, status = status, isProductive = isProductive)
+                )
+                editingProject = null
+            }
+        )
+    }
+
+    deletingProject?.let { project ->
+        ConfirmDeleteDialog(
+            title = t.deleteProjectQuestion("${project.code} · ${project.name}"),
+            message = t.deleteProjectWarning,
+            onConfirm = {
+                viewModel.deleteProject(project.id)
+                deletingProject = null
+            },
+            onDismiss = { deletingProject = null }
+        )
+    }
+
+    if (showImportDialog) {
+        ImportProjectsDialog(
+            onPreview = { viewModel.previewProjectImport(it) },
+            onImport = { text ->
+                viewModel.importProjects(text) { added, skipped ->
+                    scope.launch { snackbarHost.showSnackbar(t.importedResult(added, skipped)) }
+                }
+                showImportDialog = false
+            },
+            onDismiss = { showImportDialog = false }
+        )
     }
 
     deletingTask?.let { task ->
@@ -224,12 +313,15 @@ fun TasksScreen(
     }
 }
 
-/** One project with its tasks. */
+/** One project with its tasks, booked hours against the budget, and the project's own edit / delete menu. */
 @Composable
 private fun ProjectTasksCard(
     project: Project,
+    summary: ProjectSummary?,
     tasks: List<WorkTaskWithProject>,
     onAddTask: () -> Unit,
+    onEditProject: () -> Unit,
+    onDeleteProject: () -> Unit,
     onToggleDone: (WorkTaskWithProject) -> Unit,
     onTrack: (WorkTaskWithProject) -> Unit,
     onMove: (WorkTaskWithProject) -> Unit,
@@ -263,11 +355,47 @@ private fun ProjectTasksCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                if (project.isProductive && project.status != "ACTIVE") {
+                    StatusBadge(status = project.status)
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
                 TextButton(onClick = onAddTask, modifier = Modifier.testTag("add_task_${project.id}")) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(t.add, fontSize = 12.sp)
                 }
+                Box {
+                    var menuOpen by remember { mutableStateOf(false) }
+                    IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(32.dp).testTag("project_menu_${project.id}")) {
+                        Icon(Icons.Default.MoreVert, contentDescription = t.moreActions, modifier = Modifier.size(20.dp))
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text(t.editProject) },
+                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                            onClick = { menuOpen = false; onEditProject() },
+                            modifier = Modifier.testTag("edit_project_${project.id}")
+                        )
+                        DropdownMenuItem(
+                            text = { Text(t.deleteProject, color = MaterialTheme.colorScheme.error) },
+                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                            onClick = { menuOpen = false; onDeleteProject() },
+                            modifier = Modifier.testTag("delete_project_${project.id}")
+                        )
+                    }
+                }
+            }
+
+            // Booked hours against the budget (productive projects that have either).
+            if (project.isProductive && summary != null && (summary.budgetHours > 0 || summary.totalSeconds > 0)) {
+                Spacer(modifier = Modifier.height(8.dp))
+                HoursProgressBar(
+                    loggedHours = summary.totalSeconds / 3600.0,
+                    budgetHours = summary.budgetHours,
+                    accentColor = projColor,
+                    modifier = Modifier.padding(start = 14.dp)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
             }
 
             if (sorted.isEmpty()) {

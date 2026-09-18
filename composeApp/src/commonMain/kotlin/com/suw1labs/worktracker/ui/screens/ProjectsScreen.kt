@@ -82,20 +82,14 @@ import com.suw1labs.worktracker.util.TimeFormat
 import com.suw1labs.worktracker.util.projectColor
 import com.suw1labs.worktracker.ui.i18n.strings
 
+/** Settings tab: work schedule, language, backups. Projects themselves live on the Projects tab (TasksScreen). */
 @Composable
 fun ProjectsScreen(
     viewModel: TrackerViewModel,
     modifier: Modifier = Modifier
 ) {
     val t = strings
-    val projectSummaries by viewModel.projectSummaries.collectAsState()
-    var selectedFilter by remember { mutableStateOf("ALL") }
-    var showAddProjectDialog by remember { mutableStateOf(false) }
-    var editingProject by remember { mutableStateOf<ProjectSummary?>(null) }
-    var deletingProject by remember { mutableStateOf<ProjectSummary?>(null) }
     var showScheduleDialog by remember { mutableStateOf(false) }
-    var showImportDialog by remember { mutableStateOf(false) }
-    var importResult by remember { mutableStateOf<String?>(null) }
     val settings by viewModel.settings.collectAsState()
     val backupBusy by viewModel.backupBusy.collectAsState()
     val pendingRestore by viewModel.pendingRestore.collectAsState()
@@ -115,15 +109,6 @@ fun ProjectsScreen(
         }
         viewModel.clearBackupMessage()
         snackbarHost.showSnackbar(text)
-    }
-
-    val filteredProjects = remember(projectSummaries, selectedFilter) {
-        when (selectedFilter) {
-            "ACTIVE" -> projectSummaries.filter { it.status == "ACTIVE" }
-            "COMPLETED" -> projectSummaries.filter { it.status == "COMPLETED" }
-            "ON_HOLD" -> projectSummaries.filter { it.status == "ON_HOLD" }
-            else -> projectSummaries
-        }
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -307,121 +292,8 @@ fun ProjectsScreen(
                 }
             }
 
-            item {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(t.sapProjects, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text(
-                            importResult ?: t.projectsSubtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (importResult != null) EmeraldGreen else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    TextButton(onClick = { showImportDialog = true }, modifier = Modifier.testTag("import_projects_open_button")) {
-                        Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(t.importBtn, fontSize = 12.sp, maxLines = 1)
-                    }
-                    FilledTonalButton(
-                        onClick = { showAddProjectDialog = true },
-                        contentPadding = ButtonDefaults.TextButtonContentPadding,
-                        modifier = Modifier.testTag("add_project_button")
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(t.add, fontSize = 12.sp, maxLines = 1)
-                    }
-                }
-            }
-
-            // Filter Chips
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
-                    listOf("ALL" to t.filterAll, "ACTIVE" to t.filterActive, "ON_HOLD" to t.filterOnHold, "COMPLETED" to t.filterCompleted).forEach { (code, label) ->
-                        FilterChip(
-                            selected = selectedFilter == code,
-                            onClick = { selectedFilter = code },
-                            label = { Text(label) },
-                            modifier = Modifier.testTag("filter_chip_$code")
-                        )
-                    }
-                }
-            }
-
-            if (filteredProjects.isEmpty()) {
-                item {
-                    EmptyStateCard(
-                        icon = Icons.Default.Folder,
-                        title = t.noProjectsTitle,
-                        subtitle = t.noProjectsSubtitle
-                    )
-                }
-            } else {
-                items(filteredProjects, key = { it.id }) { summary ->
-                    ProjectCard(
-                        summary = summary,
-                        onEdit = { editingProject = summary },
-                        onDelete = { deletingProject = summary }
-                    )
-                }
-            }
-
             item { Spacer(modifier = Modifier.height(24.dp)) }
         }
-    }
-
-    if (showAddProjectDialog) {
-        ProjectFormDialog(
-            project = null,
-            onDismiss = { showAddProjectDialog = false },
-            onSave = { code, name, client, colorHex, budgetHours, _, isProductive ->
-                viewModel.addProject(code, name, client, colorHex, budgetHours, isProductive)
-                showAddProjectDialog = false
-            }
-        )
-    }
-
-    editingProject?.let { summary ->
-        ProjectFormDialog(
-            project = Project(
-                id = summary.id,
-                code = summary.code,
-                name = summary.name,
-                client = summary.client,
-                colorHex = summary.colorHex,
-                budgetHours = summary.budgetHours,
-                status = summary.status,
-                isProductive = summary.isProductive
-            ),
-            onDismiss = { editingProject = null },
-            onSave = { code, name, client, colorHex, budgetHours, status, isProductive ->
-                viewModel.updateProject(
-                    Project(
-                        id = summary.id,
-                        code = code.trim(),
-                        name = name.trim(),
-                        client = client.trim(),
-                        colorHex = colorHex,
-                        budgetHours = budgetHours,
-                        status = status,
-                        isProductive = isProductive
-                    )
-                )
-                editingProject = null
-            }
-        )
-    }
-
-    deletingProject?.let { summary ->
-        ConfirmDeleteDialog(
-            title = t.deleteProjectQuestion("${summary.code} · ${summary.name}"),
-            message = t.deleteProjectWarning,
-            onConfirm = {
-                viewModel.deleteProject(summary.id)
-                deletingProject = null
-            },
-            onDismiss = { deletingProject = null }
-        )
     }
 
     if (showScheduleDialog) {
@@ -445,112 +317,7 @@ fun ProjectsScreen(
         )
     }
 
-    if (showImportDialog) {
-        ImportProjectsDialog(
-            onPreview = { viewModel.previewProjectImport(it) },
-            onImport = { text ->
-                viewModel.importProjects(text) { added, skipped ->
-                    importResult = t.importedResult(added, skipped)
-                }
-                showImportDialog = false
-            },
-            onDismiss = { showImportDialog = false }
-        )
-    }
 
-}
-
-@Composable
-fun ProjectCard(
-    summary: ProjectSummary,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
-) {
-    val t = strings
-    val projColor = projectColor(summary.colorHex)
-    val loggedHours = summary.totalSeconds / 3600.0
-
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp),
-        modifier = Modifier.fillMaxWidth().testTag("project_card_${summary.id}")
-    ) {
-        Column(modifier = Modifier.padding(18.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                    Surface(color = projColor.copy(alpha = 0.15f), shape = RoundedCornerShape(6.dp)) {
-                        Text(
-                            summary.code,
-                            color = projColor,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = summary.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                if (summary.isProductive) StatusBadge(status = summary.status) else {
-                    Surface(color = AmberWarning.copy(alpha = 0.12f), shape = RoundedCornerShape(6.dp)) {
-                        Text(t.unproductiveLabel, color = AmberWarning, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
-                    }
-                }
-            }
-
-            if (summary.client.isNotBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Business, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(summary.client, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            HoursProgressBar(
-                loggedHours = loggedHours,
-                budgetHours = summary.budgetHours,
-                accentColor = projColor
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column {
-                    Text(t.booked, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(
-                        "${TimeFormat.hm(summary.totalSeconds)} h",
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 15.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                Column {
-                    Text(t.tasks, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("${summary.completedTasks}/${summary.totalTasks} ${t.done}", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                }
-                Row {
-                    IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.Edit, contentDescription = t.edit, modifier = Modifier.size(18.dp))
-                    }
-                    IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.Delete, contentDescription = t.delete, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
-                    }
-                }
-            }
-        }
-    }
 }
 
 @Composable

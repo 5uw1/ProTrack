@@ -4,6 +4,8 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 ADB="${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/adb"
+# Always the emulator, even when a phone is plugged in (override with ANDROID_SERIAL).
+export ANDROID_SERIAL="${ANDROID_SERIAL:-$("$ADB" devices | awk '/^emulator-/{print $1; exit}')}"
 APK="${1:-$ROOT/androidApp/build/outputs/apk/debug/androidApp-debug.apk}"
 PKG=com.suw1labs.worktracker
 OUT="$ROOT/store/screenshots/android/phone"
