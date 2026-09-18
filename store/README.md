@@ -16,7 +16,7 @@ debug / simulator build with demo data (`-demo`), see `tools/`.
 | `screenshots/ios/iphone-6.5/<lang>/framed/` | 1284×2778 captioned (same shots re-framed) | App Store Connect → iPhone 6.5" display (what the listing page asks for on this app record) |
 | `screenshots/ios/ipad-13/<lang>/` and `…/framed/` | 2064×2752 iPad Pro 13", raw and captioned | App Store Connect → iPad 13" display (required because the app supports iPad) |
 | `metadata/<locale>/` | title, subtitle, short description, full description, keywords, promotional text, release notes | See the table below |
-| `PRIVACY_POLICY.md` | Privacy policy text | Publish it at a public URL (GitHub Pages or the repo's raw URL) and paste the link into both consoles |
+| `../PRIVACY.md` | Privacy policy text | Public URL: https://github.com/5uw1/ProTrack/blob/main/PRIVACY.md – paste it into both consoles |
 
 ## Text fields per store
 
@@ -36,7 +36,7 @@ translations; in App Store Connect add German and French localizations.
 ## Google Play – other required answers
 
 * **Category**: Productivity (or Business). **Tags**: Time tracking, Productivity.
-* **Contact e-mail**: suwijakza@gmail.com. **Privacy policy URL**: public URL of `PRIVACY_POLICY.md`.
+* **Contact e-mail**: suwijakza@gmail.com. **Privacy policy URL**: https://github.com/5uw1/ProTrack/blob/main/PRIVACY.md.
 * **App access**: all functionality available without login.
 * **Ads**: no. **Content rating**: fill the IARC questionnaire – no violence, no user interaction, no
   data sharing → "Everyone".
@@ -57,7 +57,7 @@ translations; in App Store Connect add German and French localizations.
 * **App Privacy** (nutrition label): "Data Not Collected" for every category – the app has no
   analytics and no network access. `iosApp/PrivacyInfo.xcprivacy` must match (no tracking, no
   required-reason APIs beyond UserDefaults / file timestamps).
-* **Support URL**: the GitHub repository. **Privacy Policy URL**: public URL of `PRIVACY_POLICY.md`.
+* **Support URL**: the GitHub repository. **Privacy Policy URL**: https://github.com/5uw1/ProTrack/blob/main/PRIVACY.md.
 * **Export compliance**: uses no encryption beyond the OS (answer "No" / exempt).
 * **Sign-in**: none required → no demo account needed for review.
 * **Review notes**: "Tap Clock in on the Today tab, then pick a project. The widget can be added
