@@ -71,7 +71,7 @@ fun SapExportDialog(
     val t = strings
     @Suppress("DEPRECATION")
     val clipboardManager = LocalClipboardManager.current
-    var selectedType by remember { mutableStateOf(SapExportType.MONTHLY_SUMMARY) }
+    var selectedType by remember { mutableStateOf(SapExportType.SAP_WEEK) }
     var roundToQuarter by remember { mutableStateOf(false) }
     var format by remember { mutableStateOf(ExportFormat.EXCEL_CSV) }
     var copiedMessageVisible by remember { mutableStateOf(false) }
@@ -118,22 +118,27 @@ fun SapExportDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(t.fileFormat, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    ExportFormat.entries.forEach { f ->
-                        FilterChip(
-                            selected = format == f,
-                            onClick = { format = f },
-                            label = { Text(t.formatLabel(f)) },
-                            modifier = Modifier.testTag("export_format_${f.name}")
-                        )
+                if (selectedType == SapExportType.SAP_WEEK) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(t.sapWeekHint, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(t.fileFormat, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        ExportFormat.entries.forEach { f ->
+                            FilterChip(
+                                selected = format == f,
+                                onClick = { format = f },
+                                label = { Text(t.formatLabel(f)) },
+                                modifier = Modifier.testTag("export_format_${f.name}")
+                            )
+                        }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(8.dp))
-                ToggleRow(t.roundQuarter, roundToQuarter) { roundToQuarter = it }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ToggleRow(t.roundQuarter, roundToQuarter) { roundToQuarter = it }
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(t.preview, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)

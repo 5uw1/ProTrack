@@ -368,3 +368,31 @@ fun ImportProjectsDialog(
         )
     }
 }
+
+/** SAP activity types and the unproductive cost object (weekly copy & paste export). */
+@Composable
+fun SapSettingsDialog(
+    settings: AppSettings,
+    onDismiss: () -> Unit,
+    onSave: (productiveType: String, unproductiveType: String, unproductiveNumber: String) -> Unit
+) {
+    val t = strings
+    var productive by remember { mutableStateOf(settings.sapProductiveType) }
+    var unproductive by remember { mutableStateOf(settings.sapUnproductiveType) }
+    var number by remember { mutableStateOf(settings.sapUnproductiveNumber) }
+    FormDialog(
+        title = t.sapSettingsTitle,
+        subtitle = t.sapSettingsSubtitle,
+        onDismiss = onDismiss,
+        onSave = { onSave(productive, unproductive, number) },
+        saveEnabled = productive.isNotBlank() && unproductive.isNotBlank(),
+        saveTestTag = "save_sap_button",
+        modifier = Modifier.testTag("sap_settings_dialog")
+    ) {
+        OutlinedTextField(value = productive, onValueChange = { productive = it }, singleLine = true, label = { Text(t.sapProductiveType) }, modifier = Modifier.fillMaxWidth().testTag("sap_productive_input"))
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(value = unproductive, onValueChange = { unproductive = it }, singleLine = true, label = { Text(t.sapUnproductiveType) }, modifier = Modifier.fillMaxWidth().testTag("sap_unproductive_input"))
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(value = number, onValueChange = { number = it }, singleLine = true, label = { Text(t.sapUnproductiveNumber) }, modifier = Modifier.fillMaxWidth().testTag("sap_number_input"))
+    }
+}

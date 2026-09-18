@@ -342,11 +342,19 @@ class AppStrings(val language: Language) {
     var periodDay = ""; var periodWeek = ""; var periodMonth = ""
 
     fun exportTypeLabel(type: SapExportType): String = when (type) {
+        SapExportType.SAP_WEEK -> exportSapWeek
         SapExportType.MONTHLY_SUMMARY -> exportSummary
         SapExportType.DAILY_TIMESHEET -> exportTimesheet
         SapExportType.ATTENDANCE -> exportAttendance
     }
     var exportSummary = ""; var exportTimesheet = ""; var exportAttendance = ""
+    lateinit var exportSapWeek: String
+    lateinit var sapWeekHint: String
+    lateinit var sapSettingsTitle: String
+    lateinit var sapSettingsSubtitle: String
+    lateinit var sapProductiveType: String
+    lateinit var sapUnproductiveType: String
+    lateinit var sapUnproductiveNumber: String
 
     fun formatLabel(format: ExportFormat): String = when (format) {
         ExportFormat.CSV -> formatCsv
@@ -737,6 +745,13 @@ object Translations {
         reasonLunch = "Lunch"; reasonBreak = "Break"; reasonOut = "Out of office"; reasonHome = "Go home"
         periodDay = "Day"; periodWeek = "Week"; periodMonth = "Month"
         exportSummary = "Summary per project"; exportTimesheet = "Daily timesheet"; exportAttendance = "Attendance & overtime"
+        exportSapWeek = "SAP week (copy & paste)"
+        sapWeekHint = "Tab-separated, one block per calendar week, Monday first: copy it and paste it into the SAP weekly time sheet. Hours have two decimals; empty cells mean nothing to book. Lines starting with ! are time without a project – book it manually or assign it first."
+        sapSettingsTitle = "SAP booking"
+        sapSettingsSubtitle = "Activity types and the cost object used by the weekly copy & paste export."
+        sapProductiveType = "Activity type – project work"
+        sapUnproductiveType = "Activity type – unproductive"
+        sapUnproductiveNumber = "Cost object for unproductive hours"
         undo = "Undo"; activityDeleted = "Activity deleted"; moreActions = "More actions"
         deleteProjectQuestion = { "Delete project $it?" }
         deleteProjectWarning = "Its tasks are deleted. Time already booked on it is kept but loses its project and must be re-assigned."
@@ -1075,6 +1090,13 @@ object Translations {
         reasonLunch = "Mittag"; reasonBreak = "Pause"; reasonOut = "Ausser Haus"; reasonHome = "Feierabend"
         periodDay = "Tag"; periodWeek = "Woche"; periodMonth = "Monat"
         exportSummary = "Summe pro Projekt"; exportTimesheet = "Tagesrapport"; exportAttendance = "Anwesenheit & Überzeit"
+        exportSapWeek = "SAP-Woche (kopieren & einfügen)"
+        sapWeekHint = "Tab-getrennt, ein Block pro Kalenderwoche, Montag zuerst: kopieren und in den SAP-Wochenrapport einfügen. Stunden mit zwei Nachkommastellen; leere Zellen = nichts zu buchen. Zeilen mit ! sind Zeit ohne Projekt – manuell buchen oder zuerst zuordnen."
+        sapSettingsTitle = "SAP-Buchung"
+        sapSettingsSubtitle = "Leistungsarten und Kostenstelle für den wöchentlichen Kopieren-und-Einfügen-Export."
+        sapProductiveType = "Leistungsart – Projektarbeit"
+        sapUnproductiveType = "Leistungsart – unproduktiv"
+        sapUnproductiveNumber = "Kostenstelle für unproduktive Stunden"
         undo = "Rückgängig"; activityDeleted = "Tätigkeit gelöscht"; moreActions = "Weitere Aktionen"
         deleteProjectQuestion = { "Projekt $it löschen?" }
         deleteProjectWarning = "Die Aufgaben werden gelöscht. Bereits gebuchte Zeit bleibt erhalten, verliert aber das Projekt und muss neu zugeordnet werden."
@@ -1413,6 +1435,13 @@ object Translations {
         reasonLunch = "Midi"; reasonBreak = "Pause"; reasonOut = "Hors bureau"; reasonHome = "Fin de journée"
         periodDay = "Jour"; periodWeek = "Semaine"; periodMonth = "Mois"
         exportSummary = "Résumé par projet"; exportTimesheet = "Feuille journalière"; exportAttendance = "Présence & heures sup."
+        exportSapWeek = "Semaine SAP (copier-coller)"
+        sapWeekHint = "Séparé par tabulations, un bloc par semaine civile, lundi en premier : copiez-le et collez-le dans la feuille hebdomadaire SAP. Heures à deux décimales ; cellule vide = rien à saisir. Les lignes commençant par ! sont du temps sans projet – à saisir à la main ou à attribuer d'abord."
+        sapSettingsTitle = "Saisie SAP"
+        sapSettingsSubtitle = "Types d'activité et centre de coûts utilisés par l'export hebdomadaire copier-coller."
+        sapProductiveType = "Type d'activité – travail projet"
+        sapUnproductiveType = "Type d'activité – improductif"
+        sapUnproductiveNumber = "Centre de coûts des heures improductives"
         undo = "Annuler"; activityDeleted = "Activité supprimée"; moreActions = "Plus d'actions"
         deleteProjectQuestion = { "Supprimer le projet $it ?" }
         deleteProjectWarning = "Ses tâches sont supprimées. Le temps déjà imputé est conservé mais perd son projet et devra être réattribué."

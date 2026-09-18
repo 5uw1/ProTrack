@@ -90,6 +90,7 @@ fun ProjectsScreen(
 ) {
     val t = strings
     var showScheduleDialog by remember { mutableStateOf(false) }
+    var showSapDialog by remember { mutableStateOf(false) }
     val settings by viewModel.settings.collectAsState()
     val backupBusy by viewModel.backupBusy.collectAsState()
     val pendingRestore by viewModel.pendingRestore.collectAsState()
@@ -145,6 +146,31 @@ fun ProjectsScreen(
                         }
                         IconButton(onClick = { showScheduleDialog = true }, modifier = Modifier.testTag("edit_schedule_button")) {
                             Icon(Icons.Default.Edit, contentDescription = t.editSchedule)
+                        }
+                    }
+                }
+            }
+
+            // --- SAP booking (activity types for the weekly paste export) ---
+            item {
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    modifier = Modifier.fillMaxWidth().testTag("sap_settings_card")
+                ) {
+                    Row(modifier = Modifier.padding(18.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Business, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(t.sapSettingsTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(
+                                "${settings.sapProductiveType} · ${settings.sapUnproductiveType} ${settings.sapUnproductiveNumber}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(onClick = { showSapDialog = true }, modifier = Modifier.testTag("edit_sap_button")) {
+                            Icon(Icons.Default.Edit, contentDescription = t.edit)
                         }
                     }
                 }
@@ -328,6 +354,17 @@ fun ProjectsScreen(
 
             item { Spacer(modifier = Modifier.height(24.dp)) }
         }
+    }
+
+    if (showSapDialog) {
+        SapSettingsDialog(
+            settings = settings,
+            onDismiss = { showSapDialog = false },
+            onSave = { productive, unproductive, number ->
+                viewModel.saveSapSettings(productive, unproductive, number)
+                showSapDialog = false
+            }
+        )
     }
 
     if (showScheduleDialog) {

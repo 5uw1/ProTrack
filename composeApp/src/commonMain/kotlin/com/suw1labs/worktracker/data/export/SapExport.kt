@@ -1,11 +1,17 @@
 package com.suw1labs.worktracker.data.export
 
+import com.suw1labs.worktracker.data.model.AppSettings
+import com.suw1labs.worktracker.data.report.DayRow
 import com.suw1labs.worktracker.data.report.PeriodReport
+import com.suw1labs.worktracker.util.DateRanges
+import com.suw1labs.worktracker.util.formatFixed
 import com.suw1labs.worktracker.util.DateFormats
 import com.suw1labs.worktracker.util.TimeFormat
 import com.suw1labs.worktracker.util.currentTimeMillis
 
 enum class SapExportType(val label: String) {
+    /** Tab-separated week block(s) to paste straight into the SAP weekly time sheet. */
+    SAP_WEEK("SAP week (paste)"),
     MONTHLY_SUMMARY("Summary per project"),
     DAILY_TIMESHEET("Daily timesheet"),
     ATTENDANCE("Attendance & overtime")
@@ -58,11 +64,55 @@ object SapExport {
         report: PeriodReport,
         periodLabel: String,
         roundToQuarter: Boolean,
-        format: ExportFormat
+        format: ExportFormat,
+        settings: AppSettings = AppSettings()
     ): String = when (type) {
+        SapExportType.SAP_WEEK -> weekPaste(report, settings)
         SapExportType.MONTHLY_SUMMARY -> summaryCsv(report, periodLabel, roundToQuarter, format)
         SapExportType.DAILY_TIMESHEET -> timesheetCsv(report, periodLabel, roundToQuarter, format)
         SapExportType.ATTENDANCE -> attendanceCsv(report, periodLabel, roundToQuarter, format)
+    }
+
+    /**
+     * The weekly SAP time sheet as tab-separated text, one block per calendar week (Monday first):
+     *
+     * ```
+     * UNPROD<TAB><TAB>700411<TAB>0.50<TAB>0.50<TAB>0.50<TAB>0.50<TAB>0.50
+     * SERTCN<TAB>M.00073.1.08<TAB><TAB>3.00<TAB>5.00<TAB>6.00<TAB>6.00<TAB>3.50
+     * ```
+     *
+     * Hours are per project and day with two decimals (3 h 57 → 3.95), empty when nothing was
+     * booked. Five day columns, seven when the week has hours on a weekend. Time on no project is not
+     * bookable and is listed after the block with a leading "!" so it is not pasted by accident.
+     */
+    fun weekPaste(report: PeriodReport, settings: AppSettings): String {
+        val sb = StringBuilder()
+        val weeks = report.days.groupBy { DateRanges.weekRange(it.range.start).start }.toSortedMap()
+        val multi = weeks.size > 1
+        weeks.entries.forEachIndexed { index, (weekStart, days) ->
+            if (index > 0) sb.append('\n')
+            val byDay: Map<Int, DayRow> = days.associateBy { ((it.range.start - weekStart) / (24 * 3600_000L)).toInt() + 1 }
+            val weekend = (6..7).any { d -> byDay[d]?.cells?.any { it.seconds > 0 } == true }
+            val columns = if (weekend) 7 else 5
+            if (multi) sb.append("# ").append(DateFormats.monthDay(weekStart)).append(" – ").append(DateFormats.monthDay(weekStart + (columns - 1) * 24 * 3600_000L)).append('\n')
+            fun cell(seconds: Long): String = if (seconds <= 0) "" else (seconds / 3600.0).formatFixed(2)
+            fun perDay(select: (DayRow) -> Long): List<String> = (1..columns).map { d -> cell(byDay[d]?.let(select) ?: 0L) }
+
+            val unproductive = perDay { day -> day.cells.filter { !it.isProductive }.sumOf { it.seconds } }
+            if (unproductive.any { it.isNotEmpty() }) {
+                sb.append(listOf(settings.sapUnproductiveType, "", settings.sapUnproductiveNumber).plus(unproductive).joinToString("\t")).append('\n')
+            }
+            val codes = days.flatMap { it.cells }.filter { it.isProductive && it.projectId != null && it.seconds > 0 }.map { it.projectCode }.distinct().sorted()
+            for (code in codes) {
+                val hours = perDay { day -> day.cells.filter { it.isProductive && it.projectId != null && it.projectCode == code }.sumOf { it.seconds } }
+                sb.append(listOf(settings.sapProductiveType, code, "").plus(hours).joinToString("\t")).append('\n')
+            }
+            val unassigned = perDay { day -> day.cells.filter { it.isProductive && it.projectId == null }.sumOf { it.seconds } }
+            if (unassigned.any { it.isNotEmpty() }) {
+                sb.append("! NOT ASSIGNED YET – book manually: ").append(unassigned.joinToString("\t")).append('\n')
+            }
+        }
+        return sb.toString()
     }
 
     /**

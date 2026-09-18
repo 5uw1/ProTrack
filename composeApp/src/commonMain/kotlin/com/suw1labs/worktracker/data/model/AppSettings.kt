@@ -39,7 +39,13 @@ data class AppSettings(
      */
     val breakRules: String = DEFAULT_BREAK_RULES,
     /** Take the part of the required break that was not actually taken off the counted working time. */
-    val deductMissingBreak: Boolean = true
+    val deductMissingBreak: Boolean = true,
+    /** SAP activity type typed in front of productive project rows in the weekly time sheet. */
+    val sapProductiveType: String = DEFAULT_SAP_PRODUCTIVE_TYPE,
+    /** SAP activity type for the unproductive row. */
+    val sapUnproductiveType: String = DEFAULT_SAP_UNPRODUCTIVE_TYPE,
+    /** Cost object (Kostenstelle) the unproductive hours are booked on. */
+    val sapUnproductiveNumber: String = DEFAULT_SAP_UNPRODUCTIVE_NUMBER
 ) {
     /** Parsed [breakRules], longest working time first; malformed parts are ignored. */
     val breakRuleList: List<BreakRule> get() = parseBreakRules(breakRules)
@@ -74,6 +80,9 @@ data class AppSettings(
     companion object {
         const val DEFAULT_WEEKDAY_HOURS = "8,8,8,8,8,0,0"
         const val DEFAULT_BREAK_RULES = "5:30,9:60"
+        const val DEFAULT_SAP_PRODUCTIVE_TYPE = "SERTCN"
+        const val DEFAULT_SAP_UNPRODUCTIVE_TYPE = "UNPROD"
+        const val DEFAULT_SAP_UNPRODUCTIVE_NUMBER = "700411"
 
         fun parseBreakRules(text: String): List<BreakRule> = text.split(',').mapNotNull { part ->
             val (hours, minutes) = part.split(':').map { it.trim().replace(',', '.') }.takeIf { it.size == 2 } ?: return@mapNotNull null

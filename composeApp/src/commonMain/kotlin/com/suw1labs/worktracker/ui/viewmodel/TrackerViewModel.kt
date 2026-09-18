@@ -319,6 +319,13 @@ class TrackerViewModel(
         viewModelScope.launch { repository.clockOut(currentTimeMillis(), reason?.name) }
     }
 
+    /** SAP activity types and the unproductive cost object used by the weekly paste export. */
+    fun saveSapSettings(productiveType: String, unproductiveType: String, unproductiveNumber: String) {
+        viewModelScope.launch {
+            repository.saveSettings(settings.value.copy(sapProductiveType = productiveType.trim(), sapUnproductiveType = unproductiveType.trim(), sapUnproductiveNumber = unproductiveNumber.trim()))
+        }
+    }
+
     fun updateSession(session: AttendanceSession) {
         viewModelScope.launch { repository.updateSession(session) }
     }
@@ -596,20 +603,23 @@ class TrackerViewModel(
 
     // --- SAP export ---
     fun buildSapExport(type: SapExportType, roundToQuarter: Boolean, format: ExportFormat): String =
-        SapExport.generate(type, periodReport.value, periodLabel.value, roundToQuarter, format)
+        SapExport.generate(type, periodReport.value, periodLabel.value, roundToQuarter, format, settings.value)
 
     fun shareSapExport(type: SapExportType, format: ExportFormat, content: String, action: ExportAction = ExportAction.SHARE) {
         val stamp = DateFormats.yearMonth(_periodAnchor.value)
         val prefix = when (type) {
+            SapExportType.SAP_WEEK -> "sap_week"
             SapExportType.MONTHLY_SUMMARY -> "sap_hours"
             SapExportType.DAILY_TIMESHEET -> "sap_timesheet"
             SapExportType.ATTENDANCE -> "attendance_overtime"
         }
-        val filename = "${prefix}_${stamp}.${format.extension}"
+        val extension = if (type == SapExportType.SAP_WEEK) "txt" else format.extension
+        val mime = if (type == SapExportType.SAP_WEEK) "text/plain" else "text/csv"
+        val filename = "${prefix}_${stamp}.$extension"
         viewModelScope.launch {
             when (action) {
-                ExportAction.SAVE -> fileExporter.saveText(content, filename, "text/csv")
-                ExportAction.SHARE -> fileExporter.shareText(content, filename, "text/csv", "Export time report")
+                ExportAction.SAVE -> fileExporter.saveText(content, filename, mime)
+                ExportAction.SHARE -> fileExporter.shareText(content, filename, mime, "Export time report")
             }
         }
     }

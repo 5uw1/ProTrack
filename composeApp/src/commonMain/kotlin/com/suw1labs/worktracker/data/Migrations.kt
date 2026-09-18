@@ -14,7 +14,7 @@ import androidx.sqlite.execSQL
  * - Table and index names must match what Room generates (`index_<table>_<column>`), otherwise the
  *   schema validation on open fails.
  */
-val ALL_MIGRATIONS: Array<Migration> get() = arrayOf(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+val ALL_MIGRATIONS: Array<Migration> get() = arrayOf(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
 
 /** v7: paid short breaks per day (company rule) on the settings row. */
 val MIGRATION_6_7: Migration = object : Migration(6, 7) {
@@ -46,5 +46,14 @@ val MIGRATION_8_9: Migration = object : Migration(8, 9) {
 val MIGRATION_9_10: Migration = object : Migration(9, 10) {
     override fun migrate(connection: SQLiteConnection) {
         connection.execSQL("ALTER TABLE projects ADD COLUMN isFocused INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+/** v11: SAP activity types and the unproductive cost object for the weekly paste export. */
+val MIGRATION_10_11: Migration = object : Migration(10, 11) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE app_settings ADD COLUMN sapProductiveType TEXT NOT NULL DEFAULT 'SERTCN'")
+        connection.execSQL("ALTER TABLE app_settings ADD COLUMN sapUnproductiveType TEXT NOT NULL DEFAULT 'UNPROD'")
+        connection.execSQL("ALTER TABLE app_settings ADD COLUMN sapUnproductiveNumber TEXT NOT NULL DEFAULT '700411'")
     }
 }

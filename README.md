@@ -49,6 +49,11 @@ as files.
   (Export → CSV): every "DAYS IN DETAIL" row becomes an activity, runs of rows become clock-in
   periods with lunch / break tags from the pause rows, absences become day records; projects and
   tasks are created by name; rows already present are skipped so re-importing is safe.
+* **SAP week (copy & paste)** – Reports → Export → "SAP week": tab-separated lines per calendar
+  week exactly as the SAP weekly time sheet expects them (`UNPROD  700411  0.50 …`,
+  `SERTCN  M.00073.1.08  3.00 5.00 …`), hours with two decimals, Monday first, empty cells for
+  nothing to book; time without a project is listed with a leading `!` so it is not pasted by
+  mistake. Activity types and the unproductive cost object are set in Settings → SAP booking.
 * **Import / export** – paste a project list (from Excel, SAP or CSV; tab, `;` or `,` separated)
   to import project numbers. Export the summary per project, a daily timesheet or an
   attendance/overtime report as plain CSV or Excel-friendly CSV (semicolon + UTF-8 BOM).
