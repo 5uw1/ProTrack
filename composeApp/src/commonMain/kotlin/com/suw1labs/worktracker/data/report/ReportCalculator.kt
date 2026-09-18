@@ -229,7 +229,7 @@ object ReportCalculator {
     fun forgottenClockOutTime(session: AttendanceSession, entries: List<TimeEntryWithDetails>, settings: AppSettings): Long {
         val day = DateRanges.dayRange(session.clockIn)
         val lastActivityEnd = entries
-            .filter { it.endTime != null && it.startTime >= session.clockIn && it.endTime!! < day.endExclusive }
+            .filter { it.endTime != null && it.startTime >= session.clockIn && it.endTime < day.endExclusive }
             .maxOfOrNull { it.endTime!! }
         if (lastActivityEnd != null && lastActivityEnd > session.clockIn) return lastActivityEnd
         val target = settings.targetSecondsFor(day.start.toLocalDate().dayOfWeek.isoDayNumber)

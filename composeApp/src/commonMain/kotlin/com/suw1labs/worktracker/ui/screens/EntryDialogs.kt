@@ -133,8 +133,8 @@ fun EntryFormDialog(
     // Neighbour handling only matters once the boundary next to it moved.
     val previousTouched = entry != null && previous?.endTime != null && start != entry.startTime
     val nextTouched = entry != null && next != null && endValue != null && endValue != entry.endTime
-    val previousDelta = if (previousTouched) start - previous!!.endTime!! else 0L
-    val nextDelta = if (nextTouched) next!!.startTime - endValue!! else 0L
+    val previousDelta = if (previousTouched) start - previous.endTime else 0L
+    val nextDelta = if (nextTouched) next.startTime - endValue else 0L
     val canMovePrevious = previousTouched && start > previous!!.startTime
     val canMoveNext = nextTouched && (next!!.endTime == null || endValue!! < next.endTime)
     val effectiveMovePrevious = canMovePrevious && (movePrevious ?: (previousDelta < 0))
