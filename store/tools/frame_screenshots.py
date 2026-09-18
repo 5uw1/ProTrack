@@ -86,4 +86,11 @@ for src in sorted(glob.glob(os.path.join(SHOTS, "**", "*.png"), recursive=True))
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     frame(src, dst, w, h, caption)
     count += 1
+    # App Store Connect still asks for the 6.5" size (1284x2778) on some app records: same shots,
+    # re-framed at that canvas (aspect ratio differs by 0.4 %, the gradient frame absorbs it).
+    if "/iphone-6.9/" in src:
+        dst65 = dst.replace("/iphone-6.9/", "/iphone-6.5/")
+        os.makedirs(os.path.dirname(dst65), exist_ok=True)
+        frame(src, dst65, 1284, 2778, caption)
+        count += 1
 print("framed", count)

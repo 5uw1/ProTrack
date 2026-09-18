@@ -12,7 +12,8 @@ debug / simulator build with demo data (`-demo`), see `tools/`.
 | `graphics/play-feature-graphic-1024x500.png` | Feature graphic | Play Console → Main store listing → Feature graphic (required) |
 | `screenshots/android/phone/<lang>/` | 1080×2400 raw phone screenshots, 4 per language (Today, Reports, Projects, Settings) | Reference / re-framing |
 | `screenshots/android/phone/<lang>/framed/` | 1080×1920 (9:16) marketing versions with a caption | Play Console → Phone screenshots (2–8) |
-| `screenshots/ios/iphone-6.9/<lang>/` and `…/framed/` | 1320×2868 iPhone 17 Pro Max, raw and captioned | App Store Connect → iPhone 6.9" display (required; Apple scales it for smaller sizes) |
+| `screenshots/ios/iphone-6.9/<lang>/` and `…/framed/` | 1320×2868 iPhone 17 Pro Max, raw and captioned | App Store Connect → iPhone 6.9" display |
+| `screenshots/ios/iphone-6.5/<lang>/framed/` | 1284×2778 captioned (same shots re-framed) | App Store Connect → iPhone 6.5" display (what the listing page asks for on this app record) |
 | `screenshots/ios/ipad-13/<lang>/` and `…/framed/` | 2064×2752 iPad Pro 13", raw and captioned | App Store Connect → iPad 13" display (required because the app supports iPad) |
 | `metadata/<locale>/` | title, subtitle, short description, full description, keywords, promotional text, release notes | See the table below |
 | `PRIVACY_POLICY.md` | Privacy policy text | Publish it at a public URL (GitHub Pages or the repo's raw URL) and paste the link into both consoles |
