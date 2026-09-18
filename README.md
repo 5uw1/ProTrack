@@ -132,6 +132,17 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 
 Set your `TEAM_ID` in `iosApp/Configuration/Config.xcconfig` for device builds.
 
+### TestFlight via Xcode Cloud
+
+GitHub Actions does not build iOS (no Apple signing there). TestFlight builds come from **Xcode
+Cloud**, which watches the GitHub repository on its own: App Store Connect → Xcode Cloud → a workflow
+with an *Archive – iOS* action and *TestFlight (Internal Testing)* as post-action, started on
+pushes to `main` or on tags. `iosApp/ci_scripts/ci_post_clone.sh` prepares the runner: it installs
+a JDK and a minimal Android SDK (the Gradle build configures the Android module too) and writes
+`local.properties`. Prerequisites on the Apple side: the app record with bundle id
+`com.suw1labs.worktracker`, the widget id `com.suw1labs.worktracker.widget`, and the App Group
+`group.com.suw1labs.worktracker` enabled on both; automatic signing uses the team in the project.
+
 ## Tests
 
 ```bash
