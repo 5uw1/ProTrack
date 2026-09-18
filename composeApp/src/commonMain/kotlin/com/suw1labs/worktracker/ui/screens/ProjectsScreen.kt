@@ -93,6 +93,7 @@ fun ProjectsScreen(
     val settings by viewModel.settings.collectAsState()
     val backupBusy by viewModel.backupBusy.collectAsState()
     val pendingRestore by viewModel.pendingRestore.collectAsState()
+    val pendingWorkImport by viewModel.pendingWorkImport.collectAsState()
     val autoBackupFolder by viewModel.autoBackupFolder.collectAsState()
     val autoBackupState by viewModel.autoBackupState.collectAsState()
     val backupMessage by viewModel.backupMessage.collectAsState()
@@ -106,6 +107,8 @@ fun ProjectsScreen(
             is BackupMessage.Restored -> "${t.backupRestored} · ${t.backupContents(message.summary)}"
             is BackupMessage.Failed -> t.backupError(message.error)
             BackupMessage.NoAutoBackup -> t.autoBackupNoFile
+            BackupMessage.NotWorkExport -> t.notWorkExport
+            is BackupMessage.WorkImported -> t.workImported(message.plan.sessions.size, message.plan.entries.size)
         }
         viewModel.clearBackupMessage()
         snackbarHost.showSnackbar(text)
@@ -222,6 +225,36 @@ fun ProjectsScreen(
                 }
             }
 
+            // --- Import from other apps (WORK for iOS) ---
+            item {
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    modifier = Modifier.fillMaxWidth().testTag("import_apps_card")
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Upload, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(t.importAppsTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text(t.importAppsSubtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedButton(
+                            onClick = { viewModel.pickWorkExport() },
+                            enabled = !backupBusy,
+                            modifier = Modifier.fillMaxWidth().testTag("import_work_button")
+                        ) {
+                            Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(t.importWorkButton, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+
             // --- Automatic backup into a chosen folder (Drive, iCloud, local) ---
             if (viewModel.autoBackupAvailable) {
                 item {
@@ -305,6 +338,18 @@ fun ProjectsScreen(
                 viewModel.saveSettings(it)
                 showScheduleDialog = false
             }
+        )
+    }
+
+    pendingWorkImport?.let { plan ->
+        val skipped = plan.skippedEntries + plan.skippedSessions
+        ConfirmDeleteDialog(
+            title = t.workImportTitle,
+            message = (if (plan.isEmpty) t.workImportNothing else t.workImportSummary(plan.sessions.size, plan.entries.size, plan.dayRecords.size, plan.newProjects.size, plan.newTasks.size)) +
+                if (skipped > 0) "\n\n" + t.workImportSkipped(skipped) else "",
+            confirmLabel = t.workImportConfirm,
+            onConfirm = { if (plan.isEmpty) viewModel.cancelWorkImport() else viewModel.confirmWorkImport() },
+            onDismiss = { viewModel.cancelWorkImport() }
         )
     }
 

@@ -26,6 +26,7 @@ import com.suw1labs.worktracker.data.model.WorkTask
 import com.suw1labs.worktracker.data.model.WorkTaskWithProject
 import com.suw1labs.worktracker.data.report.PeriodReport
 import com.suw1labs.worktracker.data.import.ProjectImporter
+import com.suw1labs.worktracker.data.import.WorkAppImporter
 import com.suw1labs.worktracker.data.report.ReportCalculator
 import com.suw1labs.worktracker.data.repository.TimeTrackerRepository
 import com.suw1labs.worktracker.platform.BackupFolder
@@ -613,6 +614,69 @@ class TrackerViewModel(
         }
     }
 
+    // --- Import from the iOS app "WORK" (CSV export) ---
+    /** A parsed export waiting for confirmation; null when nothing is pending. */
+    private val _pendingWorkImport = MutableStateFlow<WorkAppImporter.Plan?>(null)
+    val pendingWorkImport: StateFlow<WorkAppImporter.Plan?> = _pendingWorkImport.asStateFlow()
+
+    /** Opens the file picker, parses the WORK export and shows what would be imported. */
+    fun pickWorkExport() {
+        viewModelScope.launch {
+            _backupBusy.value = true
+            try {
+                val text = fileExporter.openText(listOf("text/csv", "text/comma-separated-values", "text/plain", "application/octet-stream"), listOf("csv", "txt")) ?: return@launch
+                if (!WorkAppImporter.looksLikeWorkExport(text)) {
+                    _backupMessage.value = BackupMessage.NotWorkExport
+                    return@launch
+                }
+                val export = WorkAppImporter.parse(text)
+                _pendingWorkImport.value = WorkAppImporter.plan(
+                    export, allProjects.value, allTasks.value, allEntries.value, allSessions.value, settings.value
+                )
+            } finally {
+                _backupBusy.value = false
+            }
+        }
+    }
+
+    fun cancelWorkImport() { _pendingWorkImport.value = null }
+
+    /** Writes the pending plan: projects and tasks first, then sessions, activities and absences. */
+    fun confirmWorkImport() {
+        val plan = _pendingWorkImport.value ?: return
+        _pendingWorkImport.value = null
+        viewModelScope.launch {
+            _backupBusy.value = true
+            try {
+                val projectIds = allProjects.value.associate { it.name.trim().lowercase() to it.id }.toMutableMap()
+                plan.newProjects.forEach { projectIds[it.name.trim().lowercase()] = repository.insertProject(it) }
+                val taskIds = mutableMapOf<Pair<Long, String>, Long>()
+                allTasks.value.forEach { taskIds[it.projectId to it.title.trim().lowercase()] = it.id }
+                plan.newTasks.forEach { (project, title) ->
+                    val pid = projectIds[project.trim().lowercase()] ?: return@forEach
+                    val existing = repository.findTaskByTitle(pid, title)
+                    taskIds[pid to title.lowercase()] = existing?.id ?: repository.insertTask(WorkTask(projectId = pid, title = title, priority = "LOW", reminderEnabled = false))
+                }
+                plan.sessions.forEach { repository.insertSession(it) }
+                plan.entries.forEach { e ->
+                    val pid = projectIds[e.project.trim().lowercase()]
+                    val tid = if (pid != null && e.task.isNotBlank()) taskIds[pid to e.task.lowercase()] else null
+                    repository.insertTimeEntry(TimeEntry(projectId = pid, taskId = tid, description = e.notes, startTime = e.start, endTime = e.end, createdAt = e.start))
+                }
+                plan.dayRecords.forEach { record ->
+                    if (repository.getDayRecord(record.dayStart) == null) repository.insertDayRecord(record)
+                }
+                _backupMessage.value = BackupMessage.WorkImported(plan)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _backupMessage.value = BackupMessage.Failed(BackupError.IO)
+            } finally {
+                _backupBusy.value = false
+            }
+        }
+    }
+
     // --- Backup & restore (move all data to another device) ---
     private val _backupBusy = MutableStateFlow(false)
     val backupBusy: StateFlow<Boolean> = _backupBusy.asStateFlow()
@@ -750,4 +814,7 @@ sealed interface BackupMessage {
     data class Failed(val error: BackupError) : BackupMessage
     /** "Restore from folder" found no backup file there yet. */
     data object NoAutoBackup : BackupMessage
+    /** The picked file is not an export of the WORK app. */
+    data object NotWorkExport : BackupMessage
+    data class WorkImported(val plan: WorkAppImporter.Plan) : BackupMessage
 }

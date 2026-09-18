@@ -396,6 +396,17 @@ class AppStrings(val language: Language) {
     lateinit var turnOff: String
     lateinit var backupNow: String
     lateinit var restoreFromFolder: String
+    // import from other apps
+    lateinit var importAppsTitle: String
+    lateinit var importAppsSubtitle: String
+    lateinit var importWorkButton: String
+    lateinit var workImportTitle: String
+    lateinit var workImportSummary: (sessions: Int, entries: Int, absences: Int, projects: Int, tasks: Int) -> String
+    lateinit var workImportSkipped: (Int) -> String
+    lateinit var workImportNothing: String
+    lateinit var workImportConfirm: String
+    lateinit var workImported: (sessions: Int, entries: Int) -> String
+    lateinit var notWorkExport: String
 
     fun backupError(error: BackupError): String = when (error) {
         BackupError.NOT_A_BACKUP -> backupErrorNotBackup
@@ -775,6 +786,16 @@ object Translations {
         turnOff = "Turn off"
         backupNow = "Back up now"
         restoreFromFolder = "Restore from folder"
+        importAppsTitle = "Import from other apps"
+        importAppsSubtitle = "Bring your history over. Supported: the CSV export of the iOS app WORK (Export → CSV). Days already present are skipped."
+        importWorkButton = "WORK export (CSV)"
+        workImportTitle = "Import WORK export"
+        workImportSummary = { s, e, a, p, t -> "$s clock-in periods · $e activities · $a absences" + if (p > 0 || t > 0) " · creates $p projects and $t tasks" else "" }
+        workImportSkipped = { "$it rows already exist and are skipped." }
+        workImportNothing = "Nothing new to import."
+        workImportConfirm = "Import"
+        workImported = { s, e -> "Imported $s clock-in periods and $e activities" }
+        notWorkExport = "This file is not a WORK export."
     }
 
     val DE: AppStrings = AppStrings(Language.DE).apply {
@@ -1103,6 +1124,16 @@ object Translations {
         turnOff = "Ausschalten"
         backupNow = "Jetzt sichern"
         restoreFromFolder = "Aus Ordner wiederherstellen"
+        importAppsTitle = "Aus anderen Apps importieren"
+        importAppsSubtitle = "Hol deine bisherigen Daten herüber. Unterstützt: der CSV-Export der iOS-App WORK (Export → CSV). Bereits vorhandene Tage werden übersprungen."
+        importWorkButton = "WORK-Export (CSV)"
+        workImportTitle = "WORK-Export importieren"
+        workImportSummary = { s, e, a, p, t -> "$s Präsenzzeiten · $e Tätigkeiten · $a Abwesenheiten" + if (p > 0 || t > 0) " · legt $p Projekte und $t Aufgaben an" else "" }
+        workImportSkipped = { "$it Zeilen sind schon vorhanden und werden übersprungen." }
+        workImportNothing = "Nichts Neues zu importieren."
+        workImportConfirm = "Importieren"
+        workImported = { s, e -> "$s Präsenzzeiten und $e Tätigkeiten importiert" }
+        notWorkExport = "Diese Datei ist kein WORK-Export."
     }
 
     val FR: AppStrings = AppStrings(Language.FR).apply {
@@ -1431,6 +1462,16 @@ object Translations {
         turnOff = "Désactiver"
         backupNow = "Sauvegarder maintenant"
         restoreFromFolder = "Restaurer depuis le dossier"
+        importAppsTitle = "Importer depuis d'autres apps"
+        importAppsSubtitle = "Récupérez votre historique. Pris en charge : l'export CSV de l'app iOS WORK (Export → CSV). Les jours déjà présents sont ignorés."
+        importWorkButton = "Export WORK (CSV)"
+        workImportTitle = "Importer l'export WORK"
+        workImportSummary = { s, e, a, p, t -> "$s périodes de pointage · $e activités · $a absences" + if (p > 0 || t > 0) " · crée $p projets et $t tâches" else "" }
+        workImportSkipped = { "$it lignes existent déjà et sont ignorées." }
+        workImportNothing = "Rien de nouveau à importer."
+        workImportConfirm = "Importer"
+        workImported = { s, e -> "$s périodes de pointage et $e activités importées" }
+        notWorkExport = "Ce fichier n'est pas un export WORK."
     }
 }
 
