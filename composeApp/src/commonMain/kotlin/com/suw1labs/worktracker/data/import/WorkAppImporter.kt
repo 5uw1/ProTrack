@@ -161,7 +161,7 @@ object WorkAppImporter {
         var skippedEntries = 0
         var skippedSessions = 0
 
-        export.rows.groupBy { it.date }.toSortedMap().forEach { (date, dayRows) ->
+        export.rows.groupBy { it.date }.entries.sortedBy { it.key }.forEach { (date, dayRows) ->
             val ordered = dayRows.sortedBy { it.from }
             // Work rows → activities (+ projects / tasks to create).
             ordered.filter { !it.isPause }.forEach { row ->

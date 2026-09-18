@@ -87,9 +87,11 @@ object SapExport {
      */
     fun weekPaste(report: PeriodReport, settings: AppSettings): String {
         val sb = StringBuilder()
-        val weeks = report.days.groupBy { DateRanges.weekRange(it.range.start).start }.toSortedMap()
+        val weeks: List<Pair<Long, List<DayRow>>> = report.days.groupBy { DateRanges.weekRange(it.range.start).start }.entries
+            .sortedBy { it.key }.map { it.key to it.value }
         val multi = weeks.size > 1
-        weeks.entries.forEachIndexed { index, (weekStart, days) ->
+        weeks.forEachIndexed { index: Int, week: Pair<Long, List<DayRow>> ->
+            val (weekStart, days) = week
             if (index > 0) sb.append('\n')
             val byDay: Map<Int, DayRow> = days.associateBy { ((it.range.start - weekStart) / (24 * 3600_000L)).toInt() + 1 }
             val weekend = (6..7).any { d -> byDay[d]?.cells?.any { it.seconds > 0 } == true }
