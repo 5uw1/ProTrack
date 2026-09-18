@@ -62,6 +62,11 @@ class AppStrings(val language: Language) {
     lateinit var currentActivity: String
     lateinit var whatWorkingOn: String
     lateinit var searchProjectsTasks: String
+    lateinit var focus: String
+    lateinit var focusAll: String
+    lateinit var focusOn: String
+    lateinit var focusOff: String
+    lateinit var focusHint: String
     lateinit var noMatches: String
     lateinit var switchActivity: String
     lateinit var switchShort: String
@@ -475,6 +480,11 @@ object Translations {
         currentActivity = "CURRENT ACTIVITY"
         whatWorkingOn = "WHAT ARE YOU WORKING ON?"
         searchProjectsTasks = "Search project or task…"
+        focus = "Focus"
+        focusAll = "All"
+        focusOn = "Add to focus"
+        focusOff = "Remove from focus"
+        focusHint = "Star the projects you work on these days: Today then offers only those."
         noMatches = "No project or task matches."
         switchActivity = "SWITCH ACTIVITY"
         switchShort = "Switch"
@@ -798,6 +808,11 @@ object Translations {
         currentActivity = "AKTUELLE TÄTIGKEIT"
         whatWorkingOn = "WORAN ARBEITEST DU?"
         searchProjectsTasks = "Projekt oder Aufgabe suchen…"
+        focus = "Fokus"
+        focusAll = "Alle"
+        focusOn = "Zum Fokus hinzufügen"
+        focusOff = "Aus dem Fokus entfernen"
+        focusHint = "Markiere die Projekte, an denen du zurzeit arbeitest: Heute bietet dann nur diese an."
         noMatches = "Kein Projekt und keine Aufgabe passt."
         switchActivity = "TÄTIGKEIT WECHSELN"
         switchShort = "Wechseln"
@@ -1121,6 +1136,11 @@ object Translations {
         currentActivity = "ACTIVITÉ EN COURS"
         whatWorkingOn = "SUR QUOI TRAVAILLES-TU ?"
         searchProjectsTasks = "Rechercher un projet ou une tâche…"
+        focus = "Focus"
+        focusAll = "Tous"
+        focusOn = "Ajouter au focus"
+        focusOff = "Retirer du focus"
+        focusHint = "Marquez d'une étoile les projets du moment : Aujourd'hui ne propose alors que ceux-là."
         noMatches = "Aucun projet ni tâche ne correspond."
         switchActivity = "CHANGER D'ACTIVITÉ"
         switchShort = "Changer"

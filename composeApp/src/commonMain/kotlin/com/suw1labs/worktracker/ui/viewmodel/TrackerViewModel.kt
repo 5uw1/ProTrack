@@ -407,6 +407,11 @@ class TrackerViewModel(
     }
 
     // --- Projects & categories ---
+    /** Pins / unpins a project as one currently worked on (Today offers focused projects first). */
+    fun setProjectFocus(project: Project, focused: Boolean) {
+        viewModelScope.launch { repository.updateProject(project.copy(isFocused = focused)) }
+    }
+
     fun addProject(code: String, name: String, client: String, colorHex: String, budgetHours: Double, isProductive: Boolean = true, onCreated: (Long) -> Unit = {}) {
         viewModelScope.launch {
             val id = repository.insertProject(

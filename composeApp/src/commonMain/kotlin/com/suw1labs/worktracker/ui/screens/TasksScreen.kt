@@ -28,6 +28,8 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Task
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.ButtonDefaults
@@ -104,6 +106,7 @@ fun TasksScreen(
     val scope = rememberCoroutineScope()
 
     var statusFilter by remember { mutableStateOf("ALL") }
+    var focusOnly by remember { mutableStateOf(false) }
     var showAddProjectDialog by remember { mutableStateOf(false) }
     var showImportDialog by remember { mutableStateOf(false) }
     var editingProject by remember { mutableStateOf<Project?>(null) }
@@ -122,10 +125,13 @@ fun TasksScreen(
         }
     }
     val tasksByProject = remember(filteredTasks) { filteredTasks.groupBy { it.projectId } }
-    // Productive projects first, then the unproductive one(s); completed projects last.
-    val orderedProjects = remember(allProjects) {
-        allProjects.sortedWith(compareBy({ !it.isProductive }, { it.status == "COMPLETED" }, { it.code }))
+    // Focused projects first, then the other productive ones, then the unproductive one(s); completed projects last.
+    val orderedProjects = remember(allProjects, focusOnly) {
+        allProjects
+            .filter { !focusOnly || it.isFocused }
+            .sortedWith(compareBy({ !it.isFocused }, { !it.isProductive }, { it.status == "COMPLETED" }, { it.code }))
     }
+    val focusedCount = remember(allProjects) { allProjects.count { it.isFocused } }
 
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(horizontal = 12.dp),
@@ -157,6 +163,14 @@ fun TasksScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
             ) {
+                // Narrow the list to the starred projects (what I am working on these days).
+                FilterChip(
+                    selected = focusOnly,
+                    onClick = { focusOnly = !focusOnly },
+                    label = { Text(if (focusedCount > 0) "${t.focus} ($focusedCount)" else t.focus) },
+                    leadingIcon = { Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    modifier = Modifier.testTag("project_filter_focus")
+                )
                 listOf("ALL" to t.filterAll, "TODO" to t.taskFilterTodo, "IN_PROGRESS" to t.taskFilterInProgress, "DONE" to t.taskFilterDone).forEach { (code, label) ->
                     FilterChip(
                         selected = statusFilter == code,
@@ -171,9 +185,9 @@ fun TasksScreen(
         if (orderedProjects.isEmpty()) {
             item {
                 EmptyStateCard(
-                    icon = Icons.Default.Task,
-                    title = t.noProjectsTitle,
-                    subtitle = t.noProjectsSubtitle
+                    icon = if (focusOnly) Icons.Default.Star else Icons.Default.Task,
+                    title = if (focusOnly) t.focus else t.noProjectsTitle,
+                    subtitle = if (focusOnly) t.focusHint else t.noProjectsSubtitle
                 )
             }
         }
@@ -186,6 +200,7 @@ fun TasksScreen(
                 onAddTask = { addTaskProjectId = project.id },
                 onEditProject = { editingProject = project },
                 onDeleteProject = { deletingProject = project },
+                onToggleFocus = { viewModel.setProjectFocus(project, !project.isFocused) },
                 onToggleDone = { task ->
                     viewModel.updateTaskStatus(task.id, if (task.status == "DONE") "TODO" else "DONE")
                 },
@@ -322,6 +337,7 @@ private fun ProjectTasksCard(
     onAddTask: () -> Unit,
     onEditProject: () -> Unit,
     onDeleteProject: () -> Unit,
+    onToggleFocus: () -> Unit,
     onToggleDone: (WorkTaskWithProject) -> Unit,
     onTrack: (WorkTaskWithProject) -> Unit,
     onMove: (WorkTaskWithProject) -> Unit,
@@ -358,6 +374,14 @@ private fun ProjectTasksCard(
                 if (project.isProductive && project.status != "ACTIVE") {
                     StatusBadge(status = project.status)
                     Spacer(modifier = Modifier.width(4.dp))
+                }
+                IconButton(onClick = onToggleFocus, modifier = Modifier.size(32.dp).testTag("focus_project_${project.id}")) {
+                    Icon(
+                        if (project.isFocused) Icons.Default.Star else Icons.Default.StarBorder,
+                        contentDescription = if (project.isFocused) t.focusOff else t.focusOn,
+                        tint = if (project.isFocused) AmberWarning else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
                 TextButton(onClick = onAddTask, modifier = Modifier.testTag("add_task_${project.id}")) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))

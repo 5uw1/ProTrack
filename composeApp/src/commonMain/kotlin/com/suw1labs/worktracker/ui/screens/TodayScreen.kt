@@ -29,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.KeyboardOptions
@@ -55,6 +56,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -132,6 +134,13 @@ fun TodayScreen(
     val settings by viewModel.settings.collectAsState()
 
     var showActivitySelector by remember { mutableStateOf(false) }
+    // With focused projects, the selector offers only those until "All" is chosen.
+    var showAllProjects by remember { mutableStateOf(false) }
+    val focusedCount = remember(activeProjects) { activeProjects.count { it.isFocused } }
+    val selectorProjects = remember(activeProjects, showAllProjects) {
+        val focused = activeProjects.filter { it.isFocused }
+        if (focused.isNotEmpty() && !showAllProjects) focused else activeProjects.sortedByDescending { it.isFocused }
+    }
     var showManualEntry by remember { mutableStateOf(false) }
     var editingEntry by remember { mutableStateOf<TimeEntryWithDetails?>(null) }
     var assigningGap by remember { mutableStateOf<UnassignedGap?>(null) }
@@ -268,8 +277,12 @@ fun TodayScreen(
                         }
                     } else {
                         ActivitySelector(
-                            projects = activeProjects,
+                            projects = selectorProjects,
+                            allProjects = activeProjects,
                             tasks = allTasks,
+                            focusedCount = focusedCount,
+                            showAll = showAllProjects,
+                            onShowAll = { showAllProjects = it },
                             isClockedIn = isClockedIn,
                             isSwitching = running != null,
                             preselectProjectId = newlyCreatedProjectId,
@@ -884,8 +897,14 @@ private fun RunningActivity(
 
 @Composable
 private fun ActivitySelector(
+    /** Projects offered in the dropdown (focused ones only, unless "All" is chosen). */
     projects: List<Project>,
+    /** Every active project, for the search. */
+    allProjects: List<Project>,
     tasks: List<WorkTaskWithProject>,
+    focusedCount: Int,
+    showAll: Boolean,
+    onShowAll: (Boolean) -> Unit,
     isClockedIn: Boolean,
     isSwitching: Boolean,
     preselectProjectId: Long?,
@@ -914,7 +933,7 @@ private fun ActivitySelector(
     // Type-ahead over projects (code, name, client) and open tasks (title, project): picking a
     // match fills the two dropdowns below, which stay available for browsing.
     var query by remember { mutableStateOf("") }
-    val matches = remember(query, projects, tasks) { searchProjectsAndTasks(query, projects, tasks) }
+    val matches = remember(query, allProjects, tasks) { searchProjectsAndTasks(query, allProjects, tasks) }
 
     Text(
         text = if (isSwitching) t.switchActivity else t.whatWorkingOn,
@@ -924,6 +943,24 @@ private fun ActivitySelector(
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
     Spacer(modifier = Modifier.height(12.dp))
+    if (focusedCount > 0) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            FilterChip(
+                selected = !showAll,
+                onClick = { onShowAll(false) },
+                label = { Text("${t.focus} ($focusedCount)", fontSize = 12.sp) },
+                leadingIcon = { Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                modifier = Modifier.testTag("activity_focus_chip")
+            )
+            FilterChip(
+                selected = showAll,
+                onClick = { onShowAll(true) },
+                label = { Text("${t.focusAll} (${allProjects.size})", fontSize = 12.sp) },
+                modifier = Modifier.testTag("activity_all_chip")
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+    }
     OutlinedTextField(
         value = query,
         onValueChange = { query = it },
@@ -945,6 +982,8 @@ private fun ActivitySelector(
             SearchMatchRow(
                 match = match,
                 onClick = {
+                    // A hit outside the focused list needs the full dropdown to show it.
+                    if (projects.none { it.id == match.projectId }) onShowAll(true)
                     projectId = match.projectId
                     taskId = match.taskId
                     query = ""

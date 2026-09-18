@@ -33,8 +33,8 @@ object DemoData {
         fun at(dayStart: Long, hours: Double) = dayStart + (hours * HOUR).toLong()
 
         val projects = listOf(
-            Project(id = 1, code = "4711", name = "Aurora", client = "Nordwind AG", colorHex = "#2F6BFF", budgetHours = 320.0),
-            Project(id = 2, code = "2380", name = "Helix", client = "Baumann Technik", colorHex = "#10B981", budgetHours = 120.0),
+            Project(id = 1, code = "4711", name = "Aurora", client = "Nordwind AG", colorHex = "#2F6BFF", budgetHours = 320.0, isFocused = true),
+            Project(id = 2, code = "2380", name = "Helix", client = "Baumann Technik", colorHex = "#10B981", budgetHours = 120.0, isFocused = true),
             Project(id = 3, code = "1905", name = "Kestrel", client = "Rheintal Energie", colorHex = "#8B5CF6", budgetHours = 80.0),
             Project(id = 4, code = Project.UNPRODUCTIVE_CODE, name = "Unproductive", client = "", colorHex = "#F59E0B", isProductive = false)
         )

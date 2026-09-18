@@ -26,6 +26,8 @@ data class Project(
     val status: String = "ACTIVE", // ACTIVE, ON_HOLD, COMPLETED
     /** False for the internal "Unproductive" project – its time never counts as project work. */
     val isProductive: Boolean = true,
+    /** Pinned as "what I am working on these days": the Today tab offers only focused projects by default. */
+    val isFocused: Boolean = false,
     val createdAt: Long = currentTimeMillis()
 ) {
     companion object {
