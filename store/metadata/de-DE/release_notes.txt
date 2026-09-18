@@ -1,5 +1,5 @@
+• Einstellbare Pausenregeln (z. B. 30 Min. ab 5 h, 1 h ab 9 h); nicht gemachte Pausen werden automatisch abgezogen
+• Projekte an einem Ort: Budget, Bearbeiten / Löschen und Import im Tab Projekte
 • Automatische Sicherung in einen Ordner deiner Wahl (Google Drive, iCloud Drive, lokal)
 • Eingestempelte Zeit ohne Tätigkeit direkt aus der Zeitleiste zuordnen
 • Zeiten bearbeiten: Nachbartätigkeit mitziehen oder Lücke lassen – keine Minute geht verloren
-• Erinnerung bei vergessenem Ausstempeln, Korrektur mit einem Tipp
-• Home-Screen-Widgets und Oberfläche auf Deutsch, Englisch und Französisch

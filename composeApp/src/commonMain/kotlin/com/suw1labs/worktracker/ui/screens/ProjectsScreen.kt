@@ -134,7 +134,8 @@ fun ProjectsScreen(
                                 "${TimeFormat.sapHours(settings.workloadPercent)} % · ${TimeFormat.sapHours(settings.weeklyTargetHours)} ${t.perWeek} · " +
                                     settings.weekdayHoursList.mapIndexedNotNull { i, h -> if (h > 0) "${t.weekdaysTwo[i]} ${TimeFormat.sapHours(h)}" else null }.joinToString(" ") +
                                     " · ${t.maxPerWeek} ${TimeFormat.sapHours(settings.maxWeeklyHours)} ${t.perWeek}" +
-                                    if (settings.paidBreakMinutes > 0) " · ${t.paidBreakSummary(settings.paidBreakMinutes.toString())}" else "",
+                                    (if (settings.paidBreakMinutes > 0) " · ${t.paidBreakSummary(settings.paidBreakMinutes.toString())}" else "") +
+                                    settings.breakRuleList.sortedBy { it.afterSeconds }.joinToString("") { " · ${t.breakRuleSummary(TimeFormat.sapHours(it.afterSeconds / 3600.0), (it.breakSeconds / 60).toString())}" },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

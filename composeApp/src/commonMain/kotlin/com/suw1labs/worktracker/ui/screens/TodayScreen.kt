@@ -1020,6 +1020,9 @@ fun DaySummaryCard(
             if (report.paidBreakSeconds >= 60) {
                 SummaryRow("+ ${t.paidBreak}", report.paidBreakSeconds, EmeraldGreen)
             }
+            if (report.deductedBreakSeconds >= 60) {
+                SummaryRow(t.missingBreakDeducted, report.deductedBreakSeconds, RoseUrgent)
+            }
             if (report.lunchSeconds >= 60) {
                 SummaryRow(t.reasonLunch, report.lunchSeconds, MaterialTheme.colorScheme.onSurfaceVariant)
             }

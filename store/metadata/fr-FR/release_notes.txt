@@ -1,5 +1,5 @@
+• Règles de pause réglables (p. ex. 30 min dès 5 h, 1 h dès 9 h) ; une pause non prise est déduite automatiquement du temps compté
+• Gestion des projets à un seul endroit : budgets, modifier / supprimer et import dans l'onglet Projets
 • Sauvegarde automatique dans un dossier de votre choix (Google Drive, iCloud Drive, local)
 • Attribuez le temps pointé sans activité directement depuis la chronologie
 • Modification des heures : déplacer l'activité voisine ou laisser un trou – aucune minute perdue
-• Rappel en cas d'oubli de dépointage, corrigé en un geste
-• Widgets d'écran d'accueil et interface en français, allemand et anglais

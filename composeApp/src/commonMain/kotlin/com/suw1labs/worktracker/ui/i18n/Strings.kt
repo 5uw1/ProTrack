@@ -359,6 +359,17 @@ class AppStrings(val language: Language) {
     var noActivity = ""; var generalTaskTime = ""; var clockInFirst = ""
     // Paid short breaks (company rule).
     var paidBreak = ""; var paidBreakPerDay = ""; var paidBreakHint = ""; var paidBreakSummary: (String) -> String = { it }
+    // break rules
+    lateinit var breakRulesTitle: String
+    lateinit var breakRulesHint: String
+    lateinit var ruleAfterHours: String
+    lateinit var ruleBreakMinutes: String
+    lateinit var addRule: String
+    lateinit var deductMissingBreak: String
+    lateinit var deductMissingBreakHint: String
+    lateinit var missingBreakDeducted: String
+    lateinit var breakRuleSummary: (String, String) -> String
+    lateinit var warnBreakDeducted: (String) -> String
     // Backup & transfer to another device.
     var backupTitle = ""; var backupSubtitle = ""; var backupShare = ""; var backupRestore = ""
     var backupExported = ""; var backupRestored = ""; var backupContents: (BackupSummary) -> String = { "" }
@@ -410,7 +421,7 @@ class AppStrings(val language: Language) {
     fun warning(w: ComplianceWarning): String = when (w.kind) {
         WarningKind.BREAK_TOO_SHORT -> warnBreak(
             TimeFormat.hoursMinutes(w.workedSeconds), TimeFormat.hoursMinutes(w.breakSeconds), TimeFormat.hoursMinutes(w.requiredBreakSeconds)
-        )
+        ) + if (w.deductedSeconds > 0) " " + warnBreakDeducted(TimeFormat.hoursMinutes(w.deductedSeconds)) else ""
         WarningKind.WEEK_OVER_LEGAL_MAX -> warnWeekMax(DateFormats.monthDay(w.dayStart), TimeFormat.hoursMinutes(w.workedSeconds), TimeFormat.sapHours(w.maxWeeklyHours))
         WarningKind.STILL_CLOCKED_IN_PAST_DAY -> warnForgotClockOut(DateFormats.monthDay(w.dayStart))
     }
@@ -715,6 +726,16 @@ object Translations {
         paidBreak = "Paid breaks"; paidBreakPerDay = "Paid break per day (min)"
         paidBreakHint = "Coffee / smoke breaks tagged as Break count as working time up to this many minutes a day. 0 = unpaid."
         paidBreakSummary = { "$it min paid break" }
+        breakRulesTitle = "Required breaks"
+        breakRulesHint = "Rest break a day must contain once this much time was clocked in. Lunch and breaks together count."
+        ruleAfterHours = "More than (h)"
+        ruleBreakMinutes = "Break (min)"
+        addRule = "Add rule"
+        deductMissingBreak = "Deduct a missing break automatically"
+        deductMissingBreakHint = "If less break was taken than required, the difference is taken off the counted working time: 9 h 30 clocked in with 30 min break and 1 h required counts as 9 h."
+        missingBreakDeducted = "− Missing break"
+        breakRuleSummary = { hours, minutes -> "$minutes min > $hours h" }
+        warnBreakDeducted = { "$it deducted." }
         formatCsv = "CSV (comma)"; formatExcel = "Excel (semicolon)"
         backupTitle = "Backup & transfer"; backupSubtitle = "Save everything (projects, tasks, times, absences, settings) as one file and restore it on another device."
         backupShare = "Share"; backupRestore = "Restore from file"
@@ -1026,6 +1047,16 @@ object Translations {
         paidBreak = "Bezahlte Pausen"; paidBreakPerDay = "Bezahlte Pause pro Tag (Min.)"
         paidBreakHint = "Als Pause markierte Kaffee-/Raucherpausen zählen bis zu so vielen Minuten pro Tag als Arbeitszeit. 0 = unbezahlt."
         paidBreakSummary = { "$it Min. bezahlte Pause" }
+        breakRulesTitle = "Pflichtpausen"
+        breakRulesHint = "Pause, die ein Tag ab so viel eingestempelter Zeit enthalten muss. Mittag und Pausen zählen zusammen."
+        ruleAfterHours = "Mehr als (h)"
+        ruleBreakMinutes = "Pause (Min.)"
+        addRule = "Regel hinzufügen"
+        deductMissingBreak = "Fehlende Pause automatisch abziehen"
+        deductMissingBreakHint = "Wurde weniger Pause gemacht als vorgeschrieben, wird die Differenz von der Arbeitszeit abgezogen: 9 h 30 eingestempelt mit 30 Min. Pause bei 1 h Pflicht zählt als 9 h."
+        missingBreakDeducted = "− Fehlende Pause"
+        breakRuleSummary = { hours, minutes -> "$minutes Min. > $hours h" }
+        warnBreakDeducted = { "$it abgezogen." }
         formatCsv = "CSV (Komma)"; formatExcel = "Excel (Semikolon)"
         backupTitle = "Sicherung & Übertragung"; backupSubtitle = "Alles (Projekte, Aufgaben, Zeiten, Abwesenheiten, Einstellungen) als eine Datei sichern und auf einem anderen Gerät wiederherstellen."
         backupShare = "Teilen"; backupRestore = "Aus Datei wiederherstellen"
@@ -1337,6 +1368,16 @@ object Translations {
         paidBreak = "Pauses payées"; paidBreakPerDay = "Pause payée par jour (min)"
         paidBreakHint = "Les pauses café / cigarette marquées « Pause » comptent comme temps de travail jusqu'à ce nombre de minutes par jour. 0 = non payées."
         paidBreakSummary = { "$it min de pause payée" }
+        breakRulesTitle = "Pauses obligatoires"
+        breakRulesHint = "Pause qu'une journée doit contenir à partir de ce temps pointé. Le repas et les pauses comptent ensemble."
+        ruleAfterHours = "Plus de (h)"
+        ruleBreakMinutes = "Pause (min)"
+        addRule = "Ajouter une règle"
+        deductMissingBreak = "Déduire automatiquement la pause manquante"
+        deductMissingBreakHint = "Si la pause prise est plus courte que celle exigée, la différence est retirée du temps de travail compté : 9 h 30 pointées avec 30 min de pause pour 1 h exigée comptent 9 h."
+        missingBreakDeducted = "− Pause manquante"
+        breakRuleSummary = { hours, minutes -> "$minutes min > $hours h" }
+        warnBreakDeducted = { "$it déduit." }
         formatCsv = "CSV (virgule)"; formatExcel = "Excel (point-virgule)"
         backupTitle = "Sauvegarde & transfert"; backupSubtitle = "Enregistrer tout (projets, tâches, temps, absences, réglages) dans un seul fichier et le restaurer sur un autre appareil."
         backupShare = "Partager"; backupRestore = "Restaurer depuis un fichier"

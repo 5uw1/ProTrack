@@ -1,5 +1,5 @@
+• Adjustable break rules (e.g. 30 min after 5 h, 1 h after 9 h); a break not taken is deducted from the counted time automatically
+• Project management in one place: budgets, edit / delete and import on the Projects tab
 • Automatic backup into a folder you choose (Google Drive, iCloud Drive, local)
 • Assign clocked-in time that has no activity yet, straight from the timeline
 • Editing times: move the neighbouring activity along or leave a gap – no minute is lost
-• Reminder when you forgot to clock out, fixed with one tap
-• Home-screen widgets and interface in English, German and French

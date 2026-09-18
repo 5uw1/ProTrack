@@ -12,6 +12,9 @@ import kotlinx.serialization.Serializable
  * 90 % with a half day, and so on. Defaults follow a 100 % position in the canton of
  * Bern: 5 × 8 h = 40 h, legal maximum 45 h per week.
  */
+/** "More than [afterSeconds] of work needs at least [breakSeconds] of break." */
+data class BreakRule(val afterSeconds: Long, val breakSeconds: Long)
+
 @Entity(tableName = "app_settings")
 @Serializable
 data class AppSettings(
@@ -29,8 +32,18 @@ data class AppSettings(
      * Minutes of short breaks (coffee, smoke) per day the company credits as working time.
      * 0 = breaks are unpaid. Only pauses tagged as "Break" count; lunch never does.
      */
-    val paidBreakMinutes: Int = 0
+    val paidBreakMinutes: Int = 0,
+    /**
+     * Required rest break per day depending on the hours worked, as "workedHours:breakMinutes"
+     * pairs: the default "5:30,9:60" means more than 5 h needs 30 min, more than 9 h needs 1 h.
+     */
+    val breakRules: String = DEFAULT_BREAK_RULES,
+    /** Take the part of the required break that was not actually taken off the counted working time. */
+    val deductMissingBreak: Boolean = true
 ) {
+    /** Parsed [breakRules], longest working time first; malformed parts are ignored. */
+    val breakRuleList: List<BreakRule> get() = parseBreakRules(breakRules)
+
     val paidBreakSecondsPerDay: Long get() = paidBreakMinutes.coerceAtLeast(0) * 60L
 
     /** Target hours per ISO weekday (index 0 = Monday). Always 7 entries. */
@@ -60,6 +73,17 @@ data class AppSettings(
 
     companion object {
         const val DEFAULT_WEEKDAY_HOURS = "8,8,8,8,8,0,0"
+        const val DEFAULT_BREAK_RULES = "5:30,9:60"
+
+        fun parseBreakRules(text: String): List<BreakRule> = text.split(',').mapNotNull { part ->
+            val (hours, minutes) = part.split(':').map { it.trim().replace(',', '.') }.takeIf { it.size == 2 } ?: return@mapNotNull null
+            val h = hours.toDoubleOrNull() ?: return@mapNotNull null
+            val m = minutes.toIntOrNull() ?: return@mapNotNull null
+            if (h < 0 || m <= 0) null else BreakRule(afterSeconds = (h * 3600).toLong(), breakSeconds = m * 60L)
+        }.sortedByDescending { it.afterSeconds }
+
+        fun breakRulesString(rules: List<BreakRule>): String =
+            rules.sortedBy { it.afterSeconds }.joinToString(",") { "${com.suw1labs.worktracker.util.TimeFormat.sapHours(it.afterSeconds / 3600.0)}:${it.breakSeconds / 60}" }
         fun weekdayHoursString(hours: List<Double>): String =
             List(7) { hours.getOrElse(it) { 0.0 } }.joinToString(",") { com.suw1labs.worktracker.util.TimeFormat.sapHours(it) }
     }

@@ -118,9 +118,50 @@ class ExampleUnitTest {
         assertEquals(15 * 60L, day.breakSeconds)
         if (day.isWorkday) {
             assertEquals(8 * 3600L, day.targetSeconds)
-            assertEquals(9 * 3600L + 45 * 60L - 8 * 3600L, day.overtimeSeconds)
+            // 45 min of the required 1 h break were not taken and are deducted: 9 h count, 1 h overtime.
+            assertEquals(9 * 3600L - 8 * 3600L, day.overtimeSeconds)
         }
         assertTrue(report.warnings.any { it.kind == WarningKind.BREAK_TOO_SHORT })
+        // 1 h required, 15 min taken: 45 min are deducted from the counted time.
+        assertEquals(45 * 60L, day.deductedBreakSeconds)
+        assertEquals(9 * 3600L, day.accountedSeconds)
+        assertEquals(45 * 60L, report.warnings.first { it.kind == WarningKind.BREAK_TOO_SHORT }.deductedSeconds)
+
+        // Deduction switched off: nothing is taken off, the warning stays.
+        val kept = ReportCalculator.compute(sessions, emptyList(), range, now, settings.copy(deductMissingBreak = false))
+        assertEquals(0L, kept.days.single().deductedBreakSeconds)
+        assertEquals(9 * 3600L + 45 * 60L, kept.days.single().accountedSeconds)
+        assertTrue(kept.warnings.any { it.kind == WarningKind.BREAK_TOO_SHORT })
+    }
+
+    @Test
+    fun breakRules_areAdjustableAndDeductOnlyTheMissingPart() {
+        val hour = 3600_000L
+        val dayStart = com.suw1labs.worktracker.util.DateRanges.dayRange(1_789_400_000_000L).start
+        val range = DateRange(dayStart, dayStart + 24 * hour)
+        val now = dayStart + 23 * hour
+
+        // 08:00-12:30, 13:00-18:00: 9 h 30 clocked in with a 30 min break.
+        val sessions = listOf(
+            AttendanceSession(id = 1, clockIn = dayStart + 8 * hour, clockOut = dayStart + 12 * hour + 30 * 60_000L),
+            AttendanceSession(id = 2, clockIn = dayStart + 13 * hour, clockOut = dayStart + 18 * hour)
+        )
+        val default = ReportCalculator.compute(sessions, emptyList(), range, now, AppSettings()).days.single()
+        assertEquals(60 * 60L, default.requiredBreakSeconds)
+        assertEquals(30 * 60L, default.deductedBreakSeconds)
+        assertEquals(9 * 3600L, default.accountedSeconds)
+
+        // Own rules: 15 min after 5.5 h, 45 min after 8 h – only 15 min are missing.
+        val custom = AppSettings(breakRules = "5.5:15,8:45")
+        assertEquals(listOf(8 * 3600L, (5.5 * 3600).toLong()), custom.breakRuleList.map { it.afterSeconds })
+        val day = ReportCalculator.compute(sessions, emptyList(), range, now, custom).days.single()
+        assertEquals(45 * 60L, day.requiredBreakSeconds)
+        assertEquals(15 * 60L, day.deductedBreakSeconds)
+
+        // No rules at all: nothing required, nothing deducted; malformed parts are ignored.
+        assertEquals(0L, WorkRules.requiredBreakSeconds(10 * 3600L, AppSettings(breakRules = "").breakRuleList))
+        assertEquals(1, AppSettings(breakRules = "abc,6:30,7").breakRuleList.size)
+        assertEquals("5.5:15,8:45", AppSettings.breakRulesString(custom.breakRuleList))
     }
 
     @Test

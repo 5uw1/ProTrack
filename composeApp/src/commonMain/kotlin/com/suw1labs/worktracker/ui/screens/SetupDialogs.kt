@@ -14,6 +14,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import com.suw1labs.worktracker.data.import.ProjectImporter
 import com.suw1labs.worktracker.data.model.AbsenceType
 import com.suw1labs.worktracker.data.model.AppSettings
+import com.suw1labs.worktracker.data.model.BreakRule
 import com.suw1labs.worktracker.data.model.DayRecord
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
@@ -181,13 +186,18 @@ fun WorkScheduleDialog(
     var dayHours by remember { mutableStateOf(settings.weekdayHoursList.map { TimeFormat.sapHours(it) }) }
     var paidBreak by remember { mutableStateOf(settings.paidBreakMinutes.toString()) }
     val paidBreakValue = paidBreak.trim().let { if (it.isEmpty()) 0 else it.toIntOrNull() }
+    // Break rules as editable text pairs (hours worked, minutes of break).
+    var rules by remember { mutableStateOf(settings.breakRuleList.sortedBy { it.afterSeconds }.map { TimeFormat.sapHours(it.afterSeconds / 3600.0) to (it.breakSeconds / 60).toString() }) }
+    var deductMissing by remember { mutableStateOf(settings.deductMissingBreak) }
+    val ruleValues = rules.map { (h, m) -> h.replace(',', '.').trim().toDoubleOrNull() to m.trim().toIntOrNull() }
+    val rulesValid = ruleValues.all { (h, m) -> h != null && h >= 0 && m != null && m > 0 }
 
     val fullTimeValue = fullTime.replace(',', '.').toDoubleOrNull()
     val maxValue = maxWeekly.replace(',', '.').toDoubleOrNull()
     val dayValues = dayHours.map { it.replace(',', '.').trim().let { v -> if (v.isEmpty()) 0.0 else v.toDoubleOrNull() } }
     val valid = fullTimeValue != null && fullTimeValue > 0 && maxValue != null && maxValue > 0 &&
         dayValues.all { it != null && it >= 0 } && dayValues.any { (it ?: 0.0) > 0 } &&
-        paidBreakValue != null && paidBreakValue >= 0
+        paidBreakValue != null && paidBreakValue >= 0 && rulesValid
 
     val preview = if (valid) {
         val s = AppSettings(
@@ -208,7 +218,9 @@ fun WorkScheduleDialog(
                     fullTimeWeeklyHours = fullTimeValue!!,
                     weekdayHours = AppSettings.weekdayHoursString(dayValues.map { it ?: 0.0 }),
                     maxWeeklyHours = maxValue!!,
-                    paidBreakMinutes = paidBreakValue ?: 0
+                    paidBreakMinutes = paidBreakValue ?: 0,
+                    breakRules = AppSettings.breakRulesString(ruleValues.map { (h, m) -> BreakRule((h!! * 3600).toLong(), m!! * 60L) }),
+                    deductMissingBreak = deductMissing
                 )
             )
         },
@@ -249,6 +261,47 @@ fun WorkScheduleDialog(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
             modifier = Modifier.fillMaxWidth().testTag("paid_break_input")
         )
+
+        Spacer(modifier = Modifier.height(14.dp))
+        Text(t.breakRulesTitle, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+        Text(t.breakRulesHint, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(modifier = Modifier.height(6.dp))
+        rules.forEachIndexed { index, (hours, minutes) ->
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+                OutlinedTextField(
+                    value = hours,
+                    onValueChange = { v -> rules = rules.toMutableList().also { it[index] = v to it[index].second } },
+                    singleLine = true,
+                    label = { Text(t.ruleAfterHours) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                    modifier = Modifier.weight(1f).testTag("break_rule_hours_$index")
+                )
+                OutlinedTextField(
+                    value = minutes,
+                    onValueChange = { v -> rules = rules.toMutableList().also { it[index] = it[index].first to v } },
+                    singleLine = true,
+                    label = { Text(t.ruleBreakMinutes) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                    modifier = Modifier.weight(1f).testTag("break_rule_minutes_$index")
+                )
+                IconButton(onClick = { rules = rules.toMutableList().also { it.removeAt(index) } }, modifier = Modifier.size(32.dp).testTag("break_rule_remove_$index")) {
+                    Icon(Icons.Default.Close, contentDescription = t.delete, modifier = Modifier.size(18.dp))
+                }
+            }
+        }
+        TextButton(onClick = { rules = rules + ("" to "") }, modifier = Modifier.testTag("break_rule_add")) {
+            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(t.addRule, fontSize = 12.sp)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(t.deductMissingBreak, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(t.deductMissingBreakHint, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Switch(checked = deductMissing, onCheckedChange = { deductMissing = it }, modifier = Modifier.testTag("deduct_missing_break_switch"))
+        }
     }
 }
 

@@ -2,6 +2,7 @@ package com.suw1labs.worktracker.data.report
 
 import com.suw1labs.worktracker.data.model.AppSettings
 import com.suw1labs.worktracker.data.model.AttendanceSession
+import com.suw1labs.worktracker.data.model.BreakRule
 import com.suw1labs.worktracker.data.model.ClockOutReason
 import com.suw1labs.worktracker.data.model.DayRecord
 import com.suw1labs.worktracker.data.model.TimeEntryWithDetails
@@ -18,21 +19,16 @@ const val NO_PROJECT_NAME = "No project assigned yet"
 const val GENERAL_TASK_NAME = "General"
 
 /**
- * Break rules applied per working day (company rule based on Swiss labour law, canton of Bern):
- * more than 5 h of work requires at least 30 min break, more than 9 h requires 1 h.
+ * Break rules applied per working day. The defaults follow the company rule based on Swiss labour
+ * law (canton of Bern): more than 5 h of work requires at least 30 min break, more than 9 h
+ * requires 1 h. The rules are adjustable in the work schedule (`AppSettings.breakRules`).
  */
 object WorkRules {
-    const val SHORT_WORK_SECONDS = 5 * 3600L
-    const val SHORT_BREAK_SECONDS = 30 * 60L
-    const val LONG_WORK_SECONDS = 9 * 3600L
-    const val LONG_BREAK_SECONDS = 60 * 60L
+    val DEFAULT_RULES: List<BreakRule> = AppSettings.parseBreakRules(AppSettings.DEFAULT_BREAK_RULES)
 
-    /** Required break for [workedSeconds] of work, 0 if none is required. */
-    fun requiredBreakSeconds(workedSeconds: Long): Long = when {
-        workedSeconds > LONG_WORK_SECONDS -> LONG_BREAK_SECONDS
-        workedSeconds > SHORT_WORK_SECONDS -> SHORT_BREAK_SECONDS
-        else -> 0L
-    }
+    /** Required break for [workedSeconds] of work under [rules] (the longest matching threshold wins), 0 if none. */
+    fun requiredBreakSeconds(workedSeconds: Long, rules: List<BreakRule> = DEFAULT_RULES): Long =
+        rules.filter { workedSeconds > it.afterSeconds }.maxOfOrNull { it.breakSeconds } ?: 0L
 }
 
 /** Hours booked on one SAP project inside a period. */
@@ -72,13 +68,16 @@ data class ComplianceWarning(
     val workedSeconds: Long = 0,
     val breakSeconds: Long = 0,
     val requiredBreakSeconds: Long = 0,
-    val maxWeeklyHours: Double = 0.0
+    val maxWeeklyHours: Double = 0.0,
+    /** Part of the missing break that was taken off the counted working time (0 when deduction is off). */
+    val deductedSeconds: Long = 0
 ) {
     /** English text used in exports; the UI renders a translated version. */
     val message: String
         get() = when (kind) {
             WarningKind.BREAK_TOO_SHORT ->
-                "Worked ${TimeFormat.hoursMinutes(workedSeconds)} with only ${TimeFormat.hoursMinutes(breakSeconds)} break – at least ${TimeFormat.hoursMinutes(requiredBreakSeconds)} required."
+                "Worked ${TimeFormat.hoursMinutes(workedSeconds)} with only ${TimeFormat.hoursMinutes(breakSeconds)} break – at least ${TimeFormat.hoursMinutes(requiredBreakSeconds)} required." +
+                    if (deductedSeconds > 0) " ${TimeFormat.hoursMinutes(deductedSeconds)} deducted." else ""
             WarningKind.WEEK_OVER_LEGAL_MAX ->
                 "Week of ${com.suw1labs.worktracker.util.DateFormats.monthDay(dayStart)}: ${TimeFormat.hoursMinutes(workedSeconds)} worked – legal maximum is ${TimeFormat.sapHours(maxWeeklyHours)} h."
             WarningKind.STILL_CLOCKED_IN_PAST_DAY ->
@@ -98,10 +97,14 @@ data class DayRow(
     /** The part of [breakSeconds] that followed a clock-out marked as lunch. */
     val lunchSeconds: Long = 0L,
     /** Short breaks (coffee, smoke) the company credits as working time today, already capped. */
-    val paidBreakSeconds: Long = 0L
+    val paidBreakSeconds: Long = 0L,
+    /** Break the rules require for this much clocked-in time (see [WorkRules]). */
+    val requiredBreakSeconds: Long = 0L,
+    /** Missing break taken off the counted time: required − taken, when the deduction is switched on. */
+    val deductedBreakSeconds: Long = 0L
 ) {
-    /** What counts as worked: clocked-in time plus the credited short breaks. */
-    val accountedSeconds: Long get() = attendanceSeconds + paidBreakSeconds
+    /** What counts as worked: clocked-in time plus the credited short breaks, minus a missing break. */
+    val accountedSeconds: Long get() = attendanceSeconds + paidBreakSeconds - deductedBreakSeconds
 
     val productiveSeconds: Long get() = cells.filter { it.isProductive }.sumOf { it.seconds }
     val unproductiveSeconds: Long get() = cells.filter { !it.isProductive }.sumOf { it.seconds }
@@ -111,7 +114,6 @@ data class DayRow(
 
     /** Worked (incl. paid breaks) + credited absence − target. Positive = overtime. */
     val overtimeSeconds: Long get() = accountedSeconds + creditedSeconds - targetSeconds
-    val requiredBreakSeconds: Long get() = WorkRules.requiredBreakSeconds(attendanceSeconds)
     val breakRuleViolated: Boolean get() = requiredBreakSeconds > 0 && breakSeconds < requiredBreakSeconds
 }
 
@@ -139,12 +141,14 @@ data class PeriodReport(
     /** Lunch breaks in the period (gaps after a clock-out marked as lunch). */
     val lunchSeconds: Long = 0L,
     /** Short breaks credited as working time in the period (sum of the daily capped amounts). */
-    val paidBreakSeconds: Long = 0L
+    val paidBreakSeconds: Long = 0L,
+    /** Missing breaks taken off the counted time in the period (sum of the daily deductions). */
+    val deductedBreakSeconds: Long = 0L
 ) {
     val allocatedSeconds: Long get() = productiveSeconds + unproductiveSeconds
     val unallocatedSeconds: Long get() = max(0L, attendanceSeconds - allocatedSeconds)
-    /** What counts as worked: clocked-in time plus the credited short breaks. */
-    val accountedSeconds: Long get() = attendanceSeconds + paidBreakSeconds
+    /** What counts as worked: clocked-in time plus the credited short breaks, minus missing breaks. */
+    val accountedSeconds: Long get() = attendanceSeconds + paidBreakSeconds - deductedBreakSeconds
 
     /** Worked (incl. paid breaks) + credited absences − target for the period. Positive = overtime. */
     val overtimeSeconds: Long get() = accountedSeconds + creditedSeconds - targetSeconds
@@ -246,6 +250,7 @@ object ReportCalculator {
     ): PeriodReport {
         val recordsByDay = dayRecords.associateBy { it.dayStart }
         val todayStart = DateRanges.dayRange(now).start
+        val breakRules = settings.breakRuleList
 
         val days = DateRanges.daysIn(range).map { dayRange ->
             val cellMap = LinkedHashMap<Pair<Long?, String>, DayCell>()
@@ -267,16 +272,24 @@ object ReportCalculator {
             val isoDay = dayRange.start.toLocalDate().dayOfWeek.isoDayNumber
             val workday = settings.isWorkDay(isoDay)
             val inPast = dayRange.start <= todayStart
+            val attendance = attendanceSeconds(sessions, dayRange, now)
+            val breaks = breakSeconds(sessions, dayRange, now)
+            val required = WorkRules.requiredBreakSeconds(attendance, breakRules)
+            // A break that was not taken is not working time: 9 h 30 clocked in with 30 min break
+            // and 1 h required counts as 9 h.
+            val deducted = if (settings.deductMissingBreak) (required - breaks).coerceIn(0L, attendance) else 0L
             DayRow(
                 range = dayRange,
                 isWorkday = workday,
                 targetSeconds = if (workday && inPast) settings.targetSecondsFor(isoDay) else 0L,
-                attendanceSeconds = attendanceSeconds(sessions, dayRange, now),
-                breakSeconds = breakSeconds(sessions, dayRange, now),
+                attendanceSeconds = attendance,
+                breakSeconds = breaks,
                 absence = recordsByDay[dayRange.start],
                 cells = cellMap.values.sortedWith(compareBy({ it.projectId == null }, { it.projectCode }, { it.taskName })),
                 lunchSeconds = lunchSeconds(sessions, dayRange, now),
-                paidBreakSeconds = paidBreakSeconds(sessions, dayRange, now, settings)
+                paidBreakSeconds = paidBreakSeconds(sessions, dayRange, now, settings),
+                requiredBreakSeconds = required,
+                deductedBreakSeconds = deducted
             )
         }
 
@@ -316,7 +329,8 @@ object ReportCalculator {
                     dayStart = day.range.start,
                     workedSeconds = day.attendanceSeconds,
                     breakSeconds = day.breakSeconds,
-                    requiredBreakSeconds = day.requiredBreakSeconds
+                    requiredBreakSeconds = day.requiredBreakSeconds,
+                    deductedSeconds = day.deductedBreakSeconds
                 )
             )
         }
@@ -353,7 +367,8 @@ object ReportCalculator {
             weeks = weeks,
             warnings = warnings.sortedBy { it.dayStart },
             lunchSeconds = days.sumOf { it.lunchSeconds },
-            paidBreakSeconds = days.sumOf { it.paidBreakSeconds }
+            paidBreakSeconds = days.sumOf { it.paidBreakSeconds },
+            deductedBreakSeconds = days.sumOf { it.deductedBreakSeconds }
         )
     }
 

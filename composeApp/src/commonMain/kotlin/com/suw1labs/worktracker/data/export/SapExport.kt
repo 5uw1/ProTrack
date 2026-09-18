@@ -92,6 +92,7 @@ object SapExport {
 
         w.row("Clocked-in time (attendance)", "", hours(report.attendanceSeconds, roundToQuarter), TimeFormat.hm(report.attendanceSeconds))
         if (report.paidBreakSeconds > 0) w.row("Paid breaks credited", "", hours(report.paidBreakSeconds, roundToQuarter), TimeFormat.hm(report.paidBreakSeconds))
+        if (report.deductedBreakSeconds > 0) w.row("Missing breaks deducted", "", "-" + hours(report.deductedBreakSeconds, roundToQuarter), TimeFormat.hm(report.deductedBreakSeconds))
         w.row("Unallocated clocked-in time", "", hours(report.unallocatedSeconds, roundToQuarter), TimeFormat.hm(report.unallocatedSeconds))
         w.row("Absences credited", "", hours(report.creditedSeconds, roundToQuarter), TimeFormat.hm(report.creditedSeconds))
         w.row("Target", "", hours(report.targetSeconds, roundToQuarter), TimeFormat.hm(report.targetSeconds))

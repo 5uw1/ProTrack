@@ -218,6 +218,7 @@ fun ReportsScreen(
                     if (report.unallocatedSeconds >= 60) PlainRow(t.noActivity, TimeFormat.hoursMinutes(report.unallocatedSeconds), MaterialTheme.colorScheme.onSurfaceVariant)
                     if (report.lunchSeconds >= 60) PlainRow(t.reasonLunch, TimeFormat.hoursMinutes(report.lunchSeconds), MaterialTheme.colorScheme.onSurfaceVariant)
                     if (report.paidBreakSeconds >= 60) PlainRow("+ ${t.paidBreak}", TimeFormat.hoursMinutes(report.paidBreakSeconds), EmeraldGreen)
+                    if (report.deductedBreakSeconds >= 60) PlainRow(t.missingBreakDeducted, TimeFormat.hoursMinutes(report.deductedBreakSeconds), RoseUrgent)
                     if (report.creditedSeconds > 0) PlainRow(t.absencesCredited, TimeFormat.hoursMinutes(report.creditedSeconds))
                     PlainRow(t.target, TimeFormat.hoursMinutes(report.targetSeconds))
                     HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))

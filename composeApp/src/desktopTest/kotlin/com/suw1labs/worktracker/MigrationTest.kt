@@ -56,6 +56,8 @@ class MigrationTest {
         helper.runMigrationsAndValidate(DATABASE_VERSION, ALL_MIGRATIONS.toList()).use { connection ->
             // v7 column arrives with its default, everything else is untouched.
             assertEquals(listOf("de", "0"), connection.row("SELECT language, paidBreakMinutes FROM app_settings WHERE id = 1"))
+            // v9 columns arrive with their defaults.
+            assertEquals(listOf("5:30,9:60", "1"), connection.row("SELECT breakRules, deductMissingBreak FROM app_settings WHERE id = 1"))
             assertEquals(listOf("wiring", "2"), connection.row("SELECT description, taskId FROM time_entries WHERE id = 3"))
             assertEquals(listOf("100"), connection.row("SELECT clockIn FROM attendance_sessions WHERE clockOut IS NULL"))
             // v8 indexes exist under the names Room expects.

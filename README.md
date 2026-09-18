@@ -19,8 +19,11 @@ as files.
 * **Reports** – day / week / month navigation with hours per SAP project number (rounded to 0.25 h),
   hours per category, target and overtime, daily chart.
 * **Swiss working-time rules (canton of Bern)** – configurable schedule (default 40 h/week at
-  100 %, legal maximum 45 h/week). Warnings when more than 5 h were worked with less than 30 min
-  break, more than 9 h with less than 1 h break, a week exceeds 45 h, or a clock-out was forgotten.
+  100 %, legal maximum 45 h/week). Adjustable break rules (default: more than 5 h needs 30 min,
+  more than 9 h needs 1 h; lunch and breaks count together). A break that was not taken is deducted
+  from the counted time automatically (9 h 30 clocked in with 30 min break counts as 9 h; can be
+  switched off), and the day is flagged. Warnings also when a week exceeds 45 h or a clock-out was
+  forgotten.
 * **Lunch and breaks** – clock out with one tap, or tag the pause as lunch or break from the "···"
   menu. Lunch time is summed per day / week / month. Companies that credit short breaks (e.g. 10
   minutes of coffee / smoke breaks a day) set "Paid break per day" in the work schedule: breaks
