@@ -1,6 +1,11 @@
 package com.suw1labs.worktracker
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,16 +28,16 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ShortNavigationBar
+import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.WideNavigationRail
+import androidx.compose.material3.WideNavigationRailItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -54,6 +59,11 @@ import com.suw1labs.worktracker.ui.i18n.LocalStrings
 import com.suw1labs.worktracker.ui.i18n.Translations
 import com.suw1labs.worktracker.ui.i18n.strings
 import com.suw1labs.worktracker.platform.NotificationPermissionEffect
+import com.suw1labs.worktracker.platform.usesFloatingTabBar
+import com.suw1labs.worktracker.ui.components.FloatingTabItem
+import com.suw1labs.worktracker.ui.components.GlassTabBar
+import com.suw1labs.worktracker.ui.components.GlassTopBar
+import com.suw1labs.worktracker.ui.components.LocalScreenInsets
 import com.suw1labs.worktracker.ui.components.LocalSnackbarHostState
 import com.suw1labs.worktracker.ui.components.dismissKeyboardOnScroll
 import com.suw1labs.worktracker.ui.components.dismissKeyboardOnTap
@@ -68,12 +78,14 @@ import com.suw1labs.worktracker.util.DateFormats
 
 enum class TrackerDestination(
     val icon: ImageVector,
+    /** SF Symbol for the native iOS tab bar; the Material icon above is used everywhere else. */
+    val systemImage: String,
     val tag: String,
 ) {
-    TODAY(Icons.Default.Timer, "nav_today"),
-    TASKS(Icons.Default.Folder, "nav_projects"),
-    REPORTS(Icons.Default.Insights, "nav_reports"),
-    PROJECTS(Icons.Default.Settings, "nav_settings");
+    TODAY(Icons.Default.Timer, "timer", "nav_today"),
+    TASKS(Icons.Default.Folder, "folder.fill", "nav_projects"),
+    REPORTS(Icons.Default.Insights, "chart.line.uptrend.xyaxis", "nav_reports"),
+    PROJECTS(Icons.Default.Settings, "gearshape.fill", "nav_settings");
 
     @Composable
     fun title(): String = when (this) {
@@ -133,7 +145,8 @@ fun MainAppContent(viewModel: TrackerViewModel, initialDestination: TrackerDesti
         if (isWideScreen) {
             // Tablet & Desktop Responsive Layout with NavigationRail
             Row(modifier = Modifier.fillMaxSize()) {
-                NavigationRail(
+                // Material 3 Expressive rail: same place as before, current shapes and colours.
+                WideNavigationRail(
                     modifier = Modifier.testTag("desktop_navigation_rail"),
                 ) {
                     Spacer(modifier = Modifier.height(20.dp))
@@ -152,7 +165,8 @@ fun MainAppContent(viewModel: TrackerViewModel, initialDestination: TrackerDesti
                     Spacer(modifier = Modifier.height(20.dp))
 
                     TrackerDestination.entries.forEach { destination ->
-                        NavigationRailItem(
+                        WideNavigationRailItem(
+                            railExpanded = false,
                             selected = currentDestination == destination,
                             onClick = { currentDestination = destination },
                             icon = {
@@ -214,6 +228,53 @@ fun MainAppContent(viewModel: TrackerViewModel, initialDestination: TrackerDesti
                         }
                     }
                 }
+            }
+        } else if (usesFloatingTabBar) {
+            // Handheld layout on iOS: both bars are glass drawn over the content, so the content
+            // fills the screen and only keeps their height free as scroll padding.
+            val title = if (currentDestination == TrackerDestination.TODAY) DateFormats.weekdayLongDate(now) else currentDestination.title()
+            val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 44.dp
+            val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 74.dp
+            // Surface, because without Scaffold nothing else paints the window background or sets
+            // the content colour that text and icons inherit.
+            Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                CompositionLocalProvider(
+                    LocalScreenInsets provides PaddingValues(top = topInset, bottom = bottomInset)
+                ) {
+                    DestinationContent(
+                        destination = currentDestination,
+                        viewModel = viewModel,
+                        onNavigateToTimer = { currentDestination = TrackerDestination.TODAY },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                GlassTopBar(
+                    title = title,
+                    status = openSession?.let { if (runningEntry != null) strings.badgeWorking else strings.badgeClockedIn },
+                    alertCount = urgentTasks.size,
+                    onAlertClick = { currentDestination = TrackerDestination.TASKS },
+                    modifier = Modifier.align(Alignment.TopCenter).testTag("top_deadline_alerts_button"),
+                )
+                GlassTabBar(
+                    items = TrackerDestination.entries.map { destination ->
+                        FloatingTabItem(
+                            label = destination.title(),
+                            icon = destination.icon,
+                            systemImage = destination.systemImage,
+                            selected = currentDestination == destination,
+                            testTag = destination.tag,
+                            badgeCount = if (destination == TrackerDestination.TASKS) urgentTasks.size else 0,
+                            onClick = { currentDestination = destination },
+                        )
+                    },
+                    modifier = Modifier.align(Alignment.BottomCenter).testTag("mobile_bottom_nav_bar"),
+                )
+                SnackbarHost(
+                    snackbarHostState,
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomInset),
+                )
+            }
             }
         } else {
             // Handheld Mobile Phone Layout with Bottom Navigation Bar.
@@ -280,11 +341,11 @@ fun MainAppContent(viewModel: TrackerViewModel, initialDestination: TrackerDesti
                     )
                 },
                 bottomBar = {
-                    NavigationBar(
+                    ShortNavigationBar(
                         modifier = Modifier.testTag("mobile_bottom_nav_bar")
                     ) {
                         TrackerDestination.entries.forEach { destination ->
-                            NavigationBarItem(
+                            ShortNavigationBarItem(
                                 selected = currentDestination == destination,
                                 onClick = { currentDestination = destination },
                                 icon = {

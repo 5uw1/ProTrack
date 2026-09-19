@@ -42,6 +42,9 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -72,6 +75,7 @@ import com.suw1labs.worktracker.data.report.WarningKind
 import com.suw1labs.worktracker.ui.components.ConfirmDeleteDialog
 import com.suw1labs.worktracker.ui.components.LocalSnackbarHostState
 import com.suw1labs.worktracker.ui.components.SessionRow
+import com.suw1labs.worktracker.ui.components.LocalScreenInsets
 import com.suw1labs.worktracker.ui.i18n.emoji
 import com.suw1labs.worktracker.ui.theme.AmberWarning
 import com.suw1labs.worktracker.ui.theme.EmeraldGreen
@@ -130,6 +134,7 @@ fun ReportsScreen(
 
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(horizontal = 12.dp),
+        contentPadding = LocalScreenInsets.current,
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         // Month scope: full calendar. Day / week scope: strip with the working days of the week.
@@ -164,11 +169,14 @@ fun ReportsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    ReportPeriodType.entries.forEach { type ->
-                        FilterChip(
+                // One of day / week / month is always picked, so this is a segmented button group
+                // and not a set of filter chips.
+                SingleChoiceSegmentedButtonRow {
+                    ReportPeriodType.entries.forEachIndexed { index, type ->
+                        SegmentedButton(
                             selected = periodType == type,
                             onClick = { viewModel.setPeriodType(type) },
+                            shape = SegmentedButtonDefaults.itemShape(index = index, count = ReportPeriodType.entries.size),
                             label = { Text(t.periodLabel(type), fontSize = 12.sp) },
                             modifier = Modifier.testTag("period_chip_${type.name}")
                         )

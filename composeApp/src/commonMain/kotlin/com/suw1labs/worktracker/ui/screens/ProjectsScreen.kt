@@ -44,6 +44,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -71,6 +74,7 @@ import com.suw1labs.worktracker.ui.components.LocalSnackbarHostState
 import com.suw1labs.worktracker.ui.components.HoursProgressBar
 import com.suw1labs.worktracker.ui.components.LabeledDropdown
 import com.suw1labs.worktracker.ui.components.StatusBadge
+import com.suw1labs.worktracker.ui.components.LocalScreenInsets
 import com.suw1labs.worktracker.ui.i18n.Language
 import com.suw1labs.worktracker.ui.theme.AmberWarning
 import com.suw1labs.worktracker.ui.theme.EmeraldGreen
@@ -118,6 +122,7 @@ fun ProjectsScreen(
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            contentPadding = LocalScreenInsets.current,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item { Spacer(modifier = Modifier.height(4.dp)) }
@@ -186,11 +191,13 @@ fun ProjectsScreen(
                     Column(modifier = Modifier.padding(18.dp)) {
                         Text(t.languageTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            Language.entries.forEach { lang ->
-                                FilterChip(
+                        // Exactly one language is active: a segmented button group, not filter chips.
+                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                            Language.entries.forEachIndexed { index, lang ->
+                                SegmentedButton(
                                     selected = settings.language == lang.code,
                                     onClick = { viewModel.setLanguage(lang) },
+                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = Language.entries.size),
                                     label = { Text(lang.displayName) },
                                     modifier = Modifier.testTag("language_${lang.code}")
                                 )

@@ -82,6 +82,7 @@ import com.suw1labs.worktracker.ui.components.LocalSnackbarHostState
 import com.suw1labs.worktracker.ui.components.StatusBadge
 import com.suw1labs.worktracker.ui.components.displayLabel
 import com.suw1labs.worktracker.ui.components.PriorityBadge
+import com.suw1labs.worktracker.ui.components.LocalScreenInsets
 import com.suw1labs.worktracker.ui.theme.AmberWarning
 import com.suw1labs.worktracker.ui.theme.EmeraldGreen
 import com.suw1labs.worktracker.ui.viewmodel.TrackerViewModel
@@ -135,6 +136,7 @@ fun TasksScreen(
 
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(horizontal = 12.dp),
+        contentPadding = LocalScreenInsets.current,
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         // Import (paste a project list) and new project; tasks are added on their project card.

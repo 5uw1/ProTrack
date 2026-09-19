@@ -105,6 +105,7 @@ import com.suw1labs.worktracker.ui.components.DeadlineUrgencyBadge
 import com.suw1labs.worktracker.ui.components.EmptyStateCard
 import com.suw1labs.worktracker.ui.components.LocalSnackbarHostState
 import com.suw1labs.worktracker.ui.components.ProjectDropdown
+import com.suw1labs.worktracker.ui.components.LocalScreenInsets
 import com.suw1labs.worktracker.ui.theme.AmberWarning
 import com.suw1labs.worktracker.ui.theme.EmeraldGreen
 import com.suw1labs.worktracker.ui.theme.RoseUrgent
@@ -171,6 +172,7 @@ fun TodayScreen(
 
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(horizontal = 12.dp),
+        contentPadding = LocalScreenInsets.current,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         // --- URGENT DEADLINES BANNER ---
