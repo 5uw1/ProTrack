@@ -488,15 +488,34 @@ private struct LargeView: View {
     }
 }
 
+/// Clock in / out on the lock screen: no colour to spend there, so it is a symbol in a capsule.
+private struct AccessoryClockButton: View {
+    let state: WidgetState
+    var body: some View {
+        let label = Image(systemName: state.clockedIn ? "pause.circle.fill" : "play.circle.fill")
+            .font(.system(size: 20))
+        if state.clockedIn {
+            Button(intent: ClockOutIntent()) { label }.buttonStyle(.plain)
+        } else {
+            Button(intent: ClockInIntent()) { label }.buttonStyle(.plain)
+        }
+    }
+}
+
 private struct RectangularView: View {
     let entry: WorkTrackerEntry
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            StatusLine(state: entry.state)
-            TotalText(entry: entry).font(.system(size: 20, weight: .heavy, design: .rounded))
-            if let project = entry.state.runningProject {
-                Text(project).font(.system(size: 11)).lineLimit(1)
+        HStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: 2) {
+                StatusLine(state: entry.state)
+                TotalText(entry: entry).font(.system(size: 20, weight: .heavy, design: .rounded))
+                if let project = entry.state.runningProject {
+                    Text(project).font(.system(size: 11)).lineLimit(1)
+                }
             }
+            Spacer(minLength: 0)
+            // Clocking in and out has to work in every size, this one included.
+            AccessoryClockButton(state: entry.state)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -507,12 +526,20 @@ private struct CircularView: View {
     var body: some View {
         let s = entry.state
         let progress = s.targetSeconds > 0 ? min(1, s.attendanceSeconds(at: entry.date) / s.targetSeconds) : 0
-        Gauge(value: progress) {
-            Image(systemName: "timer")
+        let gauge = Gauge(value: progress) {
+            Image(systemName: s.clockedIn ? "pause.fill" : "play.fill")
         } currentValueLabel: {
             Text(shortHours(s.attendanceSeconds(at: entry.date))).font(.system(size: 12, weight: .bold))
         }
         .gaugeStyle(.accessoryCircular)
+
+        // The whole gauge is the clock in / out button – there is no room for a separate one, and
+        // every size has to be able to do it.
+        if s.clockedIn {
+            Button(intent: ClockOutIntent()) { gauge }.buttonStyle(.plain)
+        } else {
+            Button(intent: ClockInIntent()) { gauge }.buttonStyle(.plain)
+        }
     }
 
     private func shortHours(_ seconds: TimeInterval) -> String {

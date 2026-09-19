@@ -71,6 +71,10 @@ import com.suw1labs.worktracker.data.model.WorkTaskWithProject
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Search
 import com.suw1labs.worktracker.ui.components.ConfirmDeleteDialog
 import com.suw1labs.worktracker.ui.components.DateTimePickerDialog
 import com.suw1labs.worktracker.ui.components.FormDialog
@@ -108,6 +112,10 @@ fun TasksScreen(
 
     var statusFilter by remember { mutableStateOf("ALL") }
     var focusOnly by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+    // Tasks start hidden: with a few dozen projects the list is otherwise a long scroll before
+    // the one being looked for. Tapping a project opens it; a search opens what it found.
+    var openProjects by remember { mutableStateOf(emptySet<Long>()) }
     var showAddProjectDialog by remember { mutableStateOf(false) }
     var showImportDialog by remember { mutableStateOf(false) }
     var editingProject by remember { mutableStateOf<Project?>(null) }
@@ -127,9 +135,15 @@ fun TasksScreen(
     }
     val tasksByProject = remember(filteredTasks) { filteredTasks.groupBy { it.projectId } }
     // Focused projects first, then the other productive ones, then the unproductive one(s); completed projects last.
-    val orderedProjects = remember(allProjects, focusOnly) {
+    val trimmedQuery = query.trim()
+    val orderedProjects = remember(allProjects, focusOnly, trimmedQuery, tasksByProject) {
         allProjects
             .filter { !focusOnly || it.isFocused }
+            .filter { project ->
+                trimmedQuery.isBlank() ||
+                    project.matches(trimmedQuery) ||
+                    tasksByProject[project.id].orEmpty().any { it.title.contains(trimmedQuery, ignoreCase = true) }
+            }
             .sortedWith(compareBy({ !it.isFocused }, { !it.isProductive }, { it.status == "COMPLETED" }, { it.code }))
     }
     val focusedCount = remember(allProjects) { allProjects.count { it.isFocused } }
@@ -157,6 +171,26 @@ fun TasksScreen(
                     Text(t.newProject, fontSize = 12.sp, maxLines = 1)
                 }
             }
+        }
+
+        // Search across projects and their tasks.
+        item {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = { Text(t.searchProjectsTasks, fontSize = 13.sp) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { query = "" }, modifier = Modifier.testTag("clear_project_search")) {
+                            Icon(Icons.Default.Close, contentDescription = t.close, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth().testTag("project_search_field")
+            )
         }
 
         // Filter status chips
@@ -195,11 +229,23 @@ fun TasksScreen(
         }
 
         items(orderedProjects, key = { it.id }) { project ->
+            val projectTasks = tasksByProject[project.id].orEmpty()
+            // A search shows what it matched: the whole project if the project itself matched,
+            // otherwise only the tasks that did.
+            val shownTasks = when {
+                trimmedQuery.isBlank() || project.matches(trimmedQuery) -> projectTasks
+                else -> projectTasks.filter { it.title.contains(trimmedQuery, ignoreCase = true) }
+            }
             ProjectTasksCard(
                 project = project,
                 summary = summariesById[project.id],
-                tasks = tasksByProject[project.id].orEmpty(),
-                onAddTask = { addTaskProjectId = project.id },
+                tasks = shownTasks,
+                taskCount = projectTasks.size,
+                expanded = trimmedQuery.isNotBlank() || project.id in openProjects,
+                onToggleExpanded = {
+                    openProjects = if (project.id in openProjects) openProjects - project.id else openProjects + project.id
+                },
+                onAddTask = { openProjects = openProjects + project.id; addTaskProjectId = project.id },
                 onEditProject = { editingProject = project },
                 onDeleteProject = { deletingProject = project },
                 onToggleFocus = { viewModel.setProjectFocus(project, !project.isFocused) },
@@ -336,6 +382,9 @@ private fun ProjectTasksCard(
     project: Project,
     summary: ProjectSummary?,
     tasks: List<WorkTaskWithProject>,
+    taskCount: Int,
+    expanded: Boolean,
+    onToggleExpanded: () -> Unit,
     onAddTask: () -> Unit,
     onEditProject: () -> Unit,
     onDeleteProject: () -> Unit,
@@ -357,7 +406,10 @@ private fun ProjectTasksCard(
         modifier = Modifier.fillMaxWidth().testTag("project_tasks_${project.id}")
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable(onClick = onToggleExpanded).testTag("project_header_${project.id}"),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Box(modifier = Modifier.width(4.dp).height(30.dp).clip(RoundedCornerShape(2.dp)).background(projColor))
                 Spacer(modifier = Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -368,7 +420,7 @@ private fun ProjectTasksCard(
                         color = if (project.isProductive) MaterialTheme.colorScheme.onSurface else AmberWarning
                     )
                     Text(
-                        text = (if (project.client.isNotBlank()) "${project.client} · " else "") + t.tasksCount(tasks.size),
+                        text = (if (project.client.isNotBlank()) "${project.client} · " else "") + t.tasksCount(taskCount),
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -390,6 +442,12 @@ private fun ProjectTasksCard(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(t.add, fontSize = 12.sp)
                 }
+                Icon(
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
                 Box {
                     var menuOpen by remember { mutableStateOf(false) }
                     IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(32.dp).testTag("project_menu_${project.id}")) {
@@ -424,10 +482,10 @@ private fun ProjectTasksCard(
                 Spacer(modifier = Modifier.height(4.dp))
             }
 
-            if (sorted.isEmpty()) {
+            if (expanded && sorted.isEmpty()) {
                 Text(t.noTasksInProject, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 14.dp, top = 6.dp))
             }
-            sorted.forEachIndexed { index, task ->
+            if (expanded) sorted.forEachIndexed { index, task ->
                 if (index > 0) HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
                 TaskRow(
                     task = task,
@@ -689,3 +747,9 @@ fun TaskFormDialog(
         )
     }
 }
+
+/** Search hits a project by its number, its name or its client. */
+private fun Project.matches(query: String): Boolean =
+    code.contains(query, ignoreCase = true) ||
+        name.contains(query, ignoreCase = true) ||
+        client.contains(query, ignoreCase = true)
