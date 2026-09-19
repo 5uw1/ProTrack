@@ -25,7 +25,7 @@ private val TabBarHeight = 74.dp
 
 /**
  * The chrome iOS 26 draws, and no more than that: one Liquid Glass tab bar floating over the
- * content, and glass over the status bar so scrolled content blurs out under the clock.
+ * content. Nothing sits over the status bar – even clear glass softened what scrolled past it.
  *
  * There is deliberately no title bar. The tab already names the screen, so a bar would repeat it
  * and cost a strip of the window; the title goes into the content as a heading instead
@@ -57,14 +57,12 @@ class LiquidGlassShell : AppShell {
                     LocalScreenInsets provides PaddingValues(top = topInset, bottom = bottomInset),
                     LocalScreenHeader provides ScreenHeader(
                         title = state.title,
-                        status = state.status,
                         alertCount = state.alertCount,
                         onAlertClick = state.onAlertClick,
                     ),
                 ) {
                     content(Modifier.fillMaxSize())
                 }
-                GlassStatusStrip(hidden = hidden, modifier = Modifier.align(Alignment.TopCenter))
                 GlassTabBar(
                     tabs = state.tabs,
                     hidden = hidden,

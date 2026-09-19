@@ -12,7 +12,6 @@ import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -33,7 +32,6 @@ import com.suw1labs.worktracker.ui.theme.RoseUrgent
  */
 data class ScreenHeader(
     val title: String,
-    val status: String?,
     val alertCount: Int,
     val onAlertClick: () -> Unit,
 )
@@ -58,20 +56,6 @@ fun InlineScreenTitle(modifier: Modifier = Modifier) {
             maxLines = 2,
             modifier = Modifier.weight(1f, fill = false),
         )
-        if (header.status != null) {
-            Surface(
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                shape = MaterialTheme.shapes.small,
-            ) {
-                Text(
-                    text = header.status,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                )
-            }
-        }
         if (header.alertCount > 0) {
             IconButton(onClick = header.onAlertClick, modifier = Modifier.testTag("top_deadline_alerts_button")) {
                 BadgedBox(badge = { Badge(containerColor = RoseUrgent) { Text(header.alertCount.toString()) } }) {
