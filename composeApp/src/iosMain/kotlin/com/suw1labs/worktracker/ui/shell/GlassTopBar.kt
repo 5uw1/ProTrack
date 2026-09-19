@@ -40,13 +40,18 @@ import platform.UIKit.setAccessibilityLabel
 import platform.UIKit.setAccessibilityTraits
 import platform.darwin.NSObject
 
-private const val TitleBarHeight = 44
+internal const val TitleRowHeight = 44.0
 
 /**
- * Title bar the way iOS 26 draws it: glass across the full width including the status bar, with
- * the content scrolling underneath it. Because a `UIGlassEffect` view has to sit above the Compose
- * canvas to have anything to refract, everything inside it – title, status badge, alert button –
- * is a native view as well.
+ * Title bar the way iOS 26 draws it. Two things happen here:
+ *
+ * * The glass keeps covering the status bar at all times, so content scrolling past the top edge
+ *   blurs out instead of running sharp into the clock – the scroll edge effect.
+ * * The title row itself slides away as soon as the content is scrolled down and comes back on the
+ *   way up, so a long list gets the whole screen.
+ *
+ * Everything inside the bar is a native view: a `UIGlassEffect` has to sit above the Compose canvas
+ * to have anything to refract, and Compose cannot paint on top of an interop overlay.
  */
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalForeignApi::class)
 @Composable
@@ -54,8 +59,9 @@ internal fun GlassTopBar(
     title: String,
     status: String?,
     alertCount: Int,
-    onAlertClick: () -> Unit,
+    titleShown: Boolean,
     hidden: Boolean,
+    onAlertClick: () -> Unit,
     modifier: Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -64,15 +70,18 @@ internal fun GlassTopBar(
     val statusColor = scheme.primary.toUIColor()
     val statusBackground = scheme.primary.copy(alpha = 0.14f).toUIColor()
     val alertColor = RoseUrgent.toUIColor()
-    val barTint = scheme.surface.copy(alpha = 0.55f).toUIColor()
+    val barTint = scheme.surface.copy(alpha = 0.8f).toUIColor()
     val bar = remember { GlassTopBarViews() }
 
-    Box(modifier = modifier.fillMaxWidth().height(statusBar + TitleBarHeight.dp)) {
+    Box(modifier = modifier.fillMaxWidth().height(statusBar + TitleRowHeight.dp)) {
         UIKitView(
             factory = { bar.build(statusBar.value.toDouble(), barTint) },
-            modifier = Modifier.fillMaxWidth().height(statusBar + TitleBarHeight.dp),
+            modifier = Modifier.fillMaxWidth().height(statusBar + TitleRowHeight.dp),
             update = {
-                bar.update(title, status, alertCount, hidden, onAlertClick, titleColor, statusColor, statusBackground, alertColor)
+                bar.update(
+                    title, status, alertCount, titleShown, hidden, onAlertClick,
+                    titleColor, statusColor, statusBackground, alertColor,
+                )
             },
             properties = UIKitInteropProperties(
                 interactionMode = UIKitInteropInteractionMode.NonCooperative,
@@ -85,25 +94,58 @@ internal fun GlassTopBar(
 
 @OptIn(ExperimentalForeignApi::class)
 private class GlassTopBarViews {
-    private var root: UIVisualEffectView? = null
+    private var root: UIView? = null
+    private var glass: UIVisualEffectView? = null
+    private var glassHeight: NSLayoutConstraint? = null
+    private val titleRow = UIView()
     private val titleLabel = UILabel()
     private val statusLabel = UILabel()
     private val statusPill = UIView()
     private val alertButton = UIButton()
     private val alertBadge = UILabel()
     private val tapTarget = TopBarTapTarget()
+    private var topInset = 0.0
+    private var lastTitleShown = true
 
-    fun build(topInset: Double, tint: UIColor): UIVisualEffectView {
+    fun build(topInset: Double, tint: UIColor): UIView {
+        this.topInset = topInset
+        val container = UIView()
+        container.backgroundColor = UIColor.clearColor
+        root = container
+
         val effect = UIGlassEffect.effectWithStyle(UIGlassEffectStyle.UIGlassEffectStyleRegular)
-        // Same frosting as the tab bar, so the title stays readable over scrolled content.
+        // Tinted, or the bar disappears into busy content behind it.
         effect.setTintColor(tint)
         val bar = UIVisualEffectView(effect = effect)
-        root = bar
+        bar.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(bar)
+        glass = bar
+        val height = bar.heightAnchor.constraintEqualToConstant(topInset + TitleRowHeight)
+        glassHeight = height
+        NSLayoutConstraint.activateConstraints(
+            listOf(
+                bar.leadingAnchor.constraintEqualToAnchor(container.leadingAnchor),
+                bar.trailingAnchor.constraintEqualToAnchor(container.trailingAnchor),
+                bar.topAnchor.constraintEqualToAnchor(container.topAnchor),
+                height,
+            )
+        )
+
         val content = bar.contentView
+        titleRow.translatesAutoresizingMaskIntoConstraints = false
+        content.addSubview(titleRow)
+        NSLayoutConstraint.activateConstraints(
+            listOf(
+                titleRow.leadingAnchor.constraintEqualToAnchor(content.leadingAnchor),
+                titleRow.trailingAnchor.constraintEqualToAnchor(content.trailingAnchor),
+                titleRow.topAnchor.constraintEqualToAnchor(content.topAnchor, constant = topInset),
+                titleRow.heightAnchor.constraintEqualToConstant(TitleRowHeight),
+            )
+        )
 
         titleLabel.font = UIFont.systemFontOfSize(17.0, weight = UIFontWeightBold)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        content.addSubview(titleLabel)
+        titleRow.addSubview(titleLabel)
 
         statusPill.layer.cornerRadius = 8.0
         statusPill.clipsToBounds = true
@@ -111,11 +153,11 @@ private class GlassTopBarViews {
         statusLabel.font = UIFont.systemFontOfSize(10.0, weight = UIFontWeightSemibold)
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
         statusPill.addSubview(statusLabel)
-        content.addSubview(statusPill)
+        titleRow.addSubview(statusPill)
 
         alertButton.translatesAutoresizingMaskIntoConstraints = false
         alertButton.addTarget(tapTarget, action = NSSelectorFromString("alertTapped"), forControlEvents = UIControlEventTouchUpInside)
-        content.addSubview(alertButton)
+        titleRow.addSubview(alertButton)
 
         alertBadge.font = UIFont.systemFontOfSize(10.0, weight = UIFontWeightSemibold)
         alertBadge.textColor = UIColor.whiteColor
@@ -123,21 +165,20 @@ private class GlassTopBarViews {
         alertBadge.layer.cornerRadius = 8.0
         alertBadge.clipsToBounds = true
         alertBadge.translatesAutoresizingMaskIntoConstraints = false
-        content.addSubview(alertBadge)
+        titleRow.addSubview(alertBadge)
 
-        val centreY = topInset + TitleBarHeight / 2.0
         NSLayoutConstraint.activateConstraints(
             listOf(
-                titleLabel.leadingAnchor.constraintEqualToAnchor(content.leadingAnchor, constant = 20.0),
-                titleLabel.topAnchor.constraintEqualToAnchor(content.topAnchor, constant = centreY - 11.0),
+                titleLabel.leadingAnchor.constraintEqualToAnchor(titleRow.leadingAnchor, constant = 20.0),
+                titleLabel.centerYAnchor.constraintEqualToAnchor(titleRow.centerYAnchor),
                 statusPill.leadingAnchor.constraintEqualToAnchor(titleLabel.trailingAnchor, constant = 8.0),
                 statusPill.centerYAnchor.constraintEqualToAnchor(titleLabel.centerYAnchor),
                 statusPill.heightAnchor.constraintEqualToConstant(18.0),
                 statusLabel.leadingAnchor.constraintEqualToAnchor(statusPill.leadingAnchor, constant = 7.0),
                 statusLabel.trailingAnchor.constraintEqualToAnchor(statusPill.trailingAnchor, constant = -7.0),
                 statusLabel.centerYAnchor.constraintEqualToAnchor(statusPill.centerYAnchor),
-                alertButton.trailingAnchor.constraintEqualToAnchor(content.trailingAnchor, constant = -16.0),
-                alertButton.centerYAnchor.constraintEqualToAnchor(titleLabel.centerYAnchor),
+                alertButton.trailingAnchor.constraintEqualToAnchor(titleRow.trailingAnchor, constant = -16.0),
+                alertButton.centerYAnchor.constraintEqualToAnchor(titleRow.centerYAnchor),
                 alertButton.widthAnchor.constraintEqualToConstant(32.0),
                 alertButton.heightAnchor.constraintEqualToConstant(32.0),
                 alertBadge.centerXAnchor.constraintEqualToAnchor(alertButton.trailingAnchor, constant = -4.0),
@@ -146,13 +187,14 @@ private class GlassTopBarViews {
                 alertBadge.widthAnchor.constraintGreaterThanOrEqualToConstant(16.0),
             )
         )
-        return bar
+        return container
     }
 
     fun update(
         title: String,
         status: String?,
         alertCount: Int,
+        titleShown: Boolean,
         hidden: Boolean,
         onAlertClick: () -> Unit,
         titleColor: UIColor,
@@ -160,7 +202,19 @@ private class GlassTopBarViews {
         statusBackground: UIColor,
         alertColor: UIColor,
     ) {
-        root?.let { bar -> UIView.animateWithDuration(0.2) { bar.alpha = if (hidden) 0.0 else 1.0 } }
+        root?.let { view -> UIView.animateWithDuration(0.2) { view.alpha = if (hidden) 0.0 else 1.0 } }
+
+        // Scrolled down: the title row goes and the glass shrinks to the status bar, which keeps
+        // blurring whatever passes underneath it.
+        if (titleShown != lastTitleShown) {
+            lastTitleShown = titleShown
+            glassHeight?.constant = if (titleShown) topInset + TitleRowHeight else topInset
+            UIView.animateWithDuration(0.25) {
+                titleRow.alpha = if (titleShown) 1.0 else 0.0
+                root?.layoutIfNeeded()
+            }
+        }
+
         titleLabel.text = title
         titleLabel.textColor = titleColor
 

@@ -69,7 +69,8 @@ internal fun GlassTabBar(tabs: List<ShellTab>, hidden: Boolean, modifier: Modifi
     val normalColor = scheme.onSurfaceVariant.toUIColor()
     val selectedBackground = scheme.primary.copy(alpha = 0.16f).toUIColor()
     val badgeColor = RoseUrgent.toUIColor()
-    val barTint = scheme.surface.copy(alpha = 0.55f).toUIColor()
+    val barTint = scheme.surface.copy(alpha = 0.8f).toUIColor()
+    val edgeColor = scheme.onSurface.copy(alpha = 0.14f).toUIColor()
     val bar = remember { GlassTabBarViews() }
 
     Box(
@@ -79,7 +80,7 @@ internal fun GlassTabBar(tabs: List<ShellTab>, hidden: Boolean, modifier: Modifi
             .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
         UIKitView(
-            factory = { bar.build(tabs.size, barTint) },
+            factory = { bar.build(tabs.size, barTint, edgeColor) },
             modifier = Modifier.fillMaxWidth().height(BarHeightDp.dp),
             update = { bar.update(tabs, hidden, selectedColor, normalColor, selectedBackground, badgeColor) },
             properties = UIKitInteropProperties(
@@ -97,7 +98,7 @@ private class GlassTabBarViews {
     private val cells = mutableListOf<TabCell>()
     private var root: UIVisualEffectView? = null
 
-    fun build(count: Int, tint: UIColor): UIVisualEffectView {
+    fun build(count: Int, tint: UIColor, edge: UIColor): UIVisualEffectView {
         val effect = UIGlassEffect.effectWithStyle(UIGlassEffectStyle.UIGlassEffectStyleRegular)
         effect.setInteractive(true)
         // Without a tint the glass is so clear that content scrolling behind it competes with the
@@ -105,6 +106,8 @@ private class GlassTabBarViews {
         effect.setTintColor(tint)
         val bar = UIVisualEffectView(effect = effect)
         bar.layer.cornerRadius = CornerRadius
+        bar.layer.borderWidth = 0.5
+        bar.layer.borderColor = edge.CGColor
         bar.clipsToBounds = true
 
         val row = UIStackView()
