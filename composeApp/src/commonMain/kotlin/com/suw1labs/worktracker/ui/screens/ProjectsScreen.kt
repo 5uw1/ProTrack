@@ -175,8 +175,13 @@ fun ProjectsScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(t.sapSettingsTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            // Nothing is filled in until the user enters their employer's codes,
+                            // so say what the card is for instead of showing a lone separator.
+                            val codes = listOf(settings.sapProductiveType, settings.sapUnproductiveType, settings.sapUnproductiveNumber)
+                                .map { it.trim() }
+                                .filter { it.isNotEmpty() }
                             Text(
-                                "${settings.sapProductiveType} · ${settings.sapUnproductiveType} ${settings.sapUnproductiveNumber}",
+                                if (codes.isEmpty()) t.sapSettingsSubtitle else codes.joinToString(" · "),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
