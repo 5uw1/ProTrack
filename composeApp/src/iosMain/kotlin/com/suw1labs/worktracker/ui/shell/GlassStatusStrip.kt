@@ -32,7 +32,9 @@ import platform.UIKit.UIVisualEffectView
 @Composable
 internal fun GlassStatusStrip(hidden: Boolean, modifier: Modifier) {
     val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val tint = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f).toUIColor()
+    // Barely tinted: the point of this strip is to let content show through, blurred – tint it
+    // any harder and it reads as an opaque bar again.
+    val tint = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f).toUIColor()
     val strip = remember { StatusStripView() }
 
     Box(modifier = modifier.fillMaxWidth().height(statusBar)) {
