@@ -19,7 +19,7 @@ immediately after launch.
 A screen recording made on an iPhone running the latest iOS is attached. It starts with the app
 launch and shows the typical flow: clocking in, picking a project and task, switching tasks,
 tagging a lunch break, clocking out, correcting a time afterwards, the day / week / month reports
-with hours per project, exporting a CSV and the "SAP week" text, entering an absence, the settings
+with hours per project, exporting a CSV and the weekly sheet text, entering an absence, the settings
 (work schedule, break rules, backup) and the home-screen widget.
 
 The app has no account registration, no login and no account deletion flow, because it has no
@@ -58,7 +58,7 @@ the Today tab with an empty day.
    one. The "···" menu tags a pause as lunch or break.
 4. **Clock out** – ends the period. Times can be edited afterwards by tapping any entry.
 5. **Reports tab** – day / week / month navigation, hours per project number, per category, target
-   and overtime, daily chart. "Export" produces CSV files and the "SAP week" text block via the
+   and overtime, daily chart. "Export" produces CSV files and the weekly sheet text block via the
    iOS share sheet.
 6. **Absences** – Today tab → absence button: sick, holiday, public holiday, compensation,
    education or a custom reason.
@@ -107,12 +107,11 @@ The app is not part of a regulated industry. It is a personal productivity tool:
 payroll, banking, health, gambling or legal services, it does not transmit data to any employer or
 authority, and it makes no claim to be an official or certified record of working time.
 
-It contains no protected third-party material. All text, icons and graphics are our own. Timesheet
-systems such as SAP are mentioned only descriptively, to say that the app's export produces plain
-text/CSV the user can copy into the timesheet their employer uses. There is no connection to SAP or
-any other vendor's system, no SAP software, SDK or data is used, and no third-party logo or brand
-appears in the app or in the screenshots. If Apple would prefer the reference removed from the
-metadata, we will remove it right away.
+It contains no protected third-party material. All text, icons and graphics are our own, and no
+third-party product is named anywhere in the app or in the store listing: the export is described
+as plain text/CSV the user can copy into whatever timesheet their employer uses. The app connects
+to no vendor's system, uses no third-party software, SDK or data, and shows no third-party logo or
+brand in the app or in the screenshots.
 
 ---
 
@@ -130,7 +129,7 @@ portrait, roughly 2–4 minutes, starting from the home screen with the app not 
 6. **Clock out**, then tap an entry and correct its time to show editing.
 7. Absence: add e.g. "Holiday" on another day.
 8. Reports tab: day → week → month, hours per project, overtime; **Export** → CSV and
-   **SAP week** → show the share sheet (cancel it).
+   **Weekly sheet** → show the share sheet (cancel it).
 9. Settings: work schedule, break rules, Backup & transfer (show the share sheet), automatic
    backup folder picker (cancel it).
 10. Home screen: long-press → add the WorkTracker widget → tap **Clock in** on the widget → open

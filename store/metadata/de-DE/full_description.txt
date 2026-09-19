@@ -14,7 +14,7 @@ AUSWERTUNGEN WIE DEIN STUNDENRAPPORT
 • Tag, Woche und Monat mit Stunden pro Projektnummer, gerundet auf 0.25 h.
 • Sollstunden, Überzeit heute und laufender Überzeitsaldo.
 • Abwesenheiten: Krankheit, Ferien, Feiertag, Kompensation, Weiterbildung.
-• CSV-Export für Excel oder das ERP-System.
+• CSV-Export für die Tabellenkalkulation oder das ERP-System.
 
 ARBEITSZEITREGELN
 • Sollzeit pro Wochentag (Teilzeit-tauglich), gesetzliche Höchstarbeitszeit pro Woche.

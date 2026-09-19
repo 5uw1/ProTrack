@@ -1,7 +1,7 @@
 # WorkTracker
 
 Personal working-time tracker for a full-time software engineer whose hours are booked into
-SAP per project at the end of the month. Built with **Kotlin Multiplatform + Compose
+an ERP timesheet per project at the end of the month. Built with **Kotlin Multiplatform + Compose
 Multiplatform** and runs on **Android, iOS and desktop (Windows, macOS, Linux)** from one
 codebase. The app never talks to company systems: projects are pasted in, reports are exported
 as files.
@@ -10,13 +10,13 @@ as files.
 
 * **Clock in / clock out** – morning, lunch, breaks, leaving for a few hours, going home. Only
   clocked-in time counts; every clock-in period can be corrected later.
-* **Activities** – while clocked in, pick the SAP project (or "no project"), a category
+* **Activities** – while clocked in, pick the project (or "no project"), a category
   (PLC, High Level Language, Meeting, or unproductive ones such as coffee / smoke break,
   informal meeting, uncategorized) and a note. Switching starts a new entry, clocking out stops it.
   Entries can be edited, re-assigned or added by hand at any time.
 * **Today** – clocked-in total, project vs. unproductive vs. unallocated time, breaks, target for the
   day, overtime today and the running overtime balance.
-* **Reports** – day / week / month navigation with hours per SAP project number (rounded to 0.25 h),
+* **Reports** – day / week / month navigation with hours per project number (rounded to 0.25 h),
   hours per category, target and overtime, daily chart.
 * **Swiss working-time rules (canton of Bern)** – configurable schedule (default 40 h/week at
   100 %, legal maximum 45 h/week). Adjustable break rules (default: more than 5 h needs 30 min,
@@ -30,9 +30,10 @@ as files.
   tagged as Break then count as working time up to that allowance (7 h 50 + 2 × 5 min = 8 h).
 * **Absences** – sick, holiday (own vacation), public holiday (paid by company), compensation
   (taken from overtime), education, or any custom reason. Paid absences count towards the target.
-* **Looks like the platform it runs on** – iOS 26 draws the title and tab bars as real Liquid Glass
-  (`UIGlassEffect`) with the content scrolling underneath; Android and desktop use Material 3
-  Expressive navigation. Both come from the same screens – see [App shell](#app-shell--following-each-platforms-design).
+* **Looks like the platform it runs on** – iOS 26 gets a real Liquid Glass tab bar
+  (`UIGlassEffect`) with the content scrolling underneath it and no title bar at all; Android and
+  desktop use Material 3 Expressive navigation. Both come from the same screens – see
+  [App shell](#app-shell--following-each-platforms-design).
 * **Home-screen widgets (Android & iOS)** – clocked-in time today, target progress, the running
   activity, a Clock in / Clock out button and one-tap task switching (running task first, then the
   most recently used ones). Android uses Jetpack Glance and works on the shared database directly.
@@ -52,14 +53,14 @@ as files.
   (Export → CSV): every "DAYS IN DETAIL" row becomes an activity, runs of rows become clock-in
   periods with lunch / break tags from the pause rows, absences become day records; projects and
   tasks are created by name; rows already present are skipped so re-importing is safe.
-* **SAP week (copy & paste)** – Reports → Export → "SAP week": tab-separated lines per calendar
-  week exactly as the SAP weekly time sheet expects them (`UNPROD  700411  0.50 …`,
+* **Weekly sheet (copy & paste)** – Reports → Export → "Weekly sheet": tab-separated lines per calendar
+  week exactly as a weekly time sheet expects them (`UNPROD  700411  0.50 …`,
   `SERTCN  M.00073.1.08  3.00 5.00 …`), hours with two decimals, Monday first, empty cells for
   nothing to book; time without a project is listed with a leading `!` so it is not pasted by
-  mistake. Activity types and the unproductive cost object are set in Settings → SAP booking.
-* **Import / export** – paste a project list (from Excel, SAP or CSV; tab, `;` or `,` separated)
+  mistake. Activity types and the unproductive cost object are set in Settings → Timesheet booking.
+* **Import / export** – paste a project list (from a spreadsheet, an ERP or CSV; tab, `;` or `,` separated)
   to import project numbers. Export the summary per project, a daily timesheet or an
-  attendance/overtime report as plain CSV or Excel-friendly CSV (semicolon + UTF-8 BOM).
+  attendance/overtime report as plain CSV or spreadsheet-friendly CSV (semicolon + UTF-8 BOM).
 
 ## Project layout
 
@@ -80,7 +81,7 @@ and navigation state know nothing about it.
 | Shell | Chrome | Used by |
 | --- | --- | --- |
 | `MaterialShell` | Material 3 Expressive: `ShortNavigationBar` on phones, `WideNavigationRail` on tablets and desktop, content between the bars | Android, desktop |
-| `LiquidGlassShell` | iOS 26: `UIGlassEffect` title and tab bars as interop overlays, content fills the window and scrolls under them | iOS (phones; wide windows fall back to `MaterialShell`) |
+| `LiquidGlassShell` | iOS 26: a `UIGlassEffect` tab bar as an interop overlay, no title bar (the heading is part of the content), content fills the window | iOS (phones; wide windows fall back to `MaterialShell`) |
 | `FloatingShell` | The floating bar drawn with Compose, no native glass | fallback, and to see that look on any platform |
 
 `AppShell.Chrome(state, wide) { modifier -> … }` draws the chrome and hands the screen the

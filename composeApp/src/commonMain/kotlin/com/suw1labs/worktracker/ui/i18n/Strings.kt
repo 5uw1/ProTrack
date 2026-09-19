@@ -537,7 +537,7 @@ object Translations {
         stillClockedInBody = { "You have been clocked in for over $it. Forgot to clock out?" }
         clockOutAt = { "Clock out at $it" }
         monthEndCheck = "Month-end check"
-        readyToBook = "Ready to book into SAP"
+        readyToBook = "Ready to book into your timesheet"
         thingsToFix = { if (it == 1) "1 thing to fix before booking" else "$it things to fix before booking" }
         checkForgotClockOut = { if (it == 1) "1 day without clock-out" else "$it days without clock-out" }
         checkUnassigned = { "$it of work without a project – assign it in the day view" }
@@ -604,7 +604,7 @@ object Translations {
         categoryPlaceholder = "e.g. PLC, Meeting, Coffee break"
         productiveWork = "Productive project"
         unproductiveTime = "Unproductive project"
-        productiveHint = "Hours count as project work and are exported for SAP"
+        productiveHint = "Hours count as project work and go into the timesheet export"
         unproductiveHint = "Time is recorded but reported separately (meetings, breaks, …)"
         colour = "Colour"
         languageTitle = "Language"
@@ -634,7 +634,7 @@ object Translations {
         fromOvertimeHint = "Taken from your overtime balance – no hours are credited."
         enterHours = "Enter the hours, e.g. 8 or 4."
         importProjects = "Import projects"
-        importDescription = "Paste one project per line: number, name and optionally customer – separated by tab, ';' or ','. Copying cells from Excel works directly. Existing project numbers are skipped."
+        importDescription = "Paste one project per line: number, name and optionally customer – separated by tab, ';' or ','. Copying cells from a spreadsheet works directly. Existing project numbers are skipped."
         projectList = "Project list"
         importPlaceholder = "P-2026-0142;Spindle retrofit;Customer AG\nP-2026-0150;New HMI"
         noneRecognised = "No projects recognised yet."
@@ -696,14 +696,14 @@ object Translations {
         exportTitle = "Hours export"
         report = "Report"
         fileFormat = "File format"
-        roundQuarter = "Round to 0.25 h for SAP (otherwise exact, e.g. 7.78)"
+        roundQuarter = "Round to 0.25 h for booking (otherwise exact, e.g. 7.78)"
         preview = "Preview"
         copy = "Copy"
         copied = "Copied!"
         copiedToClipboard = "Copied to clipboard!"
         saveShare = "Save / share CSV"
         saveFile = "Save file"
-        shareFile = "Share (e-mail, Teams, …)"
+        shareFile = "Share (e-mail, chat, …)"
         moreRows = "... [more rows]"
         taskFilterTodo = "To-Do"
         taskFilterInProgress = "In progress"
@@ -745,9 +745,9 @@ object Translations {
         reasonLunch = "Lunch"; reasonBreak = "Break"; reasonOut = "Out of office"; reasonHome = "Go home"
         periodDay = "Day"; periodWeek = "Week"; periodMonth = "Month"
         exportSummary = "Summary per project"; exportTimesheet = "Daily timesheet"; exportAttendance = "Attendance & overtime"
-        exportSapWeek = "SAP week (copy & paste)"
-        sapWeekHint = "Tab-separated, one block per calendar week, Monday first: copy it and paste it into the SAP weekly time sheet. Hours have two decimals; empty cells mean nothing to book. Lines starting with ! are time without a project – book it manually or assign it first."
-        sapSettingsTitle = "SAP booking"
+        exportSapWeek = "Weekly sheet (copy & paste)"
+        sapWeekHint = "Tab-separated, one block per calendar week, Monday first: copy it and paste it into your weekly time sheet. Hours have two decimals; empty cells mean nothing to book. Lines starting with ! are time without a project – book it manually or assign it first."
+        sapSettingsTitle = "Timesheet booking"
         sapSettingsSubtitle = "Activity types and the cost object used by the weekly copy & paste export."
         sapProductiveType = "Activity type – project work"
         sapUnproductiveType = "Activity type – unproductive"
@@ -776,7 +776,7 @@ object Translations {
         missingBreakDeducted = "− Missing break"
         breakRuleSummary = { hours, minutes -> "$minutes min > $hours h" }
         warnBreakDeducted = { "$it deducted." }
-        formatCsv = "CSV (comma)"; formatExcel = "Excel (semicolon)"
+        formatCsv = "CSV (comma)"; formatExcel = "Spreadsheet (semicolon)"
         backupTitle = "Backup & transfer"; backupSubtitle = "Save everything (projects, tasks, times, absences, settings) as one file and restore it on another device."
         backupShare = "Share"; backupRestore = "Restore from file"
         backupExported = "Backup created"; backupRestored = "Backup restored"
@@ -882,7 +882,7 @@ object Translations {
         stillClockedInBody = { "Du bist seit über $it eingestempelt. Ausstempeln vergessen?" }
         clockOutAt = { "Um $it ausstempeln" }
         monthEndCheck = "Monatsabschluss-Check"
-        readyToBook = "Bereit zum Buchen in SAP"
+        readyToBook = "Bereit zum Buchen im Stundenrapport"
         thingsToFix = { if (it == 1) "1 Punkt vor dem Buchen korrigieren" else "$it Punkte vor dem Buchen korrigieren" }
         checkForgotClockOut = { if (it == 1) "1 Tag ohne Ausstempeln" else "$it Tage ohne Ausstempeln" }
         checkUnassigned = { "$it Arbeit ohne Projekt – in der Tagesansicht zuordnen" }
@@ -949,7 +949,7 @@ object Translations {
         categoryPlaceholder = "z.B. SPS, Meeting, Kaffeepause"
         productiveWork = "Produktives Projekt"
         unproductiveTime = "Unproduktives Projekt"
-        productiveHint = "Stunden zählen als Projektarbeit und werden für SAP exportiert"
+        productiveHint = "Stunden zählen als Projektarbeit und kommen in den Stundenrapport-Export"
         unproductiveHint = "Zeit wird erfasst, aber separat ausgewiesen (Meetings, Pausen, …)"
         colour = "Farbe"
         languageTitle = "Sprache"
@@ -979,7 +979,7 @@ object Translations {
         fromOvertimeHint = "Wird vom Überzeitsaldo abgezogen – keine Gutschrift."
         enterHours = "Stunden eingeben, z.B. 8 oder 4."
         importProjects = "Projekte importieren"
-        importDescription = "Ein Projekt pro Zeile einfügen: Nummer, Name und optional Kunde – getrennt durch Tab, ';' oder ','. Aus Excel kopierte Zellen funktionieren direkt. Vorhandene Projektnummern werden übersprungen."
+        importDescription = "Ein Projekt pro Zeile einfügen: Nummer, Name und optional Kunde – getrennt durch Tab, ';' oder ','. Aus einer Tabellenkalkulation kopierte Zellen funktionieren direkt. Vorhandene Projektnummern werden übersprungen."
         projectList = "Projektliste"
         importPlaceholder = "P-2026-0142;Spindel Retrofit;Kunde AG\nP-2026-0150;Neues HMI"
         noneRecognised = "Noch keine Projekte erkannt."
@@ -1048,7 +1048,7 @@ object Translations {
         copiedToClipboard = "In die Zwischenablage kopiert!"
         saveShare = "CSV speichern / teilen"
         saveFile = "Datei speichern"
-        shareFile = "Teilen (E-Mail, Teams, …)"
+        shareFile = "Teilen (E-Mail, Chat, …)"
         moreRows = "... [weitere Zeilen]"
         taskFilterTodo = "Offen"
         taskFilterInProgress = "In Arbeit"
@@ -1090,9 +1090,9 @@ object Translations {
         reasonLunch = "Mittag"; reasonBreak = "Pause"; reasonOut = "Ausser Haus"; reasonHome = "Feierabend"
         periodDay = "Tag"; periodWeek = "Woche"; periodMonth = "Monat"
         exportSummary = "Summe pro Projekt"; exportTimesheet = "Tagesrapport"; exportAttendance = "Anwesenheit & Überzeit"
-        exportSapWeek = "SAP-Woche (kopieren & einfügen)"
-        sapWeekHint = "Tab-getrennt, ein Block pro Kalenderwoche, Montag zuerst: kopieren und in den SAP-Wochenrapport einfügen. Stunden mit zwei Nachkommastellen; leere Zellen = nichts zu buchen. Zeilen mit ! sind Zeit ohne Projekt – manuell buchen oder zuerst zuordnen."
-        sapSettingsTitle = "SAP-Buchung"
+        exportSapWeek = "Wochenrapport (kopieren & einfügen)"
+        sapWeekHint = "Tab-getrennt, ein Block pro Kalenderwoche, Montag zuerst: kopieren und in den Wochenrapport einfügen. Stunden mit zwei Nachkommastellen; leere Zellen = nichts zu buchen. Zeilen mit ! sind Zeit ohne Projekt – manuell buchen oder zuerst zuordnen."
+        sapSettingsTitle = "Stundenbuchung"
         sapSettingsSubtitle = "Leistungsarten und Kostenstelle für den wöchentlichen Kopieren-und-Einfügen-Export."
         sapProductiveType = "Leistungsart – Projektarbeit"
         sapUnproductiveType = "Leistungsart – unproduktiv"
@@ -1121,7 +1121,7 @@ object Translations {
         missingBreakDeducted = "− Fehlende Pause"
         breakRuleSummary = { hours, minutes -> "$minutes Min. > $hours h" }
         warnBreakDeducted = { "$it abgezogen." }
-        formatCsv = "CSV (Komma)"; formatExcel = "Excel (Semikolon)"
+        formatCsv = "CSV (Komma)"; formatExcel = "Tabellenkalkulation (Semikolon)"
         backupTitle = "Sicherung & Übertragung"; backupSubtitle = "Alles (Projekte, Aufgaben, Zeiten, Abwesenheiten, Einstellungen) als eine Datei sichern und auf einem anderen Gerät wiederherstellen."
         backupShare = "Teilen"; backupRestore = "Aus Datei wiederherstellen"
         backupExported = "Sicherung erstellt"; backupRestored = "Sicherung wiederhergestellt"
@@ -1227,7 +1227,7 @@ object Translations {
         stillClockedInBody = { "Tu es pointé depuis plus de $it. Oublié de dépointer ?" }
         clockOutAt = { "Dépointer à $it" }
         monthEndCheck = "Contrôle de fin de mois"
-        readyToBook = "Prêt à saisir dans SAP"
+        readyToBook = "Prêt à saisir dans la feuille d'heures"
         thingsToFix = { if (it == 1) "1 point à corriger avant la saisie" else "$it points à corriger avant la saisie" }
         checkForgotClockOut = { if (it == 1) "1 jour sans dépointage" else "$it jours sans dépointage" }
         checkUnassigned = { "$it de travail sans projet – à attribuer dans la vue du jour" }
@@ -1294,7 +1294,7 @@ object Translations {
         categoryPlaceholder = "p.ex. API, Réunion, Pause café"
         productiveWork = "Projet productif"
         unproductiveTime = "Projet improductif"
-        productiveHint = "Les heures comptent comme travail projet et sont exportées pour SAP"
+        productiveHint = "Les heures comptent comme travail projet et vont dans l'export de la feuille d'heures"
         unproductiveHint = "Le temps est enregistré mais rapporté séparément (réunions, pauses, …)"
         colour = "Couleur"
         languageTitle = "Langue"
@@ -1324,7 +1324,7 @@ object Translations {
         fromOvertimeHint = "Déduit du solde d'heures supplémentaires – rien n'est crédité."
         enterHours = "Saisis les heures, p.ex. 8 ou 4."
         importProjects = "Importer des projets"
-        importDescription = "Colle un projet par ligne : numéro, nom et client optionnel – séparés par tabulation, ';' ou ','. Les cellules copiées d'Excel fonctionnent directement. Les numéros existants sont ignorés."
+        importDescription = "Colle un projet par ligne : numéro, nom et client optionnel – séparés par tabulation, ';' ou ','. Les cellules copiées d'un tableur fonctionnent directement. Les numéros existants sont ignorés."
         projectList = "Liste de projets"
         importPlaceholder = "P-2026-0142;Rétrofit broche;Client SA\nP-2026-0150;Nouvelle IHM"
         noneRecognised = "Aucun projet reconnu pour l'instant."
@@ -1393,7 +1393,7 @@ object Translations {
         copiedToClipboard = "Copié dans le presse-papiers !"
         saveShare = "Enregistrer / partager CSV"
         saveFile = "Enregistrer"
-        shareFile = "Partager (e-mail, Teams, …)"
+        shareFile = "Partager (e-mail, chat, …)"
         moreRows = "... [plus de lignes]"
         taskFilterTodo = "À faire"
         taskFilterInProgress = "En cours"
@@ -1435,9 +1435,9 @@ object Translations {
         reasonLunch = "Midi"; reasonBreak = "Pause"; reasonOut = "Hors bureau"; reasonHome = "Fin de journée"
         periodDay = "Jour"; periodWeek = "Semaine"; periodMonth = "Mois"
         exportSummary = "Résumé par projet"; exportTimesheet = "Feuille journalière"; exportAttendance = "Présence & heures sup."
-        exportSapWeek = "Semaine SAP (copier-coller)"
-        sapWeekHint = "Séparé par tabulations, un bloc par semaine civile, lundi en premier : copiez-le et collez-le dans la feuille hebdomadaire SAP. Heures à deux décimales ; cellule vide = rien à saisir. Les lignes commençant par ! sont du temps sans projet – à saisir à la main ou à attribuer d'abord."
-        sapSettingsTitle = "Saisie SAP"
+        exportSapWeek = "Feuille hebdomadaire (copier-coller)"
+        sapWeekHint = "Séparé par tabulations, un bloc par semaine civile, lundi en premier : copiez-le et collez-le dans votre feuille hebdomadaire. Heures à deux décimales ; cellule vide = rien à saisir. Les lignes commençant par ! sont du temps sans projet – à saisir à la main ou à attribuer d'abord."
+        sapSettingsTitle = "Saisie des heures"
         sapSettingsSubtitle = "Types d'activité et centre de coûts utilisés par l'export hebdomadaire copier-coller."
         sapProductiveType = "Type d'activité – travail projet"
         sapUnproductiveType = "Type d'activité – improductif"
@@ -1466,7 +1466,7 @@ object Translations {
         missingBreakDeducted = "− Pause manquante"
         breakRuleSummary = { hours, minutes -> "$minutes min > $hours h" }
         warnBreakDeducted = { "$it déduit." }
-        formatCsv = "CSV (virgule)"; formatExcel = "Excel (point-virgule)"
+        formatCsv = "CSV (virgule)"; formatExcel = "Tableur (point-virgule)"
         backupTitle = "Sauvegarde & transfert"; backupSubtitle = "Enregistrer tout (projets, tâches, temps, absences, réglages) dans un seul fichier et le restaurer sur un autre appareil."
         backupShare = "Partager"; backupRestore = "Restaurer depuis un fichier"
         backupExported = "Sauvegarde créée"; backupRestored = "Sauvegarde restaurée"

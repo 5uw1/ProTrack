@@ -14,7 +14,7 @@ DES RAPPORTS QUI CORRESPONDENT À VOTRE FEUILLE D'HEURES
 • Vues jour, semaine et mois avec les heures par numéro de projet, arrondies à 0.25 h.
 • Heures cibles, heures supplémentaires du jour et solde courant.
 • Absences : maladie, vacances, jour férié, compensation, formation.
-• Export CSV pour Excel ou votre ERP.
+• Export CSV pour un tableur ou votre ERP.
 
 RÈGLES DE TEMPS DE TRAVAIL
 • Horaire configurable par jour de semaine (adapté au temps partiel), maximum légal par semaine.

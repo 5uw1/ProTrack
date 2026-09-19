@@ -14,7 +14,7 @@ REPORTS THAT MATCH YOUR TIMESHEET
 • Day, week and month views with hours per project number, rounded to 0.25 h.
 • Target hours, overtime today and the running overtime balance.
 • Absences: sick, holiday, public holiday, compensation, education.
-• Export CSV for Excel or your ERP system.
+• Export CSV for a spreadsheet or your ERP system.
 
 WORKING-TIME RULES
 • Configurable schedule per weekday (part-time friendly), legal maximum per week.
