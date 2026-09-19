@@ -36,7 +36,7 @@ const val DATABASE_NAME = "work_tracker.db"
  * Backups record the schema version they were written with, so older backups can still be
  * imported after the schema moves on (missing fields take their defaults).
  */
-const val DATABASE_VERSION = 11
+const val DATABASE_VERSION = 12
 
 @Database(
     entities = [Project::class, WorkTask::class, TimeEntry::class, AttendanceSession::class, DayRecord::class, AppSettings::class],

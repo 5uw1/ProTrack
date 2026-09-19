@@ -16,7 +16,10 @@ import com.suw1labs.worktracker.data.model.TimeEntry
 import com.suw1labs.worktracker.data.model.TimeEntryWithDetails
 import com.suw1labs.worktracker.data.model.WorkTask
 import com.suw1labs.worktracker.data.model.WorkTaskWithProject
+import com.suw1labs.worktracker.data.sync.SyncClock
+import com.suw1labs.worktracker.data.sync.Ulid
 import com.suw1labs.worktracker.util.DateRanges
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 
@@ -28,6 +31,44 @@ class TimeTrackerRepository(
     private val dayRecordDao: DayRecordDao,
     private val settingsDao: SettingsDao
 ) {
+    /**
+     * Every write goes through here, so this is where a record gets what a merge needs: a uid it
+     * keeps on every device, the logical time of the change and which device made it. Deleting
+     * writes a tombstone instead of removing the row – a row that is simply gone tells another
+     * device nothing, and its own copy would come back on the next merge.
+     */
+    private val clock = SyncClock()
+    private var cachedDeviceId: String? = null
+
+    private suspend fun deviceId(): String {
+        cachedDeviceId?.let { return it }
+        val current = settingsDao.getSettings() ?: AppSettings()
+        clock.observe(current.syncClock)
+        val id = current.deviceId.ifEmpty { Ulid.generate() }
+        if (current.deviceId.isEmpty()) settingsDao.upsert(current.copy(id = 1, deviceId = id))
+        cachedDeviceId = id
+        return id
+    }
+
+    private suspend fun stamp(project: Project) = project.copy(
+        uid = project.uid.ifEmpty { Ulid.generate() }, updatedAt = clock.now(), deviceId = deviceId()
+    )
+
+    private suspend fun stamp(task: WorkTask) = task.copy(
+        uid = task.uid.ifEmpty { Ulid.generate() }, updatedAt = clock.now(), deviceId = deviceId()
+    )
+
+    private suspend fun stamp(entry: TimeEntry) = entry.copy(
+        uid = entry.uid.ifEmpty { Ulid.generate() }, updatedAt = clock.now(), deviceId = deviceId()
+    )
+
+    private suspend fun stamp(session: AttendanceSession) = session.copy(
+        uid = session.uid.ifEmpty { Ulid.generate() }, updatedAt = clock.now(), deviceId = deviceId()
+    )
+
+    private suspend fun stamp(record: DayRecord) = record.copy(
+        uid = record.uid.ifEmpty { Ulid.generate() }, updatedAt = clock.now(), deviceId = deviceId()
+    )
     val allProjects: Flow<List<Project>> = projectDao.getAllProjects()
     val activeProjects: Flow<List<Project>> = projectDao.getActiveProjects()
     val allTasksWithProject: Flow<List<WorkTaskWithProject>> = taskDao.getTasksWithProject()
@@ -63,15 +104,15 @@ class TimeTrackerRepository(
     }
 
     // Projects
-    suspend fun insertProject(project: Project): Long = projectDao.insertProject(project)
-    suspend fun updateProject(project: Project) = projectDao.updateProject(project)
-    suspend fun deleteProjectById(id: Long) = projectDao.deleteProjectById(id)
+    suspend fun insertProject(project: Project): Long = projectDao.insertProject(stamp(project))
+    suspend fun updateProject(project: Project) = projectDao.updateProject(stamp(project))
+    suspend fun deleteProjectById(id: Long) = projectDao.markProjectDeleted(id, clock.now(), deviceId())
 
     // Tasks
-    suspend fun insertTask(task: WorkTask): Long = taskDao.insertTask(task)
+    suspend fun insertTask(task: WorkTask): Long = taskDao.insertTask(stamp(task))
     suspend fun findTaskByTitle(projectId: Long, title: String): WorkTask? = taskDao.findTaskByTitle(projectId, title)
-    suspend fun updateTask(task: WorkTask) = taskDao.updateTask(task)
-    suspend fun deleteTask(task: WorkTask) = taskDao.deleteTask(task)
+    suspend fun updateTask(task: WorkTask) = taskDao.updateTask(stamp(task))
+    suspend fun deleteTask(task: WorkTask) = taskDao.markTaskDeleted(task.id, clock.now(), deviceId())
     suspend fun updateTaskStatus(taskId: Long, status: String) = taskDao.updateTaskStatus(taskId, status)
 
     /** Moves a task (and all time logged on it) to another project. */
@@ -83,10 +124,10 @@ class TimeTrackerRepository(
     // Time entries
     suspend fun getRunningEntry(): TimeEntry? = timeEntryDao.getRunningEntry()
     suspend fun closeRunningEntries(endTime: Long) = timeEntryDao.closeRunningEntries(endTime)
-    suspend fun insertTimeEntry(entry: TimeEntry): Long = timeEntryDao.insertEntry(entry)
-    suspend fun updateTimeEntry(entry: TimeEntry) = timeEntryDao.updateEntry(entry)
-    suspend fun updateTimeEntries(entries: List<TimeEntry>) = timeEntryDao.updateEntries(entries)
-    suspend fun deleteTimeEntryById(id: Long) = timeEntryDao.deleteEntryById(id)
+    suspend fun insertTimeEntry(entry: TimeEntry): Long = timeEntryDao.insertEntry(stamp(entry))
+    suspend fun updateTimeEntry(entry: TimeEntry) = timeEntryDao.updateEntry(stamp(entry))
+    suspend fun updateTimeEntries(entries: List<TimeEntry>) = timeEntryDao.updateEntries(entries.map { stamp(it) })
+    suspend fun deleteTimeEntryById(id: Long) = timeEntryDao.markEntryDeleted(id, clock.now(), deviceId())
 
     // Attendance
     /**
@@ -96,11 +137,11 @@ class TimeTrackerRepository(
      */
     suspend fun clockIn(now: Long): Boolean {
         if (attendanceDao.getOpenSession() != null) return false
-        attendanceDao.insertSession(AttendanceSession(clockIn = now))
+        attendanceDao.insertSession(stamp(AttendanceSession(clockIn = now)))
         if (timeEntryDao.getRunningEntry() != null) return true
         val last = timeEntryDao.getLastClosedEntrySince(DateRanges.dayRange(now).start) ?: return true
         timeEntryDao.insertEntry(
-            TimeEntry(projectId = last.projectId, taskId = last.taskId, description = last.description, startTime = now, endTime = null)
+            stamp(TimeEntry(projectId = last.projectId, taskId = last.taskId, description = last.description, startTime = now, endTime = null))
         )
         return true
     }
@@ -112,7 +153,7 @@ class TimeTrackerRepository(
     suspend fun startActivity(projectId: Long?, taskId: Long?, description: String, now: Long) {
         if (attendanceDao.getOpenSession() == null) attendanceDao.insertSession(AttendanceSession(clockIn = now))
         timeEntryDao.closeRunningEntries(now)
-        timeEntryDao.insertEntry(TimeEntry(projectId = projectId, taskId = taskId, description = description, startTime = now, endTime = null))
+        timeEntryDao.insertEntry(stamp(TimeEntry(projectId = projectId, taskId = taskId, description = description, startTime = now, endTime = null)))
     }
 
     /**
@@ -122,7 +163,7 @@ class TimeTrackerRepository(
     suspend fun closeForgottenSession(session: AttendanceSession, clockOut: Long) {
         if (session.clockOut != null || clockOut <= session.clockIn) return
         timeEntryDao.closeRunningEntries(clockOut)
-        attendanceDao.updateSession(session.copy(clockOut = clockOut, clockOutReason = ClockOutReason.END_OF_DAY.name))
+        attendanceDao.updateSession(stamp(session.copy(clockOut = clockOut, clockOutReason = ClockOutReason.END_OF_DAY.name)))
     }
 
     /** Clocks out at [now]; the running activity stops at the same moment so nothing counts while away. */
@@ -133,18 +174,19 @@ class TimeTrackerRepository(
 
     suspend fun getOpenSession(): AttendanceSession? = attendanceDao.getOpenSession()
     suspend fun closeOpenSessions(clockOut: Long, reason: String?) = attendanceDao.closeOpenSessions(clockOut, reason)
-    suspend fun insertSession(session: AttendanceSession): Long = attendanceDao.insertSession(session)
-    suspend fun updateSession(session: AttendanceSession) = attendanceDao.updateSession(session)
-    suspend fun deleteSessionById(id: Long) = attendanceDao.deleteSessionById(id)
+    suspend fun insertSession(session: AttendanceSession): Long = attendanceDao.insertSession(stamp(session))
+    suspend fun updateSession(session: AttendanceSession) = attendanceDao.updateSession(stamp(session))
+    suspend fun deleteSessionById(id: Long) = attendanceDao.markSessionDeleted(id, clock.now(), deviceId())
 
     // Absences
     suspend fun getDayRecord(dayStart: Long): DayRecord? = dayRecordDao.getByDay(dayStart)
-    suspend fun insertDayRecord(record: DayRecord): Long = dayRecordDao.insert(record)
-    suspend fun updateDayRecord(record: DayRecord) = dayRecordDao.update(record)
-    suspend fun deleteDayRecordById(id: Long) = dayRecordDao.deleteById(id)
+    suspend fun insertDayRecord(record: DayRecord): Long = dayRecordDao.insert(stamp(record))
+    suspend fun updateDayRecord(record: DayRecord) = dayRecordDao.update(stamp(record))
+    suspend fun deleteDayRecordById(id: Long) = dayRecordDao.markDeleted(id, clock.now(), deviceId())
 
     // Settings
-    suspend fun saveSettings(settings: AppSettings) = settingsDao.upsert(settings.copy(id = 1))
+    suspend fun saveSettings(settings: AppSettings) =
+        settingsDao.upsert(settings.copy(id = 1, deviceId = deviceId(), syncClock = clock.lastIssued))
 
     /** Inserts projects whose code is not present yet; returns the number of new projects. */
     suspend fun importProjects(projects: List<Project>, existing: List<Project>): Int {
@@ -153,7 +195,7 @@ class TimeTrackerRepository(
         for (p in projects) {
             val key = p.code.trim().lowercase()
             if (key.isEmpty() || key in known) continue
-            projectDao.insertProject(p)
+            projectDao.insertProject(stamp(p))
             known.add(key)
             added++
         }

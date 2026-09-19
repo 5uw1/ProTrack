@@ -20,24 +20,25 @@ import kotlin.test.assertTrue
 /** The backup file format is platform independent, so it is tested once here for every target. */
 class BackupCodecTest {
 
+    // Fixed uids: the model default is a fresh ULID per instance, which would make two fixtures unequal.
     private fun sampleBackup() = BackupFile(
         exportedAt = 1_800_000_000_000L,
         platform = "test",
         settings = AppSettings(weekdayHours = "8.5,8.5,8.5,8.5,0,0,0", language = "de", paidBreakMinutes = 15),
         projects = listOf(
-            Project(id = 1, code = "UNPRODUCTIVE", name = "Unproductive", colorHex = "#F59E0B", isProductive = false, createdAt = 1),
-            Project(id = 7, code = "P-2026-0142", name = "Spindle retrofit", client = "Customer AG", budgetHours = 120.0, createdAt = 2)
+            Project(id = 1, code = "UNPRODUCTIVE", name = "Unproductive", colorHex = "#F59E0B", isProductive = false, uid = "P1", createdAt = 1),
+            Project(id = 7, code = "P-2026-0142", name = "Spindle retrofit", client = "Customer AG", budgetHours = 120.0, uid = "P7", createdAt = 2)
         ),
         tasks = listOf(
-            WorkTask(id = 3, projectId = 1, title = "Meeting", priority = "LOW", reminderEnabled = false, createdAt = 3),
-            WorkTask(id = 9, projectId = 7, title = "PLC", deadlineTimestamp = 1_800_100_000_000L, createdAt = 4)
+            WorkTask(id = 3, projectId = 1, title = "Meeting", priority = "LOW", reminderEnabled = false, uid = "T3", createdAt = 3),
+            WorkTask(id = 9, projectId = 7, title = "PLC", deadlineTimestamp = 1_800_100_000_000L, uid = "T9", createdAt = 4)
         ),
         timeEntries = listOf(
-            TimeEntry(id = 20, projectId = 7, taskId = 9, description = "wiring \"cabinet\"", startTime = 100, endTime = 200, createdAt = 5),
-            TimeEntry(id = 21, projectId = null, taskId = null, startTime = 300, endTime = null, createdAt = 6)
+            TimeEntry(id = 20, projectId = 7, taskId = 9, description = "wiring \"cabinet\"", startTime = 100, endTime = 200, uid = "E20", createdAt = 5),
+            TimeEntry(id = 21, projectId = null, taskId = null, startTime = 300, endTime = null, uid = "E21", createdAt = 6)
         ),
-        attendanceSessions = listOf(AttendanceSession(id = 40, clockIn = 100, clockOut = 400, clockOutReason = "LUNCH", createdAt = 7)),
-        dayRecords = listOf(DayRecord(id = 50, dayStart = 0, type = "SICK", hours = 8.5, createdAt = 8))
+        attendanceSessions = listOf(AttendanceSession(id = 40, clockIn = 100, clockOut = 400, clockOutReason = "LUNCH", uid = "S40", createdAt = 7)),
+        dayRecords = listOf(DayRecord(id = 50, dayStart = 0, type = "SICK", hours = 8.5, uid = "D50", createdAt = 8))
     )
 
     @Test

@@ -24,20 +24,20 @@ interface TimeEntryDao {
     """)
     fun getAllEntriesWithDetails(): Flow<List<TimeEntryWithDetails>>
 
-    @Query("SELECT * FROM time_entries WHERE endTime IS NULL ORDER BY startTime DESC LIMIT 1")
+    @Query("SELECT * FROM time_entries WHERE deletedAt IS NULL AND endTime IS NULL ORDER BY startTime DESC LIMIT 1")
     suspend fun getRunningEntry(): TimeEntry?
 
-    @Query("UPDATE time_entries SET endTime = :endTime WHERE endTime IS NULL")
+    @Query("UPDATE time_entries SET endTime = :endTime WHERE deletedAt IS NULL AND endTime IS NULL")
     suspend fun closeRunningEntries(endTime: Long)
 
-    @Query("UPDATE time_entries SET projectId = :projectId WHERE taskId = :taskId")
+    @Query("UPDATE time_entries SET projectId = :projectId WHERE deletedAt IS NULL AND taskId = :taskId")
     suspend fun moveEntriesOfTask(taskId: Long, projectId: Long)
 
-    @Query("SELECT * FROM time_entries WHERE id = :id")
+    @Query("SELECT * FROM time_entries WHERE deletedAt IS NULL AND id = :id")
     suspend fun getEntryById(id: Long): TimeEntry?
 
     /** The most recently finished activity that started at or after [since] (used to continue it after a break). */
-    @Query("SELECT * FROM time_entries WHERE endTime IS NOT NULL AND startTime >= :since ORDER BY endTime DESC LIMIT 1")
+    @Query("SELECT * FROM time_entries WHERE deletedAt IS NULL AND endTime IS NOT NULL AND startTime >= :since ORDER BY endTime DESC LIMIT 1")
     suspend fun getLastClosedEntrySince(since: Long): TimeEntry?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -50,9 +50,9 @@ interface TimeEntryDao {
     @Update
     suspend fun updateEntries(entries: List<TimeEntry>)
 
-    @Query("DELETE FROM time_entries WHERE id = :id")
-    suspend fun deleteEntryById(id: Long)
+    @Query("UPDATE time_entries SET deletedAt = :deletedAt, updatedAt = :deletedAt, deviceId = :deviceId WHERE id = :id")
+    suspend fun markEntryDeleted(id: Long, deletedAt: Long, deviceId: String)
 
-    @Query("SELECT COUNT(*) FROM time_entries")
+    @Query("SELECT COUNT(*) FROM time_entries WHERE deletedAt IS NULL")
     suspend fun getEntryCount(): Int
 }

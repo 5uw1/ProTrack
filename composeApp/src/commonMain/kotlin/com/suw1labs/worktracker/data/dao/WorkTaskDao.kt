@@ -1,7 +1,6 @@
 package com.suw1labs.worktracker.data.dao
 
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -12,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface WorkTaskDao {
-    @Query("SELECT * FROM tasks ORDER BY createdAt DESC")
+    @Query("SELECT * FROM tasks WHERE deletedAt IS NULL ORDER BY createdAt DESC")
     fun getAllTasks(): Flow<List<WorkTask>>
 
     @Query("""
@@ -31,10 +30,10 @@ interface WorkTaskDao {
     """)
     fun getTasksWithProject(): Flow<List<WorkTaskWithProject>>
 
-    @Query("SELECT * FROM tasks WHERE id = :id")
+    @Query("SELECT * FROM tasks WHERE deletedAt IS NULL AND id = :id")
     suspend fun getTaskById(id: Long): WorkTask?
 
-    @Query("SELECT * FROM tasks WHERE projectId = :projectId AND title = :title COLLATE NOCASE LIMIT 1")
+    @Query("SELECT * FROM tasks WHERE deletedAt IS NULL AND projectId = :projectId AND title = :title COLLATE NOCASE LIMIT 1")
     suspend fun findTaskByTitle(projectId: Long, title: String): WorkTask?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -43,15 +42,15 @@ interface WorkTaskDao {
     @Update
     suspend fun updateTask(task: WorkTask)
 
-    @Delete
-    suspend fun deleteTask(task: WorkTask)
+    @Query("UPDATE tasks SET deletedAt = :deletedAt, updatedAt = :deletedAt, deviceId = :deviceId WHERE id = :id")
+    suspend fun markTaskDeleted(id: Long, deletedAt: Long, deviceId: String)
 
-    @Query("UPDATE tasks SET status = :status WHERE id = :taskId")
+    @Query("UPDATE tasks SET status = :status WHERE deletedAt IS NULL AND id = :taskId")
     suspend fun updateTaskStatus(taskId: Long, status: String)
 
-    @Query("UPDATE tasks SET projectId = :projectId WHERE id = :taskId")
+    @Query("UPDATE tasks SET projectId = :projectId WHERE deletedAt IS NULL AND id = :taskId")
     suspend fun moveTask(taskId: Long, projectId: Long)
 
-    @Query("SELECT COUNT(*) FROM tasks")
+    @Query("SELECT COUNT(*) FROM tasks WHERE deletedAt IS NULL")
     suspend fun getTaskCount(): Int
 }

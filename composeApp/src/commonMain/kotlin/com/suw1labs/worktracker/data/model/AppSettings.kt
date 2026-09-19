@@ -45,7 +45,11 @@ data class AppSettings(
     /** SAP activity type for the unproductive row. */
     val sapUnproductiveType: String = DEFAULT_SAP_UNPRODUCTIVE_TYPE,
     /** Cost object (Kostenstelle) the unproductive hours are booked on. */
-    val sapUnproductiveNumber: String = DEFAULT_SAP_UNPRODUCTIVE_NUMBER
+    val sapUnproductiveNumber: String = DEFAULT_SAP_UNPRODUCTIVE_NUMBER,
+    /** This installation's identity, generated on first run; it never travels in a backup. */
+    val deviceId: String = "",
+    /** Last value the sync clock handed out, so it keeps moving forward across restarts. */
+    val syncClock: Long = 0,
 ) {
     /** Parsed [breakRules], longest working time first; malformed parts are ignored. */
     val breakRuleList: List<BreakRule> get() = parseBreakRules(breakRules)

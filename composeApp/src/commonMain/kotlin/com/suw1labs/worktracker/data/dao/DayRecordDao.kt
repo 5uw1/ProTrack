@@ -10,10 +10,10 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface DayRecordDao {
-    @Query("SELECT * FROM day_records ORDER BY dayStart DESC")
+    @Query("SELECT * FROM day_records WHERE deletedAt IS NULL ORDER BY dayStart DESC")
     fun getAllRecords(): Flow<List<DayRecord>>
 
-    @Query("SELECT * FROM day_records WHERE dayStart = :dayStart LIMIT 1")
+    @Query("SELECT * FROM day_records WHERE deletedAt IS NULL AND dayStart = :dayStart LIMIT 1")
     suspend fun getByDay(dayStart: Long): DayRecord?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -22,6 +22,6 @@ interface DayRecordDao {
     @Update
     suspend fun update(record: DayRecord)
 
-    @Query("DELETE FROM day_records WHERE id = :id")
-    suspend fun deleteById(id: Long)
+    @Query("UPDATE day_records SET deletedAt = :deletedAt, updatedAt = :deletedAt, deviceId = :deviceId WHERE id = :id")
+    suspend fun markDeleted(id: Long, deletedAt: Long, deviceId: String)
 }

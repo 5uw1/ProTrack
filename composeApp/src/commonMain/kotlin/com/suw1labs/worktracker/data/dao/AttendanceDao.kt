@@ -10,16 +10,16 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AttendanceDao {
-    @Query("SELECT * FROM attendance_sessions ORDER BY clockIn DESC")
+    @Query("SELECT * FROM attendance_sessions WHERE deletedAt IS NULL ORDER BY clockIn DESC")
     fun getAllSessions(): Flow<List<AttendanceSession>>
 
-    @Query("SELECT * FROM attendance_sessions WHERE clockOut IS NULL ORDER BY clockIn DESC LIMIT 1")
+    @Query("SELECT * FROM attendance_sessions WHERE deletedAt IS NULL AND clockOut IS NULL ORDER BY clockIn DESC LIMIT 1")
     fun observeOpenSession(): Flow<AttendanceSession?>
 
-    @Query("SELECT * FROM attendance_sessions WHERE clockOut IS NULL ORDER BY clockIn DESC LIMIT 1")
+    @Query("SELECT * FROM attendance_sessions WHERE deletedAt IS NULL AND clockOut IS NULL ORDER BY clockIn DESC LIMIT 1")
     suspend fun getOpenSession(): AttendanceSession?
 
-    @Query("UPDATE attendance_sessions SET clockOut = :clockOut, clockOutReason = :reason WHERE clockOut IS NULL")
+    @Query("UPDATE attendance_sessions SET clockOut = :clockOut, clockOutReason = :reason WHERE deletedAt IS NULL AND clockOut IS NULL")
     suspend fun closeOpenSessions(clockOut: Long, reason: String?)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -28,6 +28,6 @@ interface AttendanceDao {
     @Update
     suspend fun updateSession(session: AttendanceSession)
 
-    @Query("DELETE FROM attendance_sessions WHERE id = :id")
-    suspend fun deleteSessionById(id: Long)
+    @Query("UPDATE attendance_sessions SET deletedAt = :deletedAt, updatedAt = :deletedAt, deviceId = :deviceId WHERE id = :id")
+    suspend fun markSessionDeleted(id: Long, deletedAt: Long, deviceId: String)
 }

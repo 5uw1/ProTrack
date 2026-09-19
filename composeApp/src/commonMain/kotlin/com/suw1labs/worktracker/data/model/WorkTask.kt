@@ -6,6 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 import com.suw1labs.worktracker.util.currentTimeMillis
+import com.suw1labs.worktracker.data.sync.Ulid
 
 @Entity(
     tableName = "tasks",
@@ -17,7 +18,7 @@ import com.suw1labs.worktracker.util.currentTimeMillis
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("projectId")]
+    indices = [Index("projectId"), Index("uid", unique = true)]
 )
 @Serializable
 data class WorkTask(
@@ -32,5 +33,13 @@ data class WorkTask(
     val deadlineTimestamp: Long? = null, // epoch millis
     val reminderLeadHours: Int = 24, // 2, 24, 48 hours before deadline
     val reminderEnabled: Boolean = true,
+    /** Identity across devices; generated here so no row can ever be written without one. */
+    val uid: String = Ulid.generate(),
+    /** Logical timestamp of the last change, from the device's [com.suw1labs.worktracker.data.sync.SyncClock]. */
+    val updatedAt: Long = 0,
+    /** Set instead of deleting the row, so other devices learn about the deletion. */
+    val deletedAt: Long? = null,
+    /** Which device made the last change (its ULID), for tie-breaks. */
+    val deviceId: String = "",
     val createdAt: Long = currentTimeMillis()
 )
