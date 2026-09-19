@@ -95,6 +95,7 @@ import com.suw1labs.worktracker.util.formatFixed
 import com.suw1labs.worktracker.util.TimeFormat
 import com.suw1labs.worktracker.util.projectColor
 import com.suw1labs.worktracker.ui.i18n.strings
+import com.suw1labs.worktracker.ui.shell.InlineScreenTitle
 
 @Composable
 fun TasksScreen(
@@ -153,6 +154,8 @@ fun TasksScreen(
         contentPadding = LocalScreenInsets.current,
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        // Title of the screen where a shell has no bar to put it in.
+        item { InlineScreenTitle() }
         // Import (paste a project list) and new project; tasks are added on their project card.
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {

@@ -88,6 +88,7 @@ import com.suw1labs.worktracker.util.TimeFormat
 import com.suw1labs.worktracker.util.parseHexColor
 import com.suw1labs.worktracker.util.toLocalDate
 import com.suw1labs.worktracker.ui.i18n.strings
+import com.suw1labs.worktracker.ui.shell.InlineScreenTitle
 import kotlinx.coroutines.launch
 import kotlinx.datetime.isoDayNumber
 
@@ -137,6 +138,8 @@ fun ReportsScreen(
         contentPadding = LocalScreenInsets.current,
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        // Title of the screen where a shell has no bar to put it in.
+        item { InlineScreenTitle() }
         // Month scope: full calendar. Day / week scope: strip with the working days of the week.
         item {
             if (periodType == ReportPeriodType.MONTH) {

@@ -116,6 +116,7 @@ import com.suw1labs.worktracker.util.TimeFormat
 import com.suw1labs.worktracker.util.parseHexColor
 import com.suw1labs.worktracker.util.projectColor
 import com.suw1labs.worktracker.ui.i18n.strings
+import com.suw1labs.worktracker.ui.shell.InlineScreenTitle
 import kotlinx.coroutines.launch
 
 @Composable
@@ -176,6 +177,8 @@ fun TodayScreen(
         contentPadding = LocalScreenInsets.current,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        // Title of the screen where a shell has no bar to put it in.
+        item { InlineScreenTitle() }
         // --- URGENT DEADLINES BANNER ---
         if (urgentTasks.isNotEmpty()) {
             item {

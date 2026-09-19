@@ -45,6 +45,7 @@ import platform.UIKit.UIStackViewAlignmentFill
 import platform.UIKit.UIStackViewDistributionFillEqually
 import platform.UIKit.UIView
 import platform.UIKit.UIViewContentMode
+import platform.CoreGraphics.CGSizeMake
 import platform.UIKit.UIVisualEffectView
 import platform.UIKit.setAccessibilityLabel
 import platform.UIKit.setAccessibilityTraits
@@ -69,8 +70,8 @@ internal fun GlassTabBar(tabs: List<ShellTab>, hidden: Boolean, modifier: Modifi
     val normalColor = scheme.onSurfaceVariant.toUIColor()
     val selectedBackground = scheme.primary.copy(alpha = 0.16f).toUIColor()
     val badgeColor = RoseUrgent.toUIColor()
-    val barTint = scheme.surface.copy(alpha = 0.8f).toUIColor()
-    val edgeColor = scheme.onSurface.copy(alpha = 0.14f).toUIColor()
+    val barTint = scheme.surface.copy(alpha = 0.45f).toUIColor()
+    val edgeColor = scheme.onSurface.copy(alpha = 0.18f).toUIColor()
     val bar = remember { GlassTabBarViews() }
 
     Box(
@@ -96,15 +97,32 @@ internal fun GlassTabBar(tabs: List<ShellTab>, hidden: Boolean, modifier: Modifi
 @OptIn(ExperimentalForeignApi::class)
 private class GlassTabBarViews {
     private val cells = mutableListOf<TabCell>()
-    private var root: UIVisualEffectView? = null
+    private var root: UIView? = null
 
-    fun build(count: Int, tint: UIColor, edge: UIColor): UIVisualEffectView {
+    fun build(count: Int, tint: UIColor, edge: UIColor): UIView {
         val effect = UIGlassEffect.effectWithStyle(UIGlassEffectStyle.UIGlassEffectStyleRegular)
         effect.setInteractive(true)
         // Without a tint the glass is so clear that content scrolling behind it competes with the
         // labels; the surface colour at low alpha frosts it just enough to stay readable.
         effect.setTintColor(tint)
+        val container = UIView()
+        container.backgroundColor = UIColor.clearColor
+        container.layer.shadowColor = UIColor.blackColor.CGColor
+        container.layer.shadowOpacity = 0.28f
+        container.layer.shadowRadius = 14.0
+        container.layer.shadowOffset = CGSizeMake(0.0, 6.0)
+
         val bar = UIVisualEffectView(effect = effect)
+        bar.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(bar)
+        NSLayoutConstraint.activateConstraints(
+            listOf(
+                bar.leadingAnchor.constraintEqualToAnchor(container.leadingAnchor),
+                bar.trailingAnchor.constraintEqualToAnchor(container.trailingAnchor),
+                bar.topAnchor.constraintEqualToAnchor(container.topAnchor),
+                bar.bottomAnchor.constraintEqualToAnchor(container.bottomAnchor),
+            )
+        )
         bar.layer.cornerRadius = CornerRadius
         bar.layer.borderWidth = 0.5
         bar.layer.borderColor = edge.CGColor
@@ -125,14 +143,14 @@ private class GlassTabBarViews {
             )
         )
 
-        root = bar
+        root = container
         cells.clear()
         repeat(count) {
             val cell = TabCell()
             row.addArrangedSubview(cell.container)
             cells += cell
         }
-        return bar
+        return container
     }
 
     fun update(

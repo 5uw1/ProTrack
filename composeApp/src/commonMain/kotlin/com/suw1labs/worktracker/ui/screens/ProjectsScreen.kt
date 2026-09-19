@@ -85,6 +85,7 @@ import com.suw1labs.worktracker.util.DateFormats
 import com.suw1labs.worktracker.util.TimeFormat
 import com.suw1labs.worktracker.util.projectColor
 import com.suw1labs.worktracker.ui.i18n.strings
+import com.suw1labs.worktracker.ui.shell.InlineScreenTitle
 
 /** Settings tab: work schedule, language, backups. Projects themselves live on the Projects tab (TasksScreen). */
 @Composable
@@ -125,6 +126,8 @@ fun ProjectsScreen(
             contentPadding = LocalScreenInsets.current,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Title of the screen where a shell has no bar to put it in.
+            item { InlineScreenTitle() }
             item { Spacer(modifier = Modifier.height(4.dp)) }
 
             // --- Work schedule ---
