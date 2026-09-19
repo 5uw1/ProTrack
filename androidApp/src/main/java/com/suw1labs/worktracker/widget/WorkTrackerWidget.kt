@@ -61,7 +61,7 @@ import kotlinx.coroutines.flow.map
  */
 class WorkTrackerWidget : GlanceAppWidget() {
 
-    override val sizeMode: SizeMode = SizeMode.Responsive(setOf(COMPACT, WIDE))
+    override val sizeMode: SizeMode = SizeMode.Responsive(setOf(COMPACT, WIDE, TALL))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val container = WorkTrackerApplication.container(context)
@@ -81,6 +81,8 @@ class WorkTrackerWidget : GlanceAppWidget() {
     companion object {
         val COMPACT = DpSize(140.dp, 100.dp)
         val WIDE = DpSize(250.dp, 100.dp)
+        /** Resized taller: the quick tasks get a row each instead of leaving the space empty. */
+        val TALL = DpSize(250.dp, 200.dp)
     }
 }
 
@@ -125,6 +127,7 @@ private val Amber = Color(0xFFF59E0B)
 @Composable
 private fun WidgetContent(snapshot: WidgetSnapshot, now: Long, t: AppStrings) {
     val wide = LocalSize.current.width >= WorkTrackerWidget.WIDE.width
+    val tall = LocalSize.current.height >= WorkTrackerWidget.TALL.height
     val statusColor = if (snapshot.clockedIn) ColorProvider(Green) else GlanceTheme.colors.onSurfaceVariant
     val muted = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp)
 
@@ -166,10 +169,16 @@ private fun WidgetContent(snapshot: WidgetSnapshot, now: Long, t: AppStrings) {
                 maxLines = 1
             )
         }
-        // Tasks are chosen after clocking in, so the chips only show while clocked in.
+        // Tasks are chosen after clocking in, so they only show while clocked in.
         if (snapshot.clockedIn && snapshot.quickTasks.isNotEmpty()) {
             Spacer(modifier = GlanceModifier.height(8.dp))
-            QuickTaskChips(tasks = snapshot.quickTasks.take(if (wide) 3 else 2), runningTaskId = snapshot.runningTaskId)
+            if (tall) {
+                Text(text = t.switchActivity, style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 9.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+                Spacer(modifier = GlanceModifier.height(4.dp))
+                QuickTaskRows(tasks = snapshot.quickTasks.take(4), runningTaskId = snapshot.runningTaskId)
+            } else {
+                QuickTaskChips(tasks = snapshot.quickTasks.take(if (wide) 3 else 2), runningTaskId = snapshot.runningTaskId)
+            }
         }
         Spacer(modifier = GlanceModifier.defaultWeight())
         if (snapshot.clockedIn) {
@@ -186,6 +195,44 @@ private fun WidgetContent(snapshot: WidgetSnapshot, now: Long, t: AppStrings) {
                 colors = ButtonDefaults.buttonColors(backgroundColor = ColorProvider(Green), contentColor = ColorProvider(Color.White)),
                 modifier = GlanceModifier.fillMaxWidth()
             )
+        }
+    }
+}
+
+/** A row per task, for a widget tall enough that side-by-side chips would waste the space. */
+@Composable
+private fun QuickTaskRows(tasks: List<QuickTask>, runningTaskId: Long?) {
+    Column(modifier = GlanceModifier.fillMaxWidth()) {
+        tasks.forEachIndexed { index, task ->
+            if (index > 0) Spacer(modifier = GlanceModifier.height(4.dp))
+            val running = task.taskId == runningTaskId
+            val accent = if (task.productive) GlanceTheme.colors.primary else ColorProvider(Amber)
+            val row = GlanceModifier
+                .fillMaxWidth()
+                .background(if (running) ColorProvider(Green.copy(alpha = 0.18f)) else GlanceTheme.colors.surfaceVariant)
+                .cornerRadius(10.dp)
+                .padding(horizontal = 10.dp, vertical = 7.dp)
+                .let { m ->
+                    if (running) m else m.clickable(
+                        actionRunCallback<SwitchTaskAction>(
+                            actionParametersOf(SwitchTaskAction.TaskId to task.taskId, SwitchTaskAction.ProjectId to task.projectId)
+                        )
+                    )
+                }
+            Row(modifier = row, verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = GlanceModifier.defaultWeight()) {
+                    Text(
+                        text = (if (running) "▶ " else "") + task.title,
+                        style = TextStyle(color = if (running) ColorProvider(Green) else GlanceTheme.colors.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Bold),
+                        maxLines = 1
+                    )
+                    Text(
+                        text = task.projectLabel,
+                        style = TextStyle(color = if (task.productive) GlanceTheme.colors.onSurfaceVariant else accent, fontSize = 10.sp),
+                        maxLines = 1
+                    )
+                }
+            }
         }
     }
 }

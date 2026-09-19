@@ -362,6 +362,21 @@ private struct TaskChip: View {
     }
 }
 
+/// What is running right now, in one line: the task, or the project when there is no task.
+private struct RunningLine: View {
+    let state: WidgetState
+    var size: CGFloat = 10
+
+    var body: some View {
+        if let text = state.runningTask ?? state.runningProject {
+            HStack(spacing: 4) {
+                Image(systemName: "play.fill").font(.system(size: size - 3)).foregroundStyle(green)
+                Text(text).font(.system(size: size, weight: .semibold)).lineLimit(1)
+            }
+        }
+    }
+}
+
 private struct SmallView: View {
     let entry: WorkTrackerEntry
     var body: some View {
@@ -375,8 +390,11 @@ private struct SmallView: View {
             if entry.state.targetSeconds > 0 {
                 Text(String(format: entry.state.text("ofToday"), hoursMinutes(entry.state.targetSeconds)))
                     .font(.system(size: 10)).foregroundStyle(.secondary)
+                TargetBar(entry: entry)
             }
-            TargetBar(entry: entry)
+            // The smallest size still has to answer "what am I on?" – on a day without a target
+            // (a weekend) this is the only thing between the clock and the button.
+            RunningLine(state: entry.state)
             Spacer(minLength: 0)
             ClockButton(state: entry.state, compact: true)
         }
