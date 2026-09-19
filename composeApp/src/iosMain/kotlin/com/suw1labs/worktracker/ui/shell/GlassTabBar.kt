@@ -1,4 +1,4 @@
-package com.suw1labs.worktracker.ui.components
+package com.suw1labs.worktracker.ui.shell
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -63,7 +63,7 @@ private const val SelectedCornerRadius = 20.0
  */
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalForeignApi::class)
 @Composable
-actual fun GlassTabBar(items: List<FloatingTabItem>, modifier: Modifier) {
+internal fun GlassTabBar(tabs: List<ShellTab>, modifier: Modifier) {
     val scheme = MaterialTheme.colorScheme
     val selectedColor = scheme.primary.toUIColor()
     val normalColor = scheme.onSurfaceVariant.toUIColor()
@@ -79,9 +79,9 @@ actual fun GlassTabBar(items: List<FloatingTabItem>, modifier: Modifier) {
             .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
         UIKitView(
-            factory = { bar.build(items.size, barTint) },
+            factory = { bar.build(tabs.size, barTint) },
             modifier = Modifier.fillMaxWidth().height(BarHeightDp.dp),
-            update = { bar.update(items, selectedColor, normalColor, selectedBackground, badgeColor) },
+            update = { bar.update(tabs, selectedColor, normalColor, selectedBackground, badgeColor) },
             properties = UIKitInteropProperties(
                 interactionMode = UIKitInteropInteractionMode.NonCooperative,
                 isNativeAccessibilityEnabled = true,
@@ -131,13 +131,13 @@ private class GlassTabBarViews {
     }
 
     fun update(
-        items: List<FloatingTabItem>,
+        tabs: List<ShellTab>,
         selectedColor: UIColor,
         normalColor: UIColor,
         selectedBackground: UIColor,
         badgeColor: UIColor,
     ) {
-        items.forEachIndexed { index, item ->
+        tabs.forEachIndexed { index, item ->
             cells.getOrNull(index)?.update(item, selectedColor, normalColor, selectedBackground, badgeColor)
         }
     }
@@ -201,7 +201,7 @@ private class TabCell {
     }
 
     fun update(
-        item: FloatingTabItem,
+        item: ShellTab,
         selectedColor: UIColor,
         normalColor: UIColor,
         selectedBackground: UIColor,

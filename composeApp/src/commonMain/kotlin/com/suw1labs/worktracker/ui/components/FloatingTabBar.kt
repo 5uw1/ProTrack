@@ -28,27 +28,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.suw1labs.worktracker.ui.shell.ShellTab
 import com.suw1labs.worktracker.ui.theme.RoseUrgent
 
-/**
- * One tab of [FloatingTabBar]. [icon] is drawn by Compose, [systemImage] is the SF Symbol the
- * native iOS bar uses instead. [badgeCount] of 0 draws no badge.
- */
-data class FloatingTabItem(
-    val label: String,
-    val icon: ImageVector,
-    val systemImage: String,
-    val selected: Boolean,
-    val testTag: String,
-    val badgeCount: Int = 0,
-    val onClick: () -> Unit,
-)
 
 /**
  * Tab bar as a rounded bar floating above the bottom edge, the way iOS has drawn tab bars since
@@ -56,7 +43,7 @@ data class FloatingTabItem(
  * Android and desktop keep the platform's own navigation bar / rail.
  */
 @Composable
-fun FloatingTabBar(items: List<FloatingTabItem>, modifier: Modifier = Modifier) {
+fun FloatingTabBar(tabs: List<ShellTab>, modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
     Box(
         modifier = modifier
@@ -77,14 +64,14 @@ fun FloatingTabBar(items: List<FloatingTabItem>, modifier: Modifier = Modifier) 
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                items.forEach { item -> FloatingTab(item) }
+                tabs.forEach { tab -> FloatingTab(tab) }
             }
         }
     }
 }
 
 @Composable
-private fun RowScope.FloatingTab(item: FloatingTabItem) {
+private fun RowScope.FloatingTab(item: ShellTab) {
     val scheme = MaterialTheme.colorScheme
     val background by animateColorAsState(
         if (item.selected) scheme.primary.copy(alpha = 0.16f) else Color.Transparent

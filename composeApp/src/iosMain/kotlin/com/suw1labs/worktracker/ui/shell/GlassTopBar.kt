@@ -1,4 +1,4 @@
-package com.suw1labs.worktracker.ui.components
+package com.suw1labs.worktracker.ui.shell
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -50,7 +50,7 @@ private const val TitleBarHeight = 44
  */
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalForeignApi::class)
 @Composable
-actual fun GlassTopBar(
+internal fun GlassTopBar(
     title: String,
     status: String?,
     alertCount: Int,

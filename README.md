@@ -30,6 +30,9 @@ as files.
   tagged as Break then count as working time up to that allowance (7 h 50 + 2 × 5 min = 8 h).
 * **Absences** – sick, holiday (own vacation), public holiday (paid by company), compensation
   (taken from overtime), education, or any custom reason. Paid absences count towards the target.
+* **Looks like the platform it runs on** – iOS 26 draws the title and tab bars as real Liquid Glass
+  (`UIGlassEffect`) with the content scrolling underneath; Android and desktop use Material 3
+  Expressive navigation. Both come from the same screens – see [App shell](#app-shell--following-each-platforms-design).
 * **Home-screen widgets (Android & iOS)** – clocked-in time today, target progress, the running
   activity, a Clock in / Clock out button and one-tap task switching (running task first, then the
   most recently used ones). Android uses Jetpack Glance and works on the shared database directly.
@@ -65,6 +68,32 @@ as files.
 | `composeApp/` | Shared Kotlin Multiplatform module: all UI (Compose), view models, Room database, export generation. Also contains the desktop entry point (`desktopMain`) and the iOS framework sources (`iosMain`). |
 | `androidApp/` | Thin Android application (activity, manifest, notifications via AlarmManager, share sheet, Firebase). |
 | `iosApp/` | Xcode project that embeds the `ComposeApp` framework produced by `composeApp`, plus the `WorkTrackerWidget` WidgetKit extension (Swift, reads the App Group). |
+
+### App shell – following each platform's design
+
+Design languages move: Material 3 became expressive, iOS 26 became Liquid Glass, and both will
+change again. Everything that follows such a fashion – title bar, navigation, snackbars – lives
+behind `AppShell` in `composeApp/src/commonMain/kotlin/com/suw1labs/worktracker/ui/shell/`, so a
+new look is a new implementation instead of an edit through the whole app. Screens, view models
+and navigation state know nothing about it.
+
+| Shell | Chrome | Used by |
+| --- | --- | --- |
+| `MaterialShell` | Material 3 Expressive: `ShortNavigationBar` on phones, `WideNavigationRail` on tablets and desktop, content between the bars | Android, desktop |
+| `LiquidGlassShell` | iOS 26: `UIGlassEffect` title and tab bars as interop overlays, content fills the window and scrolls under them | iOS (phones; wide windows fall back to `MaterialShell`) |
+| `FloatingShell` | The floating bar drawn with Compose, no native glass | fallback, and to see that look on any platform |
+
+`AppShell.Chrome(state, wide) { modifier -> … }` draws the chrome and hands the screen the
+modifier it should use. A shell that lays content out between its bars passes the padding in that
+modifier; a shell that draws over the content passes `Modifier.fillMaxSize()` and publishes the
+space to keep free as `LocalScreenInsets`, which every scrolling screen adds as `contentPadding`.
+
+To add a design: implement `AppShell`, then either return it from `platformAppShell()` for a
+platform or provide it locally, e.g. for a screenshot test or a setting:
+
+```kotlin
+CompositionLocalProvider(LocalAppShell provides FloatingShell()) { App(container) }
+```
 
 Platform-specific behaviour is isolated behind small interfaces in `composeApp/src/commonMain/kotlin/com/example/platform/`:
 
@@ -132,7 +161,8 @@ Signing and store upload are optional and switch on automatically once these rep
 
 Privacy policy for the stores: [PRIVACY.md](PRIVACY.md).
 
-iOS (requires macOS + Xcode): open `iosApp/iosApp.xcodeproj` in Xcode and run the `iosApp`
+iOS (requires macOS + Xcode; the app targets **iOS 26 and later**, because the glass chrome uses
+`UIGlassEffect`): open `iosApp/iosApp.xcodeproj` in Xcode and run the `iosApp`
 scheme, or from the command line:
 
 ```bash
