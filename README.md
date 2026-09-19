@@ -58,6 +58,8 @@ as files.
   `PROJECT  P-1234.5  3.00 5.00 …`), hours with two decimals, Monday first, empty cells for
   nothing to book; time without a project is listed with a leading `!` so it is not pasted by
   mistake. Activity types and the unproductive cost object are set in Settings → Timesheet booking.
+* **Open source licenses** – Settings lists every library that ships inside the app with its
+  copyright and licence, which is what Apache-2.0 asks of anyone distributing it.
 * **Import / export** – paste a project list (from a spreadsheet, an ERP or CSV; tab, `;` or `,` separated)
   to import project numbers. Export the summary per project, a daily timesheet or an
   attendance/overtime report as plain CSV or spreadsheet-friendly CSV (semicolon + UTF-8 BOM).

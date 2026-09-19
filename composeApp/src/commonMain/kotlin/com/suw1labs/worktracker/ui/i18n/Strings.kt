@@ -405,6 +405,10 @@ class AppStrings(val language: Language) {
     lateinit var backupNow: String
     lateinit var restoreFromFolder: String
     // import from other apps
+    lateinit var licensesTitle: String
+    lateinit var licensesSubtitle: String
+    lateinit var licensesIntro: String
+    lateinit var licensesApacheNotice: String
     lateinit var importAppsTitle: String
     lateinit var importAppsSubtitle: String
     lateinit var importWorkButton: String
@@ -801,6 +805,10 @@ object Translations {
         turnOff = "Turn off"
         backupNow = "Back up now"
         restoreFromFolder = "Restore from folder"
+        licensesTitle = "Open source licenses"
+        licensesSubtitle = "The libraries this app is built with, and their terms."
+        licensesIntro = "WorkTracker is built with open source software. The libraries below ship inside the app; their copyright stays with their authors."
+        licensesApacheNotice = "Licensed under the Apache License, Version 2.0. You may not use these files except in compliance with the License; a copy is available at:"
         importAppsTitle = "Import from other apps"
         importAppsSubtitle = "Bring your history over. Supported: the CSV export of the iOS app WORK (Export → CSV). Days already present are skipped."
         importWorkButton = "WORK export (CSV)"
@@ -1146,6 +1154,10 @@ object Translations {
         turnOff = "Ausschalten"
         backupNow = "Jetzt sichern"
         restoreFromFolder = "Aus Ordner wiederherstellen"
+        licensesTitle = "Open-Source-Lizenzen"
+        licensesSubtitle = "Die Bibliotheken, auf denen die App aufbaut, und ihre Bedingungen."
+        licensesIntro = "WorkTracker baut auf Open-Source-Software auf. Die folgenden Bibliotheken stecken in der App; das Urheberrecht bleibt bei ihren Autoren."
+        licensesApacheNotice = "Lizenziert unter der Apache License, Version 2.0. Die Nutzung dieser Dateien ist nur gemäss der Lizenz erlaubt; eine Kopie gibt es unter:"
         importAppsTitle = "Aus anderen Apps importieren"
         importAppsSubtitle = "Hol deine bisherigen Daten herüber. Unterstützt: der CSV-Export der iOS-App WORK (Export → CSV). Bereits vorhandene Tage werden übersprungen."
         importWorkButton = "WORK-Export (CSV)"
@@ -1491,6 +1503,10 @@ object Translations {
         turnOff = "Désactiver"
         backupNow = "Sauvegarder maintenant"
         restoreFromFolder = "Restaurer depuis le dossier"
+        licensesTitle = "Licences open source"
+        licensesSubtitle = "Les bibliothèques qui composent l'app et leurs conditions."
+        licensesIntro = "WorkTracker est construit avec des logiciels open source. Les bibliothèques ci-dessous sont intégrées à l'app ; leurs auteurs en gardent les droits."
+        licensesApacheNotice = "Sous licence Apache, version 2.0. L'utilisation de ces fichiers n'est permise que dans le respect de la licence ; une copie est disponible à :"
         importAppsTitle = "Importer depuis d'autres apps"
         importAppsSubtitle = "Récupérez votre historique. Pris en charge : l'export CSV de l'app iOS WORK (Export → CSV). Les jours déjà présents sont ignorés."
         importWorkButton = "Export WORK (CSV)"

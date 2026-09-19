@@ -66,6 +66,9 @@ import com.suw1labs.worktracker.data.model.ProjectSummary
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import com.suw1labs.worktracker.ui.components.ColorPaletteSelector
 import com.suw1labs.worktracker.ui.components.ConfirmDeleteDialog
 import com.suw1labs.worktracker.ui.components.FormDialog
@@ -95,6 +98,7 @@ fun ProjectsScreen(
 ) {
     val t = strings
     var showScheduleDialog by remember { mutableStateOf(false) }
+    var showLicenses by remember { mutableStateOf(false) }
     var showSapDialog by remember { mutableStateOf(false) }
     val settings by viewModel.settings.collectAsState()
     val backupBusy by viewModel.backupBusy.collectAsState()
@@ -362,6 +366,28 @@ fun ProjectsScreen(
                 }
             }
 
+            // --- Open source licenses ---
+            item {
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    modifier = Modifier.fillMaxWidth().testTag("licenses_card")
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { showLicenses = true }.padding(18.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Default.Description, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(t.licensesTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(t.licensesSubtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
+
             item { Spacer(modifier = Modifier.height(24.dp)) }
         }
     }
@@ -376,6 +402,8 @@ fun ProjectsScreen(
             }
         )
     }
+
+    if (showLicenses) LicensesDialog(onDismiss = { showLicenses = false })
 
     if (showScheduleDialog) {
         WorkScheduleDialog(
