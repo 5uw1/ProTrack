@@ -52,6 +52,7 @@ fun FormDialog(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val t = strings
+    TrackModal()
     Dialog(onDismissRequest = onDismiss) {
         Card(
             shape = RoundedCornerShape(20.dp),
@@ -89,6 +90,7 @@ fun ConfirmDeleteDialog(
     confirmLabel: String = strings.delete
 ) {
     val t = strings
+    TrackModal()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title, fontWeight = FontWeight.Bold) },

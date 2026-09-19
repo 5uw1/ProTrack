@@ -27,6 +27,8 @@ import com.suw1labs.worktracker.ui.i18n.LocalStrings
 import com.suw1labs.worktracker.ui.i18n.Translations
 import com.suw1labs.worktracker.ui.i18n.strings
 import com.suw1labs.worktracker.platform.NotificationPermissionEffect
+import com.suw1labs.worktracker.ui.components.LocalModalPresence
+import com.suw1labs.worktracker.ui.components.ModalPresence
 import com.suw1labs.worktracker.ui.components.LocalSnackbarHostState
 import com.suw1labs.worktracker.ui.components.dismissKeyboardOnScroll
 import com.suw1labs.worktracker.ui.components.dismissKeyboardOnTap
@@ -97,7 +99,10 @@ fun MainAppContent(viewModel: TrackerViewModel, initialDestination: TrackerDesti
     // Not in demo mode: the system permission dialog would sit on top of every store screenshot.
     if (askNotificationPermission) NotificationPermissionEffect { viewModel.checkUpcomingDeadlines() }
 
-    CompositionLocalProvider(LocalSnackbarHostState provides snackbarHostState) {
+    CompositionLocalProvider(
+        LocalSnackbarHostState provides snackbarHostState,
+        LocalModalPresence provides remember { ModalPresence() },
+    ) {
         BoxWithConstraints(
             modifier = Modifier.fillMaxSize().dismissKeyboardOnScroll().dismissKeyboardOnTap()
         ) {

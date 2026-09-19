@@ -55,6 +55,7 @@ internal fun GlassTopBar(
     status: String?,
     alertCount: Int,
     onAlertClick: () -> Unit,
+    hidden: Boolean,
     modifier: Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -71,7 +72,7 @@ internal fun GlassTopBar(
             factory = { bar.build(statusBar.value.toDouble(), barTint) },
             modifier = Modifier.fillMaxWidth().height(statusBar + TitleBarHeight.dp),
             update = {
-                bar.update(title, status, alertCount, onAlertClick, titleColor, statusColor, statusBackground, alertColor)
+                bar.update(title, status, alertCount, hidden, onAlertClick, titleColor, statusColor, statusBackground, alertColor)
             },
             properties = UIKitInteropProperties(
                 interactionMode = UIKitInteropInteractionMode.NonCooperative,
@@ -84,6 +85,7 @@ internal fun GlassTopBar(
 
 @OptIn(ExperimentalForeignApi::class)
 private class GlassTopBarViews {
+    private var root: UIVisualEffectView? = null
     private val titleLabel = UILabel()
     private val statusLabel = UILabel()
     private val statusPill = UIView()
@@ -96,6 +98,7 @@ private class GlassTopBarViews {
         // Same frosting as the tab bar, so the title stays readable over scrolled content.
         effect.setTintColor(tint)
         val bar = UIVisualEffectView(effect = effect)
+        root = bar
         val content = bar.contentView
 
         titleLabel.font = UIFont.systemFontOfSize(17.0, weight = UIFontWeightBold)
@@ -150,12 +153,14 @@ private class GlassTopBarViews {
         title: String,
         status: String?,
         alertCount: Int,
+        hidden: Boolean,
         onAlertClick: () -> Unit,
         titleColor: UIColor,
         statusColor: UIColor,
         statusBackground: UIColor,
         alertColor: UIColor,
     ) {
+        root?.let { bar -> UIView.animateWithDuration(0.2) { bar.alpha = if (hidden) 0.0 else 1.0 } }
         titleLabel.text = title
         titleLabel.textColor = titleColor
 

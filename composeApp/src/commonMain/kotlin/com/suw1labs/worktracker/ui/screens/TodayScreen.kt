@@ -106,6 +106,7 @@ import com.suw1labs.worktracker.ui.components.EmptyStateCard
 import com.suw1labs.worktracker.ui.components.LocalSnackbarHostState
 import com.suw1labs.worktracker.ui.components.ProjectDropdown
 import com.suw1labs.worktracker.ui.components.LocalScreenInsets
+import com.suw1labs.worktracker.ui.components.TrackModal
 import com.suw1labs.worktracker.ui.theme.AmberWarning
 import com.suw1labs.worktracker.ui.theme.EmeraldGreen
 import com.suw1labs.worktracker.ui.theme.RoseUrgent
@@ -1263,6 +1264,7 @@ fun TimeEntryRowCard(
 
     // Tapping the card opens the actions (switch / continue, edit, delete).
     if (showActions) {
+        TrackModal()
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showActions = false },
             title = { Text(entry.projectCode?.let { "$it · ${entry.projectName}" } ?: t.noProject, fontSize = 15.sp, fontWeight = FontWeight.Bold) },

@@ -54,6 +54,7 @@ import com.suw1labs.worktracker.data.export.SapExportType
 import com.suw1labs.worktracker.platform.ExportAction
 import androidx.compose.material.icons.filled.Save
 import com.suw1labs.worktracker.ui.components.dismissKeyboardOnTap
+import com.suw1labs.worktracker.ui.components.TrackModal
 import com.suw1labs.worktracker.ui.theme.EmeraldGreen
 import com.suw1labs.worktracker.ui.i18n.strings
 import kotlinx.coroutines.delay
@@ -85,6 +86,7 @@ fun SapExportDialog(
         }
     }
 
+    TrackModal()
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Card(
             shape = RoundedCornerShape(24.dp),

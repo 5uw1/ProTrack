@@ -63,6 +63,7 @@ fun DateTimePickerDialog(
     var pickedDate by remember { mutableStateOf<LocalDate?>(if (dateSelectable) null else initialLocal.date) }
 
     if (pickedDate == null) {
+        TrackModal()
         DatePickerDialog(
             onDismissRequest = onDismiss,
             confirmButton = {
@@ -82,6 +83,7 @@ fun DateTimePickerDialog(
             DatePicker(state = dateState)
         }
     } else {
+        TrackModal()
         AlertDialog(
             onDismissRequest = onDismiss,
             title = { Text(title) },

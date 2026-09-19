@@ -63,7 +63,7 @@ private const val SelectedCornerRadius = 20.0
  */
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalForeignApi::class)
 @Composable
-internal fun GlassTabBar(tabs: List<ShellTab>, modifier: Modifier) {
+internal fun GlassTabBar(tabs: List<ShellTab>, hidden: Boolean, modifier: Modifier) {
     val scheme = MaterialTheme.colorScheme
     val selectedColor = scheme.primary.toUIColor()
     val normalColor = scheme.onSurfaceVariant.toUIColor()
@@ -81,7 +81,7 @@ internal fun GlassTabBar(tabs: List<ShellTab>, modifier: Modifier) {
         UIKitView(
             factory = { bar.build(tabs.size, barTint) },
             modifier = Modifier.fillMaxWidth().height(BarHeightDp.dp),
-            update = { bar.update(tabs, selectedColor, normalColor, selectedBackground, badgeColor) },
+            update = { bar.update(tabs, hidden, selectedColor, normalColor, selectedBackground, badgeColor) },
             properties = UIKitInteropProperties(
                 interactionMode = UIKitInteropInteractionMode.NonCooperative,
                 isNativeAccessibilityEnabled = true,
@@ -95,6 +95,7 @@ internal fun GlassTabBar(tabs: List<ShellTab>, modifier: Modifier) {
 @OptIn(ExperimentalForeignApi::class)
 private class GlassTabBarViews {
     private val cells = mutableListOf<TabCell>()
+    private var root: UIVisualEffectView? = null
 
     fun build(count: Int, tint: UIColor): UIVisualEffectView {
         val effect = UIGlassEffect.effectWithStyle(UIGlassEffectStyle.UIGlassEffectStyleRegular)
@@ -121,6 +122,7 @@ private class GlassTabBarViews {
             )
         )
 
+        root = bar
         cells.clear()
         repeat(count) {
             val cell = TabCell()
@@ -132,11 +134,13 @@ private class GlassTabBarViews {
 
     fun update(
         tabs: List<ShellTab>,
+        hidden: Boolean,
         selectedColor: UIColor,
         normalColor: UIColor,
         selectedBackground: UIColor,
         badgeColor: UIColor,
     ) {
+        root?.let { bar -> UIView.animateWithDuration(0.2) { bar.alpha = if (hidden) 0.0 else 1.0 } }
         tabs.forEachIndexed { index, item ->
             cells.getOrNull(index)?.update(item, selectedColor, normalColor, selectedBackground, badgeColor)
         }

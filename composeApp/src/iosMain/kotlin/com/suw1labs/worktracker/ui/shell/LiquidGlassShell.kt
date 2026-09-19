@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.suw1labs.worktracker.ui.components.LocalModalPresence
 import com.suw1labs.worktracker.ui.components.LocalScreenInsets
 
 /** Height of the title bar below the status bar, and of the tab bar including its margins. */
@@ -39,6 +40,9 @@ class LiquidGlassShell : AppShell {
             return
         }
 
+        // A dialog's scrim covers the Compose canvas but not native overlays, so the bars step
+        // aside while one is open instead of sitting bright and out of reach over it.
+        val hidden = LocalModalPresence.current.isModalOpen
         val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + TitleBarHeight
         val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + TabBarHeight
 
@@ -56,10 +60,12 @@ class LiquidGlassShell : AppShell {
                     status = state.status,
                     alertCount = state.alertCount,
                     onAlertClick = state.onAlertClick,
+                    hidden = hidden,
                     modifier = Modifier.align(Alignment.TopCenter).testTag("top_deadline_alerts_button"),
                 )
                 GlassTabBar(
                     tabs = state.tabs,
+                    hidden = hidden,
                     modifier = Modifier.align(Alignment.BottomCenter).testTag("mobile_bottom_nav_bar"),
                 )
                 SnackbarHost(
