@@ -69,7 +69,7 @@ as files.
 | Module / folder | Purpose |
 | --- | --- |
 | `composeApp/` | Shared Kotlin Multiplatform module: all UI (Compose), view models, Room database, export generation. Also contains the desktop entry point (`desktopMain`) and the iOS framework sources (`iosMain`). |
-| `androidApp/` | Thin Android application (activity, manifest, notifications via AlarmManager, share sheet, Firebase). |
+| `androidApp/` | Thin Android application (activity, manifest, notifications via AlarmManager, share sheet, Glance widget). No network, no analytics, no third-party services. |
 | `iosApp/` | Xcode project that embeds the `ComposeApp` framework produced by `composeApp`, plus the `WorkTrackerWidget` WidgetKit extension (Swift, reads the App Group). |
 
 ### App shell – following each platform's design
@@ -152,8 +152,12 @@ The workflow stamps that version into every platform, runs the tests, builds all
 creates a GitHub Release with auto-generated notes (`v1.0.0-rc1` etc. become pre-releases).
 Builds from `main` are versioned `1.0.0-dev.<run number>`.
 
-Signing and store upload are optional and switch on automatically once these repository secrets exist
-(`ci_scripts/set-play-secrets.sh <service-account.json>` sets all of the Android ones in one go):
+On every tag the Android AAB is signed with the Play upload key and published to the **Google Play
+internal testing track**, so testers get the build a few minutes after the push. The `play-store`
+job warns when the Play secret is missing and fails when it would upload an unsigned bundle.
+Store uploads switch on through these repository secrets
+(`ci_scripts/set-play-secrets.sh <service-account.json>` sets all of the Android ones in one go and
+checks the keystore passwords first):
 
 | Secret | Purpose |
 | --- | --- |
@@ -161,6 +165,12 @@ Signing and store upload are optional and switch on automatically once these rep
 | `PLAY_SERVICE_ACCOUNT_JSON` | Upload the AAB to the Google Play internal testing track on every tag. |
 | `MACOS_CERT_P12`, `MACOS_CERT_PASSWORD`, `MACOS_SIGNING_IDENTITY` | Developer ID signing of the macOS app. |
 | `APPLE_ID`, `APPLE_APP_PASSWORD`, `APPLE_TEAM_ID` | Notarize the DMG with Apple. |
+
+One-time setup on the Google side: enable the Google Play Android Developer API in a Cloud
+project, create a service account with a JSON key, and invite its e-mail in Play Console under
+*Users and permissions* with the app permission *Release to testing tracks*. The first AAB must be
+uploaded by hand in Play Console; that registers the upload key, whose SHA-1 must match the
+keystore in `ANDROID_KEYSTORE_BASE64`. Version codes are the workflow run number, so they only go up.
 
 Privacy policy for the stores: [PRIVACY.md](PRIVACY.md).
 
@@ -184,6 +194,13 @@ a JDK and a minimal Android SDK (the Gradle build configures the Android module 
 `local.properties`. Prerequisites on the Apple side: the app record with bundle id
 `com.suw1labs.worktracker`, the widget id `com.suw1labs.worktracker.widget`, and the App Group
 `group.com.suw1labs.worktracker` enabled on both; automatic signing uses the team in the project.
+
+App Store submissions stay manual: pick the TestFlight build on the version page in App Store
+Connect and submit. App Review asks new apps for a screen recording from a physical device that
+starts at app launch, plus a description of purpose, setup steps, external services (none),
+regional differences (none) and regulated content (none); keep that text in *App Review
+Information → Notes* so later submissions reuse it. If a submission is rejected, swap in the new
+build, reply to the reviewer and resubmit in one go, since a reply alone does not reopen the review.
 
 ## Tests
 
