@@ -80,9 +80,11 @@ data class AppSettings(
     companion object {
         const val DEFAULT_WEEKDAY_HOURS = "8,8,8,8,8,0,0"
         const val DEFAULT_BREAK_RULES = "5:30,9:60"
-        const val DEFAULT_SAP_PRODUCTIVE_TYPE = "SERTCN"
-        const val DEFAULT_SAP_UNPRODUCTIVE_TYPE = "UNPROD"
-        const val DEFAULT_SAP_UNPRODUCTIVE_NUMBER = "700411"
+        // Empty on purpose: activity types and cost objects belong to whoever books the hours,
+        // and shipping one employer's codes to everyone would publish them.
+        const val DEFAULT_SAP_PRODUCTIVE_TYPE = ""
+        const val DEFAULT_SAP_UNPRODUCTIVE_TYPE = ""
+        const val DEFAULT_SAP_UNPRODUCTIVE_NUMBER = ""
 
         fun parseBreakRules(text: String): List<BreakRule> = text.split(',').mapNotNull { part ->
             val (hours, minutes) = part.split(':').map { it.trim().replace(',', '.') }.takeIf { it.size == 2 } ?: return@mapNotNull null

@@ -52,8 +52,8 @@ val MIGRATION_9_10: Migration = object : Migration(9, 10) {
 /** v11: SAP activity types and the unproductive cost object for the weekly paste export. */
 val MIGRATION_10_11: Migration = object : Migration(10, 11) {
     override fun migrate(connection: SQLiteConnection) {
-        connection.execSQL("ALTER TABLE app_settings ADD COLUMN sapProductiveType TEXT NOT NULL DEFAULT 'SERTCN'")
-        connection.execSQL("ALTER TABLE app_settings ADD COLUMN sapUnproductiveType TEXT NOT NULL DEFAULT 'UNPROD'")
-        connection.execSQL("ALTER TABLE app_settings ADD COLUMN sapUnproductiveNumber TEXT NOT NULL DEFAULT '700411'")
+        connection.execSQL("ALTER TABLE app_settings ADD COLUMN sapProductiveType TEXT NOT NULL DEFAULT ''")
+        connection.execSQL("ALTER TABLE app_settings ADD COLUMN sapUnproductiveType TEXT NOT NULL DEFAULT ''")
+        connection.execSQL("ALTER TABLE app_settings ADD COLUMN sapUnproductiveNumber TEXT NOT NULL DEFAULT ''")
     }
 }

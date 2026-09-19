@@ -61,7 +61,7 @@ class MigrationTest {
             // v10: projects start unfocused.
             assertEquals(listOf("One", "0"), connection.row("SELECT name, isFocused FROM projects WHERE id = 1"))
             // v11: SAP defaults.
-            assertEquals(listOf("SERTCN", "UNPROD", "700411"), connection.row("SELECT sapProductiveType, sapUnproductiveType, sapUnproductiveNumber FROM app_settings WHERE id = 1"))
+            assertEquals(listOf("", "", ""), connection.row("SELECT sapProductiveType, sapUnproductiveType, sapUnproductiveNumber FROM app_settings WHERE id = 1"))
             assertEquals(listOf("wiring", "2"), connection.row("SELECT description, taskId FROM time_entries WHERE id = 3"))
             assertEquals(listOf("100"), connection.row("SELECT clockIn FROM attendance_sessions WHERE clockOut IS NULL"))
             // v8 indexes exist under the names Room expects.

@@ -54,8 +54,8 @@ as files.
   periods with lunch / break tags from the pause rows, absences become day records; projects and
   tasks are created by name; rows already present are skipped so re-importing is safe.
 * **Weekly sheet (copy & paste)** – Reports → Export → "Weekly sheet": tab-separated lines per calendar
-  week exactly as a weekly time sheet expects them (`UNPROD  700411  0.50 …`,
-  `SERTCN  M.00073.1.08  3.00 5.00 …`), hours with two decimals, Monday first, empty cells for
+  week exactly as a weekly time sheet expects them (`INTERNAL  1000  0.50 …`,
+  `PROJECT  P-1234.5  3.00 5.00 …`), hours with two decimals, Monday first, empty cells for
   nothing to book; time without a project is listed with a leading `!` so it is not pasted by
   mistake. Activity types and the unproductive cost object are set in Settings → Timesheet booking.
 * **Import / export** – paste a project list (from a spreadsheet, an ERP or CSV; tab, `;` or `,` separated)

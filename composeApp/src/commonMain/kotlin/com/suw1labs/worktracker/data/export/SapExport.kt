@@ -77,8 +77,8 @@ object SapExport {
      * The weekly SAP time sheet as tab-separated text, one block per calendar week (Monday first):
      *
      * ```
-     * UNPROD<TAB><TAB>700411<TAB>0.50<TAB>0.50<TAB>0.50<TAB>0.50<TAB>0.50
-     * SERTCN<TAB>M.00073.1.08<TAB><TAB>3.00<TAB>5.00<TAB>6.00<TAB>6.00<TAB>3.50
+     * INTERNAL<TAB><TAB>1000<TAB>0.50<TAB>0.50<TAB>0.50<TAB>0.50<TAB>0.50
+     * PROJECT<TAB>P-1234.5<TAB><TAB>3.00<TAB>5.00<TAB>6.00<TAB>6.00<TAB>3.50
      * ```
      *
      * Hours are per project and day with two decimals (3 h 57 → 3.95), empty when nothing was
