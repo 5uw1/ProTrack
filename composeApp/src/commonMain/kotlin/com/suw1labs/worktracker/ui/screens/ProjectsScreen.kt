@@ -198,18 +198,15 @@ fun ProjectsScreen(
                     Column(modifier = Modifier.padding(18.dp)) {
                         Text(t.languageTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(8.dp))
-                        // Exactly one language is active: a segmented button group, not filter chips.
-                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                            Language.entries.forEachIndexed { index, lang ->
-                                SegmentedButton(
-                                    selected = settings.language == lang.code,
-                                    onClick = { viewModel.setLanguage(lang) },
-                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = Language.entries.size),
-                                    label = { Text(lang.displayName) },
-                                    modifier = Modifier.testTag("language_${lang.code}")
-                                )
-                            }
-                        }
+                        // Five languages and counting: a row of buttons would not fit on a phone.
+                        LabeledDropdown(
+                            label = t.languageSubtitle,
+                            selectedText = Language.fromCode(settings.language).displayName,
+                            options = Language.entries.toList(),
+                            optionText = { it.displayName },
+                            onSelect = { viewModel.setLanguage(it) },
+                            modifier = Modifier.fillMaxWidth().testTag("language_dropdown")
+                        )
                     }
                 }
             }

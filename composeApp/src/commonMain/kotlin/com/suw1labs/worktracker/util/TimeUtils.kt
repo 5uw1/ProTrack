@@ -42,7 +42,9 @@ data class DateNames(
         "July", "August", "September", "October", "November", "December"
     ),
     val weekdaysShort: List<String> = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"),
-    val weekdaysLong: List<String> = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+    val weekdaysLong: List<String> = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+    /** Chinese writes a date the other way round: 2026年9月19日, largest unit first. */
+    val yearFirst: Boolean = false,
 )
 
 private val MONTH_ABBREVIATIONS get() = DateFormats.names.monthsShort
@@ -97,10 +99,11 @@ object DateFormats {
         return "${WEEKDAY_ABBREVIATIONS[dt.dayOfWeek.isoDayNumber - 1]} ${dt.day}"
     }
 
-    /** `MMM d` e.g. "Sep 14" */
+    /** `MMM d` e.g. "Sep 14"; year-first languages get "9月14日". */
     fun monthDay(millis: Long): String {
         val dt = millis.toLocalDateTime()
-        return "${MONTH_ABBREVIATIONS[dt.month.number - 1]} ${dt.day}"
+        val month = MONTH_ABBREVIATIONS[dt.month.number - 1]
+        return if (names.yearFirst) "$month${dt.day}日" else "$month ${dt.day}"
     }
 
     /** `MMM d, HH:mm` e.g. "Sep 14, 09:30" */
@@ -109,19 +112,24 @@ object DateFormats {
     /** `EEE, MMM d, yyyy` e.g. "Mon, Sep 14, 2026" */
     fun fullDate(millis: Long): String {
         val dt = millis.toLocalDateTime()
-        return "${WEEKDAY_ABBREVIATIONS[dt.dayOfWeek.isoDayNumber - 1]}, ${monthDay(millis)}, ${dt.year}"
+        val weekday = WEEKDAY_ABBREVIATIONS[dt.dayOfWeek.isoDayNumber - 1]
+        return if (names.yearFirst) "${dt.year}年${monthDay(millis)} $weekday"
+        else "$weekday, ${monthDay(millis)}, ${dt.year}"
     }
 
     /** `EEEE, d MMM yyyy` e.g. "Tuesday, 16 Sep 2026" – used as the Today title. */
     fun weekdayLongDate(millis: Long): String {
         val dt = millis.toLocalDateTime()
-        return "${names.weekdaysLong[dt.dayOfWeek.isoDayNumber - 1]}, ${dt.day} ${MONTH_ABBREVIATIONS[dt.month.number - 1]} ${dt.year}"
+        val weekday = names.weekdaysLong[dt.dayOfWeek.isoDayNumber - 1]
+        return if (names.yearFirst) "${dt.year}年${monthDay(millis)} $weekday"
+        else "$weekday, ${dt.day} ${MONTH_ABBREVIATIONS[dt.month.number - 1]} ${dt.year}"
     }
 
-    /** `MMMM yyyy` e.g. "September 2026" */
+    /** `MMMM yyyy` e.g. "September 2026"; year-first languages get "2026年9月". */
     fun monthYear(millis: Long): String {
         val dt = millis.toLocalDateTime()
-        return "${MONTH_NAMES[dt.month.number - 1]} ${dt.year}"
+        return if (names.yearFirst) "${dt.year}年${MONTH_ABBREVIATIONS[dt.month.number - 1]}"
+        else "${MONTH_NAMES[dt.month.number - 1]} ${dt.year}"
     }
 }
 

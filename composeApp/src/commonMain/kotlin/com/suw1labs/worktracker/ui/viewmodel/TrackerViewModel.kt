@@ -41,6 +41,7 @@ import com.suw1labs.worktracker.util.DateRanges
 import com.suw1labs.worktracker.util.ReportPeriodType
 import com.suw1labs.worktracker.util.currentTimeMillis
 import com.suw1labs.worktracker.util.toLocalDate
+import com.suw1labs.worktracker.ui.i18n.Language
 import kotlinx.datetime.isoDayNumber
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -89,7 +90,7 @@ class TrackerViewModel(
         .map { s ->
             // Keep date formatting in sync with the UI language.
             val t = com.suw1labs.worktracker.ui.i18n.Translations.forLanguage(com.suw1labs.worktracker.ui.i18n.Language.fromCode(s.language))
-            com.suw1labs.worktracker.util.DateFormats.names = com.suw1labs.worktracker.util.DateNames(t.monthsShort, t.monthsLong, t.weekdaysShort, t.weekdaysLong)
+            com.suw1labs.worktracker.util.DateFormats.names = com.suw1labs.worktracker.util.DateNames(t.monthsShort, t.monthsLong, t.weekdaysShort, t.weekdaysLong, yearFirst = t.language == Language.ZH)
             s
         }
         .asState(AppSettings())
