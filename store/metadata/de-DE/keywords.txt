@@ -1,1 +1,1 @@
-Zeiterfassung,Stundenrapport,Stempeluhr,Arbeitszeit,Überzeit,Projektzeit,SAP,Präsenzzeit,Timer
+Zeiterfassung,Stundenrapport,Stempeluhr,Arbeitszeit,Überzeit,Projektzeit,ERP,Präsenzzeit,Timer

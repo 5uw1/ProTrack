@@ -16,6 +16,7 @@ debug / simulator build with demo data (`-demo`), see `tools/`.
 | `screenshots/ios/iphone-6.5/<lang>/framed/` | 1284×2778 captioned (same shots re-framed) | App Store Connect → iPhone 6.5" display (what the listing page asks for on this app record) |
 | `screenshots/ios/ipad-13/<lang>/` and `…/framed/` | 2064×2752 iPad Pro 13", raw and captioned | App Store Connect → iPad 13" display (required because the app supports iPad) |
 | `metadata/<locale>/` | title, subtitle, short description, full description, keywords, promotional text, release notes | See the table below |
+| `APP_REVIEW.md` | Answers for App Review (purpose, feature walk-through, services, regions) and the screen-recording shot list | App Store Connect → App Review Information → Notes, and Resolution Center replies |
 | `../PRIVACY.md` | Privacy policy text | Public URL: https://github.com/5uw1/ProTrack/blob/main/PRIVACY.md – paste it into both consoles |
 
 ## Text fields per store
@@ -60,8 +61,12 @@ translations; in App Store Connect add German and French localizations.
 * **Support URL**: the GitHub repository. **Privacy Policy URL**: https://github.com/5uw1/ProTrack/blob/main/PRIVACY.md.
 * **Export compliance**: uses no encryption beyond the OS (answer "No" / exempt).
 * **Sign-in**: none required → no demo account needed for review.
-* **Review notes**: "Tap Clock in on the Today tab, then pick a project. The widget can be added
-  from the home screen. All data is local."
+* **Review notes**: paste the notes block from [APP_REVIEW.md](APP_REVIEW.md) – purpose, target
+  audience, feature walk-through, external services (none), regional differences (none), regulated
+  industry / third-party material. Apple asks for all of this on a new app submission
+  (Guideline 2.1) and it must also sit in the App Review Information → Notes field.
+* **Screen recording**: required with the first submission – a device recording of the typical
+  flow, see the shot list in [APP_REVIEW.md](APP_REVIEW.md).
 * **Build**: archive with Xcode (`iosApp.xcodeproj`, scheme `iosApp`) after setting `TEAM_ID` in
   `iosApp/Configuration/Config.xcconfig`, then upload with Xcode Organizer or Transporter. The
   App Group `group.com.suw1labs.worktracker` must exist in the developer account for the widget.
