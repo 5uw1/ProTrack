@@ -268,6 +268,7 @@ fun TasksScreen(
     if (showAddProjectDialog) {
         ProjectFormDialog(
             project = null,
+            existing = allProjects,
             onDismiss = { showAddProjectDialog = false },
             onSave = { code, name, client, colorHex, budgetHours, _, isProductive ->
                 viewModel.addProject(code, name, client, colorHex, budgetHours, isProductive)
@@ -279,6 +280,7 @@ fun TasksScreen(
     editingProject?.let { project ->
         ProjectFormDialog(
             project = project,
+            existing = allProjects,
             onDismiss = { editingProject = null },
             onSave = { code, name, client, colorHex, budgetHours, status, isProductive ->
                 viewModel.updateProject(

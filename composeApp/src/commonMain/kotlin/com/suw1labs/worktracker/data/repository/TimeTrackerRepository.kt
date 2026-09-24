@@ -188,13 +188,14 @@ class TimeTrackerRepository(
     suspend fun saveSettings(settings: AppSettings) =
         settingsDao.upsert(settings.copy(id = 1, deviceId = deviceId(), syncClock = clock.lastIssued))
 
-    /** Inserts projects whose code is not present yet; returns the number of new projects. */
+    /** Inserts the projects whose number-and-name pair is not present yet; returns how many were new. */
     suspend fun importProjects(projects: List<Project>, existing: List<Project>): Int {
-        val known = existing.map { it.code.trim().lowercase() }.toMutableSet()
+        val known = existing.map { it.identityKey }.toMutableSet()
         var added = 0
         for (p in projects) {
-            val key = p.code.trim().lowercase()
-            if (key.isEmpty() || key in known) continue
+            if (p.code.isBlank()) continue
+            val key = p.identityKey
+            if (key in known) continue
             projectDao.insertProject(stamp(p))
             known.add(key)
             added++

@@ -249,6 +249,7 @@ fun EntryFormDialog(
     if (showQuickProject && onQuickProject != null) {
         ProjectFormDialog(
             project = null,
+            existing = projects,
             onDismiss = { showQuickProject = false },
             onSave = { code, name, client, colorHex, budgetHours, _, productive ->
                 onQuickProject(code, name, client, colorHex, budgetHours, productive) { id ->

@@ -447,7 +447,9 @@ fun ProjectsScreen(
 fun ProjectFormDialog(
     project: Project?,
     onDismiss: () -> Unit,
-    onSave: (code: String, name: String, client: String, colorHex: String, budgetHours: Double, status: String, isProductive: Boolean) -> Unit
+    onSave: (code: String, name: String, client: String, colorHex: String, budgetHours: Double, status: String, isProductive: Boolean) -> Unit,
+    /** The projects the new number and name must not both match (the one being edited is ignored). */
+    existing: List<Project> = emptyList(),
 ) {
     val t = strings
     var code by remember { mutableStateOf(project?.code ?: "") }
@@ -458,7 +460,10 @@ fun ProjectFormDialog(
     var budgetHoursStr by remember { mutableStateOf(project?.budgetHours?.let { if (it == 0.0) "" else it.toString() } ?: "") }
     var status by remember { mutableStateOf(project?.status ?: "ACTIVE") }
 
-    val valid = code.isNotBlank() && name.isNotBlank()
+    // Number and name together identify a project; either alone may repeat.
+    val duplicate = code.isNotBlank() && name.isNotBlank() &&
+        existing.any { it.id != project?.id && it.identityKey == Project.identityKey(code, name) }
+    val valid = code.isNotBlank() && name.isNotBlank() && !duplicate
 
     FormDialog(
         title = if (project == null) t.newProject else t.editProject,
@@ -483,6 +488,10 @@ fun ProjectFormDialog(
             onValueChange = { name = it },
             label = { Text(t.projectName) },
             singleLine = true,
+            isError = duplicate,
+            supportingText = if (duplicate) {
+                { Text(t.projectDuplicate, modifier = Modifier.testTag("project_duplicate_error")) }
+            } else null,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             modifier = Modifier.fillMaxWidth().testTag("project_name_input")
         )

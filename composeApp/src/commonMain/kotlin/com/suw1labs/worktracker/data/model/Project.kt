@@ -39,7 +39,18 @@ data class Project(
     val deviceId: String = "",
     val createdAt: Long = currentTimeMillis()
 ) {
+    /** See [identityKey]. */
+    val identityKey: String get() = identityKey(code, name)
+
     companion object {
         const val UNPRODUCTIVE_CODE = "UNPRODUCTIVE"
+
+        /**
+         * Two projects are the same one when number **and** name match (trimmed, any case). Either
+         * alone may repeat: one number can carry several work packages, and two customers can have
+         * a project called "Commissioning".
+         */
+        fun identityKey(code: String, name: String): String =
+            code.trim().lowercase() + "\u0000" + name.trim().lowercase()
     }
 }

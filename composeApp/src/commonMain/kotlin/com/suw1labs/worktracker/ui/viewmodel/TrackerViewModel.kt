@@ -423,6 +423,10 @@ class TrackerViewModel(
 
     fun addProject(code: String, name: String, client: String, colorHex: String, budgetHours: Double, isProductive: Boolean = true, onCreated: (Long) -> Unit = {}) {
         viewModelScope.launch {
+            // The same number and name is the same project: hand back the one that exists
+            // (a quick-add from the activity dialog then simply selects it).
+            val key = Project.identityKey(code, name)
+            allProjects.value.firstOrNull { it.identityKey == key }?.let { onCreated(it.id); return@launch }
             val id = repository.insertProject(
                 Project(code = code.trim(), name = name.trim(), client = client.trim(), colorHex = colorHex, budgetHours = budgetHours, isProductive = isProductive)
             )
@@ -431,6 +435,8 @@ class TrackerViewModel(
     }
 
     fun updateProject(project: Project) {
+        // Refuse to turn a project into a copy of another one; the form already says why.
+        if (allProjects.value.any { it.id != project.id && it.identityKey == project.identityKey }) return
         viewModelScope.launch { repository.updateProject(project) }
     }
 

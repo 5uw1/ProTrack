@@ -504,6 +504,7 @@ fun TodayScreen(
     if (showAddProjectDialog) {
         ProjectFormDialog(
             project = null,
+            existing = viewModel.allProjects.collectAsState().value,
             onDismiss = { showAddProjectDialog = false },
             onSave = { code, name, client, colorHex, budgetHours, _, isProductive ->
                 viewModel.addProject(code, name, client, colorHex, budgetHours, isProductive) { id -> newlyCreatedProjectId = id }

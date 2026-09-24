@@ -411,6 +411,7 @@ class AppStrings(val language: Language) {
     lateinit var licensesSubtitle: String
     lateinit var licensesIntro: String
     lateinit var licensesApacheNotice: String
+    lateinit var projectDuplicate: String
     lateinit var importAppsTitle: String
     lateinit var importAppsSubtitle: String
     lateinit var importWorkButton: String
@@ -642,7 +643,7 @@ object Translations {
         fromOvertimeHint = "Taken from your overtime balance – no hours are credited."
         enterHours = "Enter the hours, e.g. 8 or 4."
         importProjects = "Import projects"
-        importDescription = "Paste one project per line: number, name and optionally customer – separated by tab, ';' or ','. Copying cells from a spreadsheet works directly. Existing project numbers are skipped."
+        importDescription = "Paste one project per line: number, name and optionally customer – separated by tab, ';' or ','. Copying cells from a spreadsheet works directly. Lines whose number and name both exist already are skipped."
         projectList = "Project list"
         importPlaceholder = "P-2026-0142;Spindle retrofit;Customer AG\nP-2026-0150;New HMI"
         noneRecognised = "No projects recognised yet."
@@ -813,6 +814,7 @@ object Translations {
         licensesSubtitle = "The libraries this app is built with, and their terms."
         licensesIntro = "WorkTracker is built with open source software. The libraries below ship inside the app; their copyright stays with their authors."
         licensesApacheNotice = "Licensed under the Apache License, Version 2.0. You may not use these files except in compliance with the License; a copy is available at:"
+        projectDuplicate = "A project with this number and this name already exists."
         importAppsTitle = "Import from other apps"
         importAppsSubtitle = "Bring your history over. Supported: the CSV export of the iOS app WORK (Export → CSV). Days already present are skipped."
         importWorkButton = "WORK export (CSV)"
@@ -991,7 +993,7 @@ object Translations {
         fromOvertimeHint = "Wird vom Überzeitsaldo abgezogen – keine Gutschrift."
         enterHours = "Stunden eingeben, z.B. 8 oder 4."
         importProjects = "Projekte importieren"
-        importDescription = "Ein Projekt pro Zeile einfügen: Nummer, Name und optional Kunde – getrennt durch Tab, ';' oder ','. Aus einer Tabellenkalkulation kopierte Zellen funktionieren direkt. Vorhandene Projektnummern werden übersprungen."
+        importDescription = "Ein Projekt pro Zeile einfügen: Nummer, Name und optional Kunde – getrennt durch Tab, ';' oder ','. Aus einer Tabellenkalkulation kopierte Zellen funktionieren direkt. Zeilen, deren Nummer und Name es schon gibt, werden übersprungen."
         projectList = "Projektliste"
         importPlaceholder = "P-2026-0142;Spindel Retrofit;Kunde AG\nP-2026-0150;Neues HMI"
         noneRecognised = "Noch keine Projekte erkannt."
@@ -1162,6 +1164,7 @@ object Translations {
         licensesSubtitle = "Die Bibliotheken, auf denen die App aufbaut, und ihre Bedingungen."
         licensesIntro = "WorkTracker baut auf Open-Source-Software auf. Die folgenden Bibliotheken stecken in der App; das Urheberrecht bleibt bei ihren Autoren."
         licensesApacheNotice = "Lizenziert unter der Apache License, Version 2.0. Die Nutzung dieser Dateien ist nur gemäss der Lizenz erlaubt; eine Kopie gibt es unter:"
+        projectDuplicate = "Ein Projekt mit dieser Nummer und diesem Namen gibt es schon."
         importAppsTitle = "Aus anderen Apps importieren"
         importAppsSubtitle = "Hol deine bisherigen Daten herüber. Unterstützt: der CSV-Export der iOS-App WORK (Export → CSV). Bereits vorhandene Tage werden übersprungen."
         importWorkButton = "WORK-Export (CSV)"
@@ -1340,7 +1343,7 @@ object Translations {
         fromOvertimeHint = "Déduit du solde d'heures supplémentaires – rien n'est crédité."
         enterHours = "Saisis les heures, p.ex. 8 ou 4."
         importProjects = "Importer des projets"
-        importDescription = "Colle un projet par ligne : numéro, nom et client optionnel – séparés par tabulation, ';' ou ','. Les cellules copiées d'un tableur fonctionnent directement. Les numéros existants sont ignorés."
+        importDescription = "Colle un projet par ligne : numéro, nom et client optionnel – séparés par tabulation, ';' ou ','. Les cellules copiées d'un tableur fonctionnent directement. Les lignes dont le numéro et le nom existent déjà sont ignorées."
         projectList = "Liste de projets"
         importPlaceholder = "P-2026-0142;Rétrofit broche;Client SA\nP-2026-0150;Nouvelle IHM"
         noneRecognised = "Aucun projet reconnu pour l'instant."
@@ -1511,6 +1514,7 @@ object Translations {
         licensesSubtitle = "Les bibliothèques qui composent l'app et leurs conditions."
         licensesIntro = "WorkTracker est construit avec des logiciels open source. Les bibliothèques ci-dessous sont intégrées à l'app ; leurs auteurs en gardent les droits."
         licensesApacheNotice = "Sous licence Apache, version 2.0. L'utilisation de ces fichiers n'est permise que dans le respect de la licence ; une copie est disponible à :"
+        projectDuplicate = "Un projet avec ce numéro et ce nom existe déjà."
         importAppsTitle = "Importer depuis d'autres apps"
         importAppsSubtitle = "Récupérez votre historique. Pris en charge : l'export CSV de l'app iOS WORK (Export → CSV). Les jours déjà présents sont ignorés."
         importWorkButton = "Export WORK (CSV)"
@@ -1689,7 +1693,7 @@ object Translations {
         fromOvertimeHint = "从加班结余中扣除 – 不另行计入工时。"
         enterHours = "请输入小时数，例如 8 或 4。"
         importProjects = "导入项目"
-        importDescription = "每行一个项目：编号、名称，客户可选 – 用制表符、';' 或 ',' 分隔。从表格软件复制的单元格可直接粘贴。已存在的项目编号会被跳过。"
+        importDescription = "每行一个项目：编号、名称，客户可选 – 用制表符、';' 或 ',' 分隔。从表格软件复制的单元格可直接粘贴。编号和名称都已存在的行会被跳过。"
         projectList = "项目清单"
         importPlaceholder = "P-2026-0142;主轴改造;客户公司\nP-2026-0150;新 HMI"
         noneRecognised = "尚未识别到项目。"
@@ -1860,6 +1864,7 @@ object Translations {
         licensesSubtitle = "构建这款应用所用的库及其许可条款。"
         licensesIntro = "WorkTracker 基于开源软件构建。下列库包含在应用内，其著作权归各自作者所有。"
         licensesApacheNotice = "依据 Apache License 2.0 授权。除非符合该许可，否则不得使用这些文件；许可全文见："
+        projectDuplicate = "已有编号和名称都相同的项目。"
         importAppsTitle = "从其他应用导入"
         importAppsSubtitle = "把过往记录带过来。支持 iOS 应用 WORK 的 CSV 导出（导出 → CSV）。已存在的日期会被跳过。"
         importWorkButton = "WORK 导出（CSV）"
@@ -2038,7 +2043,7 @@ object Translations {
         fromOvertimeHint = "หักจากยอดโอทีที่สะสมไว้ – ไม่มีการนับชั่วโมงเพิ่ม"
         enterHours = "กรอกจำนวนชั่วโมง เช่น 8 หรือ 4"
         importProjects = "นำเข้าโปรเจกต์"
-        importDescription = "วางบรรทัดละหนึ่งโปรเจกต์: เลข, ชื่อ และลูกค้า (ถ้ามี) – คั่นด้วยแท็บ, ';' หรือ ',' คัดลอกเซลล์จากโปรแกรมตารางคำนวณมาวางได้เลย เลขโปรเจกต์ที่มีอยู่แล้วจะถูกข้าม"
+        importDescription = "วางบรรทัดละหนึ่งโปรเจกต์: เลข, ชื่อ และลูกค้า (ถ้ามี) – คั่นด้วยแท็บ, ';' หรือ ',' คัดลอกเซลล์จากโปรแกรมตารางคำนวณมาวางได้เลย บรรทัดที่เลขและชื่อซ้ำกับที่มีอยู่แล้วจะถูกข้าม"
         projectList = "รายการโปรเจกต์"
         importPlaceholder = "P-2026-0142;ปรับปรุงสปินเดิล;บริษัทลูกค้า\nP-2026-0150;HMI ใหม่"
         noneRecognised = "ยังไม่พบโปรเจกต์"
@@ -2209,6 +2214,7 @@ object Translations {
         licensesSubtitle = "ไลบรารีที่ใช้สร้างแอปนี้ และเงื่อนไขของแต่ละตัว"
         licensesIntro = "WorkTracker สร้างขึ้นด้วยซอฟต์แวร์โอเพนซอร์ส ไลบรารีด้านล่างรวมอยู่ในแอป ลิขสิทธิ์ยังเป็นของผู้เขียนแต่ละราย"
         licensesApacheNotice = "อยู่ภายใต้ Apache License เวอร์ชัน 2.0 การใช้ไฟล์เหล่านี้ต้องเป็นไปตามไลเซนส์ ดูฉบับเต็มได้ที่:"
+        projectDuplicate = "มีโปรเจกต์ที่เลขและชื่อตรงกันนี้อยู่แล้ว"
         importAppsTitle = "นำเข้าจากแอปอื่น"
         importAppsSubtitle = "ย้ายประวัติเดิมเข้ามา รองรับไฟล์ CSV ที่ส่งออกจากแอป WORK บน iOS (Export → CSV) วันที่มีข้อมูลอยู่แล้วจะถูกข้าม"
         importWorkButton = "ไฟล์ส่งออกจาก WORK (CSV)"
