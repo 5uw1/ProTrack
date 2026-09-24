@@ -191,7 +191,7 @@ Cloud**, which watches the GitHub repository on its own: App Store Connect → X
 with an *Archive – iOS* action and *TestFlight (Internal Testing)* as post-action, started on
 pushes to `main` or on tags. `iosApp/ci_scripts/ci_post_clone.sh` prepares the runner: it installs
 a JDK and a minimal Android SDK (the Gradle build configures the Android module too) and writes
-`local.properties`. Prerequisites on the Apple side: the app record with bundle id
+`local.properties`. `iosApp/ci_scripts/ci_pre_xcodebuild.sh` stamps the version from the release tag, as the GitHub workflow does for the other platforms: a tag build gets the tag's version (`v1.2.3` → 1.2.3), a build from `main` the latest release tag, and the build number is Xcode Cloud's. App Store Connect rejects any upload that is not higher than the last approved version, so a new release on iOS needs a new tag. Prerequisites on the Apple side: the app record with bundle id
 `com.suw1labs.worktracker`, the widget id `com.suw1labs.worktracker.widget`, and the App Group
 `group.com.suw1labs.worktracker` enabled on both; automatic signing uses the team in the project.
 
