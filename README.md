@@ -142,7 +142,7 @@ to the workflow run. The app stores its data under `%APPDATA%\WorkTracker` on Wi
 
 ## Releases (CI)
 
-Push a tag to publish a release:
+Go through [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) first, then push a tag to publish a release:
 
 ```bash
 git tag v1.0.0 && git push origin v1.0.0
