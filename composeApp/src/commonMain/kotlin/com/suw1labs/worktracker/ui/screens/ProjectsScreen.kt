@@ -505,24 +505,24 @@ fun ProjectFormDialog(
             modifier = Modifier.fillMaxWidth().testTag("project_client_input")
         )
         Spacer(modifier = Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            OutlinedTextField(
-                value = budgetHoursStr,
-                onValueChange = { budgetHoursStr = it },
-                label = { Text(t.plannedHours) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
-                modifier = Modifier.weight(1f)
-            )
-            LabeledDropdown(
-                label = t.status,
-                selectedText = t.projectStatus(status),
-                options = listOf("ACTIVE", "ON_HOLD", "COMPLETED"),
-                optionText = { t.projectStatus(it) },
-                onSelect = { status = it },
-                modifier = Modifier.weight(1f)
-            )
-        }
+        // Full width each: "Geplante Stunden (optional)" does not fit half a dialog.
+        OutlinedTextField(
+            value = budgetHoursStr,
+            onValueChange = { budgetHoursStr = it },
+            label = { Text(t.plannedHours) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+            modifier = Modifier.fillMaxWidth().testTag("project_budget_input")
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        LabeledDropdown(
+            label = t.status,
+            selectedText = t.projectStatus(status),
+            options = listOf("ACTIVE", "ON_HOLD", "COMPLETED"),
+            optionText = { t.projectStatus(it) },
+            onSelect = { status = it },
+            modifier = Modifier.fillMaxWidth()
+        )
         Spacer(modifier = Modifier.height(12.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
