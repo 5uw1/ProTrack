@@ -18,8 +18,9 @@ interface TimeEntryDao {
             te.taskId, t.title AS taskTitle,
             te.description, te.startTime, te.endTime, te.createdAt
         FROM time_entries te
-        LEFT JOIN projects p ON te.projectId = p.id
-        LEFT JOIN tasks t ON te.taskId = t.id
+        LEFT JOIN projects p ON te.projectId = p.id AND p.deletedAt IS NULL
+        LEFT JOIN tasks t ON te.taskId = t.id AND t.deletedAt IS NULL
+        WHERE te.deletedAt IS NULL
         ORDER BY te.startTime DESC
     """)
     fun getAllEntriesWithDetails(): Flow<List<TimeEntryWithDetails>>

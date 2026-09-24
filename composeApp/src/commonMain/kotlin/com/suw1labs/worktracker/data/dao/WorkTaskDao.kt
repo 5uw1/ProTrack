@@ -20,9 +20,10 @@ interface WorkTaskDao {
             p.client, t.title, t.description, t.priority, t.status, 
             t.estimatedHours, t.deadlineTimestamp, t.reminderLeadHours, 
             t.reminderEnabled, t.createdAt,
-            COALESCE((SELECT SUM((te.endTime - te.startTime) / 1000) FROM time_entries te WHERE te.taskId = t.id AND te.endTime IS NOT NULL), 0) AS loggedSeconds
+            COALESCE((SELECT SUM((te.endTime - te.startTime) / 1000) FROM time_entries te WHERE te.taskId = t.id AND te.endTime IS NOT NULL AND te.deletedAt IS NULL), 0) AS loggedSeconds
         FROM tasks t
-        JOIN projects p ON t.projectId = p.id
+        JOIN projects p ON t.projectId = p.id AND p.deletedAt IS NULL
+        WHERE t.deletedAt IS NULL
         ORDER BY 
             CASE WHEN t.status = 'DONE' THEN 1 ELSE 0 END,
             CASE WHEN t.deadlineTimestamp IS NOT NULL THEN t.deadlineTimestamp ELSE 9999999999999 END ASC,

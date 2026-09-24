@@ -62,8 +62,11 @@ abstract class AppDatabase : RoomDatabase() {
         if (settingsDao().getSettings() == null) settingsDao().upsert(AppSettings())
         val projects = projectDao()
         if (projects.findByCode(Project.UNPRODUCTIVE_CODE) == null) {
+            // Fixed uids: every install creates these for itself, and a merge has to recognise
+            // one device's built-in project as the same record as another's, not add a second one.
             val id = projects.insertProject(
                 Project(
+                    uid = BUILT_IN_UNPRODUCTIVE_UID,
                     code = Project.UNPRODUCTIVE_CODE,
                     name = "Unproductive",
                     client = "",
@@ -71,8 +74,16 @@ abstract class AppDatabase : RoomDatabase() {
                     isProductive = false
                 )
             )
-            DEFAULT_UNPRODUCTIVE_TASKS.forEach { title ->
-                workTaskDao().insertTask(WorkTask(projectId = id, title = title, priority = "LOW", reminderEnabled = false))
+            DEFAULT_UNPRODUCTIVE_TASKS.forEachIndexed { index, title ->
+                workTaskDao().insertTask(
+                    WorkTask(
+                        uid = builtInTaskUid(index),
+                        projectId = id,
+                        title = title,
+                        priority = "LOW",
+                        reminderEnabled = false,
+                    )
+                )
             }
         }
     }
@@ -81,6 +92,10 @@ abstract class AppDatabase : RoomDatabase() {
         val DEFAULT_UNPRODUCTIVE_TASKS: List<String> = listOf(
             "Meeting", "Coffee / Smoke break", "Informal meeting", "Uncategorized"
         )
+
+        /** Same shape as a generated uid, but the same on every install. */
+        const val BUILT_IN_UNPRODUCTIVE_UID = "0000000000BUILTINPROJECT00"
+        fun builtInTaskUid(index: Int): String = "0000000000BUILTINTASK" + index.toString().padStart(5, '0')
     }
 }
 
