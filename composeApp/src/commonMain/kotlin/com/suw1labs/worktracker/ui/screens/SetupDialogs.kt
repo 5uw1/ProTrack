@@ -384,8 +384,8 @@ fun SapSettingsDialog(
         title = t.sapSettingsTitle,
         subtitle = t.sapSettingsSubtitle,
         onDismiss = onDismiss,
+        // Every field is optional: some time sheets take the cost object alone, with no activity type.
         onSave = { onSave(productive, unproductive, number) },
-        saveEnabled = productive.isNotBlank() && unproductive.isNotBlank(),
         saveTestTag = "save_sap_button",
         modifier = Modifier.testTag("sap_settings_dialog")
     ) {
