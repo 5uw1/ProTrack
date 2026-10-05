@@ -16,6 +16,7 @@ import com.suw1labs.worktracker.data.model.TimeEntry
 import com.suw1labs.worktracker.data.model.TimeEntryWithDetails
 import com.suw1labs.worktracker.data.model.WorkTask
 import com.suw1labs.worktracker.data.model.WorkTaskWithProject
+import com.suw1labs.worktracker.data.report.AttendanceCover
 import com.suw1labs.worktracker.data.sync.SyncClock
 import com.suw1labs.worktracker.data.sync.Ulid
 import com.suw1labs.worktracker.util.DateRanges
@@ -175,6 +176,17 @@ class TimeTrackerRepository(
     suspend fun getOpenSession(): AttendanceSession? = attendanceDao.getOpenSession()
     suspend fun closeOpenSessions(clockOut: Long, reason: String?) = attendanceDao.closeOpenSessions(clockOut, reason)
     suspend fun insertSession(session: AttendanceSession): Long = attendanceDao.insertSession(stamp(session))
+
+    /**
+     * Stretches the clock-in periods an edited activity runs past, so its whole time counts
+     * (see [AttendanceCover]).
+     */
+    suspend fun coverWithAttendance(entries: List<TimeEntry>) {
+        for (entry in entries) {
+            val sessions = attendanceDao.sessionsTouching(entry.startTime, entry.endTime ?: Long.MAX_VALUE)
+            AttendanceCover.extended(sessions, entry.startTime, entry.endTime).forEach { attendanceDao.updateSession(stamp(it)) }
+        }
+    }
     suspend fun updateSession(session: AttendanceSession) = attendanceDao.updateSession(stamp(session))
     suspend fun deleteSessionById(id: Long) = attendanceDao.markSessionDeleted(id, clock.now(), deviceId())
 

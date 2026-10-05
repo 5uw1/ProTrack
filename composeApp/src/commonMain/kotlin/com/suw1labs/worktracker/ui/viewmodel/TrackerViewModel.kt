@@ -386,15 +386,9 @@ class TrackerViewModel(
     ) {
         if (endTime <= startTime) return
         viewModelScope.launch {
-            val id = repository.insertTimeEntry(
-                TimeEntry(
-                    projectId = projectId,
-                    taskId = taskId,
-                    description = description,
-                    startTime = startTime,
-                    endTime = endTime
-                )
-            )
+            val entry = TimeEntry(projectId = projectId, taskId = taskId, description = description, startTime = startTime, endTime = endTime)
+            val id = repository.insertTimeEntry(entry)
+            repository.coverWithAttendance(listOf(entry))
             onCreated(id)
         }
     }
@@ -402,7 +396,10 @@ class TrackerViewModel(
     /** Saves several edited entries in one transaction (an activity and the neighbours it moved). */
     fun updateEntries(entries: List<TimeEntry>) {
         if (entries.isEmpty()) return
-        viewModelScope.launch { repository.updateTimeEntries(entries) }
+        viewModelScope.launch {
+            repository.updateTimeEntries(entries)
+            repository.coverWithAttendance(entries)
+        }
     }
 
     /**
@@ -412,6 +409,7 @@ class TrackerViewModel(
     fun updateEntry(entry: TimeEntry, movedNeighbours: List<TimeEntry> = emptyList()) {
         viewModelScope.launch {
             if (movedNeighbours.isEmpty()) repository.updateTimeEntry(entry) else repository.updateTimeEntries(listOf(entry) + movedNeighbours)
+            repository.coverWithAttendance(listOf(entry))
         }
     }
 

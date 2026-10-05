@@ -22,6 +22,10 @@ interface AttendanceDao {
     @Query("UPDATE attendance_sessions SET clockOut = :clockOut, clockOutReason = :reason WHERE deletedAt IS NULL AND clockOut IS NULL")
     suspend fun closeOpenSessions(clockOut: Long, reason: String?)
 
+    /** Clock-in periods that overlap or touch [from]..[to] (open periods reach until now). */
+    @Query("SELECT * FROM attendance_sessions WHERE deletedAt IS NULL AND clockIn <= :to AND (clockOut IS NULL OR clockOut >= :from)")
+    suspend fun sessionsTouching(from: Long, to: Long): List<AttendanceSession>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSession(session: AttendanceSession): Long
 
