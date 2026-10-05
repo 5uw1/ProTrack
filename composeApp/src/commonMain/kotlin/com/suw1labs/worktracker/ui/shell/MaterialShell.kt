@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -37,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.suw1labs.worktracker.ui.components.WideLayout
+import com.suw1labs.worktracker.ui.components.AppMark
 import androidx.compose.ui.unit.sp
 import com.suw1labs.worktracker.ui.theme.RoseUrgent
 
@@ -44,6 +46,9 @@ import com.suw1labs.worktracker.ui.theme.RoseUrgent
  * Material 3 Expressive chrome: a short navigation bar on phones, a wide navigation rail on
  * tablets and desktop, content laid out between the bars. The default on Android and desktop.
  */
+/** Width of the collapsed [WideNavigationRail] (Material 3 Expressive: 96 dp). */
+private val RailWidth = 96.dp
+
 class MaterialShell : AppShell {
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -51,21 +56,18 @@ class MaterialShell : AppShell {
     override fun Chrome(state: ShellState, wide: Boolean, content: @Composable (Modifier) -> Unit) {
         if (wide) {
             Row(modifier = Modifier.fillMaxSize()) {
-                WideNavigationRail(modifier = Modifier.testTag("desktop_navigation_rail")) {
-                    Spacer(modifier = Modifier.height(20.dp))
-                    // App mark: the rail is too narrow for the full name.
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = MaterialTheme.shapes.medium,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Timer,
-                            contentDescription = "WorkTracker",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(10.dp),
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(20.dp))
+                WideNavigationRail(
+                    modifier = Modifier.testTag("desktop_navigation_rail"),
+                    // App mark: the app icon itself (the rail is too narrow for the full name),
+                    // centred over the tabs.
+                    header = {
+                        // The header is not stretched to the rail, so it gets the collapsed rail's width
+                        // itself (fillMaxWidth would measure to nothing here).
+                        Box(modifier = Modifier.width(RailWidth).padding(top = 12.dp, bottom = 8.dp), contentAlignment = Alignment.Center) {
+                            AppMark(size = 36.dp, modifier = Modifier.testTag("app_mark"))
+                        }
+                    },
+                ) {
 
                     state.tabs.forEach { tab ->
                         WideNavigationRailItem(
