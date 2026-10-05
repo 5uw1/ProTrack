@@ -48,10 +48,13 @@ class DesktopAppUpdater(
     private val _state = MutableStateFlow<UpdateState>(UpdateState.Idle)
     override val state: StateFlow<UpdateState> = _state.asStateFlow()
 
-    private val http: HttpClient = HttpClient.newBuilder()
-        .followRedirects(HttpClient.Redirect.NORMAL)
-        .connectTimeout(Duration.ofSeconds(15))
-        .build()
+    // Created on first use, never while the app starts: updating must not be able to stop it.
+    private val http: HttpClient by lazy {
+        HttpClient.newBuilder()
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .connectTimeout(Duration.ofSeconds(15))
+            .build()
+    }
 
     override fun check() {
         if (!supported) return
@@ -70,7 +73,8 @@ class DesktopAppUpdater(
                 GitHubReleases.updateFrom(response.body(), os!!, currentVersion!!)
                     ?.let { UpdateState.Available(it) }
                     ?: UpdateState.UpToDate(currentVersion)
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
+                // Throwable, not Exception: a class missing from the runtime is an Error.
                 UpdateState.Failed(e.message ?: e.toString(), null)
             }
         }
@@ -90,7 +94,7 @@ class DesktopAppUpdater(
                     DesktopOs.WINDOWS -> installWindows(release, file)
                     DesktopOs.LINUX, null -> openForUser(release, file)
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 _state.value = UpdateState.Failed(e.message ?: e.toString(), release)
             }
         }

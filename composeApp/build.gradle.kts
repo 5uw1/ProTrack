@@ -105,6 +105,10 @@ compose.desktop {
 
     nativeDistributions {
       targetFormats(TargetFormat.Msi, TargetFormat.Exe, TargetFormat.Dmg, TargetFormat.Deb)
+      // The installers carry a trimmed Java runtime with only the modules the app names. Without
+      // java.net.http the self-updater's HttpClient is missing and the app fails to start
+      // ("Failed to launch JVM", v1.0.16). `./gradlew suggestRuntimeModules` lists candidates.
+      modules("java.net.http")
       packageName = "WorkTracker"
       packageVersion = desktopPackageVersion
       description = "Work time tracking with project management, productivity reports and deadline reminders."

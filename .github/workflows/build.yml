@@ -110,6 +110,14 @@ jobs:
       - name: Build MSI + EXE
         shell: bash
         run: ./gradlew :composeApp:packageMsi :composeApp:packageExe -PappVersion=${{ needs.version.outputs.app_version }} --no-daemon --stacktrace
+      # The installers bundle a trimmed Java runtime; a module the code needs but the runtime lacks
+      # only shows at launch ("Failed to launch JVM", v1.0.16). Fail the build instead.
+      - name: Bundled runtime has the modules the app needs
+        shell: bash
+        run: |
+          for m in java.desktop java.net.http java.prefs; do
+            grep -q "$m" composeApp/build/compose/tmp/main/runtime/release || { echo "::error title=Runtime module missing::$m is not in the bundled Java runtime (add it to nativeDistributions.modules)"; exit 1; }
+          done
       - name: Rename outputs
         shell: bash
         run: |
@@ -169,6 +177,14 @@ jobs:
             TASKS=":composeApp:packageDmg"
           fi
           ./gradlew $TASKS -PappVersion=${{ needs.version.outputs.app_version }} $EXTRA --no-daemon --stacktrace
+      # The installers bundle a trimmed Java runtime; a module the code needs but the runtime lacks
+      # only shows at launch ("Failed to launch JVM", v1.0.16). Fail the build instead.
+      - name: Bundled runtime has the modules the app needs
+        shell: bash
+        run: |
+          for m in java.desktop java.net.http java.prefs; do
+            grep -q "$m" composeApp/build/compose/tmp/main/runtime/release || { echo "::error title=Runtime module missing::$m is not in the bundled Java runtime (add it to nativeDistributions.modules)"; exit 1; }
+          done
       - name: Rename outputs
         run: |
           mkdir -p out
@@ -192,6 +208,14 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build DEB
         run: ./gradlew :composeApp:packageDeb -PappVersion=${{ needs.version.outputs.app_version }} --no-daemon --stacktrace
+      # The installers bundle a trimmed Java runtime; a module the code needs but the runtime lacks
+      # only shows at launch ("Failed to launch JVM", v1.0.16). Fail the build instead.
+      - name: Bundled runtime has the modules the app needs
+        shell: bash
+        run: |
+          for m in java.desktop java.net.http java.prefs; do
+            grep -q "$m" composeApp/build/compose/tmp/main/runtime/release || { echo "::error title=Runtime module missing::$m is not in the bundled Java runtime (add it to nativeDistributions.modules)"; exit 1; }
+          done
       - name: Rename outputs
         run: |
           mkdir -p out
