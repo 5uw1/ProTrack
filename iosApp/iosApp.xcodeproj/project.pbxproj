@@ -7,9 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2152FB032600AC8F00CF470E /* iOSApp.swift */; };
 		57AB0001000000000000A001 /* WorkTrackerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57AB0002000000000000A002 /* WorkTrackerWidget.swift */; };
 		57AB0003000000000000A003 /* WorkTrackerWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 57AB0004000000000000A004 /* WorkTrackerWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2152FB032600AC8F00CF470E /* iOSApp.swift */; };
 		7555FF83242A565900829871 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7555FF82242A565900829871 /* ContentView.swift */; };
 		7555FF8A242A565B00829871 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7555FF89242A565B00829871 /* Assets.xcassets */; };
 		A1B2C3D4E5F60718293A4B5C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5D /* PrivacyInfo.xcprivacy */; };
@@ -40,12 +40,12 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		2152FB032600AC8F00CF470E /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
 		57AB0002000000000000A002 /* WorkTrackerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkTrackerWidget.swift; sourceTree = "<group>"; };
 		57AB0004000000000000A004 /* WorkTrackerWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WorkTrackerWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		57AB0007000000000000A007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		57AB0008000000000000A008 /* WorkTrackerWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WorkTrackerWidget.entitlements; sourceTree = "<group>"; };
 		57AB0009000000000000A009 /* iosApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = iosApp.entitlements; sourceTree = "<group>"; };
-		2152FB032600AC8F00CF470E /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
 		7555FF7B242A565900829871 /* WorkTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WorkTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7555FF82242A565900829871 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		7555FF89242A565B00829871 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -183,11 +183,11 @@
 				LastUpgradeCheck = 2660;
 				ORGANIZATIONNAME = "";
 				TargetAttributes = {
-					7555FF7A242A565900829871 = {
-						CreatedOnToolsVersion = 11.3.1;
-					};
 					57AB0010000000000000A010 = {
 						CreatedOnToolsVersion = 26.0;
+					};
+					7555FF7A242A565900829871 = {
+						CreatedOnToolsVersion = 11.3.1;
 					};
 				};
 			};
@@ -288,6 +288,8 @@
 				CODE_SIGN_ENTITLEMENTS = WorkTrackerWidget/WorkTrackerWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(CURRENT_PROJECT_VERSION)";
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = HCNJJGF4SS;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WorkTrackerWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WorkTracker;
@@ -305,7 +307,6 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				DEBUG_INFORMATION_FORMAT = dwarf;
 			};
 			name = Debug;
 		};
@@ -315,6 +316,8 @@
 				CODE_SIGN_ENTITLEMENTS = WorkTrackerWidget/WorkTrackerWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(CURRENT_PROJECT_VERSION)";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = HCNJJGF4SS;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WorkTrackerWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WorkTracker;
@@ -332,7 +335,6 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 			};
 			name = Release;
 		};
