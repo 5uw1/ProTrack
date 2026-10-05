@@ -16,9 +16,9 @@ struct iOSApp: App {
         WindowGroup {
             ContentView()
         }
-        .onChange(of: scenePhase) { phase in
+        .onChange(of: scenePhase) { oldPhase, newPhase in
             // Widget buttons queue their actions in the App Group; replay them as soon as we are active.
-            if phase == .active { WidgetActionsBridgeKt.applyPendingWidgetActions() }
+            if newPhase == .active { WidgetActionsBridgeKt.applyPendingWidgetActions() }
         }
     }
 }
