@@ -8,7 +8,12 @@ import androidx.compose.material.icons.filled.CalendarViewWeek
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.runtime.LaunchedEffect
+import com.suw1labs.worktracker.platform.LocalAppUpdater
+import com.suw1labs.worktracker.platform.UpdateState
 import com.suw1labs.worktracker.ui.shell.LocalAppShell
 import com.suw1labs.worktracker.ui.shell.ShellState
 import com.suw1labs.worktracker.ui.shell.ShellTab
@@ -86,7 +91,7 @@ fun App(container: AppContainer, launchOptions: AppLaunchOptions = AppLaunchOpti
         val viewModel: TrackerViewModel = viewModel { container.createViewModel() }
         val settings by viewModel.settings.collectAsState()
         val translation = remember(settings.language) { Translations.forLanguage(Language.fromCode(settings.language)) }
-        CompositionLocalProvider(LocalStrings provides translation) {
+        CompositionLocalProvider(LocalStrings provides translation, LocalAppUpdater provides container.appUpdater) {
             MainAppContent(viewModel = viewModel, initialDestination = launchOptions.initialTab ?: TrackerDestination.TODAY, askNotificationPermission = !launchOptions.demo)
         }
     }
@@ -100,6 +105,24 @@ fun MainAppContent(viewModel: TrackerViewModel, initialDestination: TrackerDesti
     val openSession by viewModel.openSession.collectAsState()
     val runningEntry by viewModel.runningEntry.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // A newer desktop release found at launch is offered once, with a shortcut to install it.
+    val updater = LocalAppUpdater.current
+    val updateState by updater.state.collectAsState()
+    var offeredUpdate by remember { mutableStateOf<String?>(null) }
+    val updateMessage = (updateState as? UpdateState.Available)?.release?.version?.let { strings.updateAvailable(it) }
+    val updateActionLabel = strings.updateAction
+    LaunchedEffect(updateState) {
+        val release = (updateState as? UpdateState.Available)?.release ?: return@LaunchedEffect
+        if (offeredUpdate == release.version) return@LaunchedEffect
+        offeredUpdate = release.version
+        val result = snackbarHostState.showSnackbar(updateMessage!!, actionLabel = updateActionLabel, withDismissAction = true, duration = SnackbarDuration.Indefinite)
+        if (result == SnackbarResult.ActionPerformed) {
+            updater.install()
+            // Settings shows the download and install progress.
+            currentDestination = TrackerDestination.PROJECTS
+        }
+    }
 
     // Ask for notification permission where needed, then surface urgent deadlines.
     // Not in demo mode: the system permission dialog would sit on top of every store screenshot.

@@ -382,6 +382,20 @@ class AppStrings(val language: Language) {
     lateinit var newActivity: String
     lateinit var noteLabel: String
     lateinit var hoursLabel: String
+    // App updates (desktop: from GitHub Releases)
+    lateinit var updatesTitle: String
+    lateinit var updateVersion: (String) -> String
+    lateinit var updateUpToDate: String
+    lateinit var updateAvailable: (String) -> String
+    lateinit var updateInstall: String
+    lateinit var updateCheck: String
+    lateinit var updateChecking: String
+    lateinit var updateDownloading: (Int) -> String
+    lateinit var updateInstalling: String
+    lateinit var updateManual: String
+    lateinit var updateFailed: (String) -> String
+    lateinit var updateWhatsNew: String
+    lateinit var updateAction: String
     var deleteProjectQuestion: (String) -> String = { it }; var deleteProjectWarning = ""
     var deleteTaskQuestion: (String) -> String = { it }; var deleteTaskWarning = ""
     var deletePeriodQuestion = ""; var deleteAbsenceQuestion = ""
@@ -793,6 +807,19 @@ object Translations {
         newActivity = "New activity"
         noteLabel = "Note"
         hoursLabel = "Hours"
+        updatesTitle = "App updates"
+        updateVersion = { "Version $it" }
+        updateUpToDate = "Up to date"
+        updateAvailable = { "Version $it is available" }
+        updateInstall = "Update and restart"
+        updateCheck = "Check for updates"
+        updateChecking = "Checking for updates…"
+        updateDownloading = { "Downloading… $it %" }
+        updateInstalling = "Installing – WorkTracker restarts in a moment"
+        updateManual = "The installer is open – finish the update there."
+        updateFailed = { "Update failed: $it" }
+        updateWhatsNew = "What's new"
+        updateAction = "Update"
         deleteProjectQuestion = { "Delete project $it?" }
         deleteProjectWarning = "Its tasks are deleted. Time already booked on it is kept but loses its project and must be re-assigned."
         deleteTaskQuestion = { "Delete task \"$it\"?" }
@@ -1158,6 +1185,19 @@ object Translations {
         newActivity = "Neue Tätigkeit"
         noteLabel = "Notiz"
         hoursLabel = "Stunden"
+        updatesTitle = "App-Updates"
+        updateVersion = { "Version $it" }
+        updateUpToDate = "Aktuell"
+        updateAvailable = { "Version $it ist verfügbar" }
+        updateInstall = "Aktualisieren und neu starten"
+        updateCheck = "Nach Updates suchen"
+        updateChecking = "Suche nach Updates…"
+        updateDownloading = { "Wird geladen… $it %" }
+        updateInstalling = "Wird installiert – WorkTracker startet gleich neu"
+        updateManual = "Das Installationsprogramm ist geöffnet – schliessen Sie das Update dort ab."
+        updateFailed = { "Update fehlgeschlagen: $it" }
+        updateWhatsNew = "Neuerungen"
+        updateAction = "Aktualisieren"
         deleteProjectQuestion = { "Projekt $it löschen?" }
         deleteProjectWarning = "Die Aufgaben werden gelöscht. Bereits gebuchte Zeit bleibt erhalten, verliert aber das Projekt und muss neu zugeordnet werden."
         deleteTaskQuestion = { "Aufgabe «$it» löschen?" }
@@ -1523,6 +1563,19 @@ object Translations {
         newActivity = "Nouvelle activité"
         noteLabel = "Note"
         hoursLabel = "Heures"
+        updatesTitle = "Mises à jour"
+        updateVersion = { "Version $it" }
+        updateUpToDate = "À jour"
+        updateAvailable = { "La version $it est disponible" }
+        updateInstall = "Mettre à jour et redémarrer"
+        updateCheck = "Rechercher des mises à jour"
+        updateChecking = "Recherche de mises à jour…"
+        updateDownloading = { "Téléchargement… $it %" }
+        updateInstalling = "Installation – WorkTracker redémarre dans un instant"
+        updateManual = "Le programme d'installation est ouvert – terminez la mise à jour là-bas."
+        updateFailed = { "Échec de la mise à jour : $it" }
+        updateWhatsNew = "Nouveautés"
+        updateAction = "Mettre à jour"
         deleteProjectQuestion = { "Supprimer le projet $it ?" }
         deleteProjectWarning = "Ses tâches sont supprimées. Le temps déjà imputé est conservé mais perd son projet et devra être réattribué."
         deleteTaskQuestion = { "Supprimer la tâche « $it » ?" }
@@ -1888,6 +1941,19 @@ object Translations {
         newActivity = "新活动"
         noteLabel = "备注"
         hoursLabel = "小时"
+        updatesTitle = "应用更新"
+        updateVersion = { "版本 $it" }
+        updateUpToDate = "已是最新"
+        updateAvailable = { "版本 $it 可用" }
+        updateInstall = "更新并重启"
+        updateCheck = "检查更新"
+        updateChecking = "正在检查更新…"
+        updateDownloading = { "正在下载… $it %" }
+        updateInstalling = "正在安装 – WorkTracker 即将重启"
+        updateManual = "安装程序已打开 – 请在其中完成更新。"
+        updateFailed = { "更新失败：$it" }
+        updateWhatsNew = "新功能"
+        updateAction = "更新"
         deleteProjectQuestion = { "删除项目 $it？" }
         deleteProjectWarning = "其任务会一并删除。已登记在该项目上的工时会保留，但会失去项目，需要重新分配。"
         deleteTaskQuestion = { "删除任务「$it」？" }
@@ -2253,6 +2319,19 @@ object Translations {
         newActivity = "งานใหม่"
         noteLabel = "หมายเหตุ"
         hoursLabel = "ชั่วโมง"
+        updatesTitle = "อัปเดตแอป"
+        updateVersion = { "เวอร์ชัน $it" }
+        updateUpToDate = "เป็นเวอร์ชันล่าสุดแล้ว"
+        updateAvailable = { "มีเวอร์ชัน $it ให้อัปเดต" }
+        updateInstall = "อัปเดตและเปิดใหม่"
+        updateCheck = "ตรวจหาอัปเดต"
+        updateChecking = "กำลังตรวจหาอัปเดต…"
+        updateDownloading = { "กำลังดาวน์โหลด… $it %" }
+        updateInstalling = "กำลังติดตั้ง – WorkTracker จะเปิดใหม่ในอีกสักครู่"
+        updateManual = "เปิดตัวติดตั้งแล้ว – ทำการอัปเดตให้เสร็จในหน้าต่างนั้น"
+        updateFailed = { "อัปเดตไม่สำเร็จ: $it" }
+        updateWhatsNew = "มีอะไรใหม่"
+        updateAction = "อัปเดต"
         deleteProjectQuestion = { "ลบโปรเจกต์ $it?" }
         deleteProjectWarning = "งานในโปรเจกต์จะถูกลบด้วย เวลาที่ลงไว้แล้วยังอยู่แต่จะไม่มีโปรเจกต์ ต้องกำหนดใหม่"
         deleteTaskQuestion = { "ลบงาน «$it»?" }

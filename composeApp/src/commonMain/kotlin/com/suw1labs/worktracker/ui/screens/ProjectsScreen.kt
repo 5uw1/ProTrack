@@ -90,6 +90,8 @@ import com.suw1labs.worktracker.util.projectColor
 import com.suw1labs.worktracker.ui.i18n.strings
 import com.suw1labs.worktracker.ui.shell.InlineScreenTitle
 import com.suw1labs.worktracker.ui.components.AdaptiveCards
+import com.suw1labs.worktracker.ui.components.AppUpdateCard
+import com.suw1labs.worktracker.platform.LocalAppUpdater
 
 /** Settings tab: work schedule, language, backups. Projects themselves live on the Projects tab (TasksScreen). */
 @Composable
@@ -101,6 +103,7 @@ fun ProjectsScreen(
     var showScheduleDialog by remember { mutableStateOf(false) }
     var showLicenses by remember { mutableStateOf(false) }
     var showSapDialog by remember { mutableStateOf(false) }
+    val updater = LocalAppUpdater.current
     val settings by viewModel.settings.collectAsState()
     val backupBusy by viewModel.backupBusy.collectAsState()
     val pendingRestore by viewModel.pendingRestore.collectAsState()
@@ -212,6 +215,11 @@ fun ProjectsScreen(
                         )
                     }
                 }
+            }
+
+            // --- App updates (packaged desktop builds) ---
+            if (updater.supported) {
+                item { AppUpdateCard(updater) }
             }
 
             // --- Backup & transfer ---

@@ -7,7 +7,9 @@ import com.suw1labs.worktracker.data.backup.BackupManager
 import com.suw1labs.worktracker.data.DatabaseCreationTracker
 import com.suw1labs.worktracker.data.buildAppDatabase
 import com.suw1labs.worktracker.data.repository.TimeTrackerRepository
+import com.suw1labs.worktracker.platform.AppUpdater
 import com.suw1labs.worktracker.platform.BackupFolderStore
+import com.suw1labs.worktracker.platform.NoOpAppUpdater
 import com.suw1labs.worktracker.platform.FileExporter
 import com.suw1labs.worktracker.platform.NoOpBackupFolderStore
 import com.suw1labs.worktracker.platform.NoOpWidgetBridge
@@ -37,7 +39,9 @@ class AppContainer(
     /** Recorded in backup files ("android", "ios", "desktop") – informational only. */
     platformName: String = "",
     /** User-chosen folder for the automatic JSON backup (Drive, iCloud, local); none on platforms without a picker. */
-    val backupFolderStore: BackupFolderStore = NoOpBackupFolderStore
+    val backupFolderStore: BackupFolderStore = NoOpBackupFolderStore,
+    /** Self-update from GitHub Releases (packaged desktop builds); phones update through their stores. */
+    val appUpdater: AppUpdater = NoOpAppUpdater
 ) {
     private val creationTracker = DatabaseCreationTracker()
     /** Process-wide background scope (database seeding, widget sync, actions queued by widgets). */
