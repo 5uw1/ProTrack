@@ -366,6 +366,22 @@ class AppStrings(val language: Language) {
 
     // Delete / undo / target progress. Body fields: the constructor is at the JVM limit of 255 parameters.
     var undo = ""; var activityDeleted = ""; var moreActions = ""
+    // Timesheet tab (wide windows): the whole week on one screen
+    lateinit var tabTimesheet: String
+    lateinit var timesheetCalendar: String
+    lateinit var timesheetTable: String
+    lateinit var thisWeek: String
+    lateinit var timesheetSelectHint: String
+    lateinit var timesheetCalendarKeys: String
+    lateinit var timesheetTableKeys: String
+    lateinit var invalidTime: String
+    lateinit var attendancePeriod: String
+    lateinit var addClockPeriod: String
+    lateinit var durationLabel: String
+    lateinit var weekTotal: (String) -> String
+    lateinit var newActivity: String
+    lateinit var noteLabel: String
+    lateinit var hoursLabel: String
     var deleteProjectQuestion: (String) -> String = { it }; var deleteProjectWarning = ""
     var deleteTaskQuestion: (String) -> String = { it }; var deleteTaskWarning = ""
     var deletePeriodQuestion = ""; var deleteAbsenceQuestion = ""
@@ -762,6 +778,21 @@ object Translations {
         sapUnproductiveType = "Activity type – unproductive"
         sapUnproductiveNumber = "Cost object for unproductive hours"
         undo = "Undo"; activityDeleted = "Activity deleted"; moreActions = "More actions"
+        tabTimesheet = "Timesheet"
+        timesheetCalendar = "Calendar"
+        timesheetTable = "Table"
+        thisWeek = "This week"
+        timesheetSelectHint = "Click an activity to edit it, or drag on an empty spot to log a new one."
+        timesheetCalendarKeys = "↑ ↓ ← → select · Alt+↑↓ move 15 min · Shift+↑↓ end ±15 min · Alt+← → other day · N new · Enter edit · Del delete · PgUp/PgDn week"
+        timesheetTableKeys = "Tab next field · ↑ ↓ row · Alt+↑↓ ±15 min · Enter save · Esc revert · Ctrl/⌘+N new row · PgUp/PgDn week"
+        invalidTime = "Type a time like 8:30"
+        attendancePeriod = "Clocked in"
+        addClockPeriod = "Add clock-in period"
+        durationLabel = "Duration"
+        weekTotal = { "Week: $it" }
+        newActivity = "New activity"
+        noteLabel = "Note"
+        hoursLabel = "Hours"
         deleteProjectQuestion = { "Delete project $it?" }
         deleteProjectWarning = "Its tasks are deleted. Time already booked on it is kept but loses its project and must be re-assigned."
         deleteTaskQuestion = { "Delete task \"$it\"?" }
@@ -1112,6 +1143,21 @@ object Translations {
         sapUnproductiveType = "Leistungsart – unproduktiv"
         sapUnproductiveNumber = "Kostenstelle für unproduktive Stunden"
         undo = "Rückgängig"; activityDeleted = "Tätigkeit gelöscht"; moreActions = "Weitere Aktionen"
+        tabTimesheet = "Stundenzettel"
+        timesheetCalendar = "Kalender"
+        timesheetTable = "Tabelle"
+        thisWeek = "Diese Woche"
+        timesheetSelectHint = "Tätigkeit anklicken, um sie zu bearbeiten, oder auf eine freie Stelle ziehen, um eine neue zu erfassen."
+        timesheetCalendarKeys = "↑ ↓ ← → auswählen · Alt+↑↓ 15 Min. verschieben · Umschalt+↑↓ Ende ±15 Min. · Alt+← → anderer Tag · N neu · Enter bearbeiten · Entf löschen · Bild↑/Bild↓ Woche"
+        timesheetTableKeys = "Tab nächstes Feld · ↑ ↓ Zeile · Alt+↑↓ ±15 Min. · Enter speichern · Esc verwerfen · Strg/⌘+N neue Zeile · Bild↑/Bild↓ Woche"
+        invalidTime = "Zeit eingeben, z. B. 8:30"
+        attendancePeriod = "Eingestempelt"
+        addClockPeriod = "Anwesenheit hinzufügen"
+        durationLabel = "Dauer"
+        weekTotal = { "Woche: $it" }
+        newActivity = "Neue Tätigkeit"
+        noteLabel = "Notiz"
+        hoursLabel = "Stunden"
         deleteProjectQuestion = { "Projekt $it löschen?" }
         deleteProjectWarning = "Die Aufgaben werden gelöscht. Bereits gebuchte Zeit bleibt erhalten, verliert aber das Projekt und muss neu zugeordnet werden."
         deleteTaskQuestion = { "Aufgabe «$it» löschen?" }
@@ -1462,6 +1508,21 @@ object Translations {
         sapUnproductiveType = "Type d'activité – improductif"
         sapUnproductiveNumber = "Centre de coûts des heures improductives"
         undo = "Annuler"; activityDeleted = "Activité supprimée"; moreActions = "Plus d'actions"
+        tabTimesheet = "Feuille de temps"
+        timesheetCalendar = "Calendrier"
+        timesheetTable = "Tableau"
+        thisWeek = "Cette semaine"
+        timesheetSelectHint = "Cliquez sur une activité pour la modifier, ou faites glisser sur un espace libre pour en saisir une nouvelle."
+        timesheetCalendarKeys = "↑ ↓ ← → sélectionner · Alt+↑↓ déplacer de 15 min · Maj+↑↓ fin ±15 min · Alt+← → autre jour · N nouvelle · Entrée modifier · Suppr supprimer · PgPréc/PgSuiv semaine"
+        timesheetTableKeys = "Tab champ suivant · ↑ ↓ ligne · Alt+↑↓ ±15 min · Entrée enregistrer · Échap annuler · Ctrl/⌘+N nouvelle ligne · PgPréc/PgSuiv semaine"
+        invalidTime = "Saisissez une heure, p. ex. 8:30"
+        attendancePeriod = "Pointé"
+        addClockPeriod = "Ajouter une période de présence"
+        durationLabel = "Durée"
+        weekTotal = { "Semaine : $it" }
+        newActivity = "Nouvelle activité"
+        noteLabel = "Note"
+        hoursLabel = "Heures"
         deleteProjectQuestion = { "Supprimer le projet $it ?" }
         deleteProjectWarning = "Ses tâches sont supprimées. Le temps déjà imputé est conservé mais perd son projet et devra être réattribué."
         deleteTaskQuestion = { "Supprimer la tâche « $it » ?" }
@@ -1812,6 +1873,21 @@ object Translations {
         sapUnproductiveType = "活动类型 – 非生产性"
         sapUnproductiveNumber = "非生产性工时的成本对象"
         undo = "撤销"; activityDeleted = "活动已删除"; moreActions = "更多操作"
+        tabTimesheet = "工时表"
+        timesheetCalendar = "日历"
+        timesheetTable = "表格"
+        thisWeek = "本周"
+        timesheetSelectHint = "点击活动进行编辑，或在空白处拖动以记录新活动。"
+        timesheetCalendarKeys = "↑ ↓ ← → 选择 · Alt+↑↓ 移动 15 分钟 · Shift+↑↓ 结束 ±15 分钟 · Alt+← → 换天 · N 新建 · Enter 编辑 · Del 删除 · PgUp/PgDn 换周"
+        timesheetTableKeys = "Tab 下一栏 · ↑ ↓ 换行 · Alt+↑↓ ±15 分钟 · Enter 保存 · Esc 还原 · Ctrl/⌘+N 新行 · PgUp/PgDn 换周"
+        invalidTime = "请输入时间，例如 8:30"
+        attendancePeriod = "已打卡"
+        addClockPeriod = "添加打卡时段"
+        durationLabel = "时长"
+        weekTotal = { "本周：$it" }
+        newActivity = "新活动"
+        noteLabel = "备注"
+        hoursLabel = "小时"
         deleteProjectQuestion = { "删除项目 $it？" }
         deleteProjectWarning = "其任务会一并删除。已登记在该项目上的工时会保留，但会失去项目，需要重新分配。"
         deleteTaskQuestion = { "删除任务「$it」？" }
@@ -2162,6 +2238,21 @@ object Translations {
         sapUnproductiveType = "ประเภทกิจกรรม – ไม่ใช่งานโปรเจกต์"
         sapUnproductiveNumber = "รหัสศูนย์ต้นทุนสำหรับเวลาที่ไม่ใช่งานโปรเจกต์"
         undo = "เลิกทำ"; activityDeleted = "ลบงานแล้ว"; moreActions = "ดูเพิ่มเติม"
+        tabTimesheet = "ตารางเวลา"
+        timesheetCalendar = "ปฏิทิน"
+        timesheetTable = "ตาราง"
+        thisWeek = "สัปดาห์นี้"
+        timesheetSelectHint = "คลิกงานเพื่อแก้ไข หรือลากบนช่องว่างเพื่อบันทึกงานใหม่"
+        timesheetCalendarKeys = "↑ ↓ ← → เลือก · Alt+↑↓ เลื่อน 15 นาที · Shift+↑↓ เวลาจบ ±15 นาที · Alt+← → ย้ายวัน · N ใหม่ · Enter แก้ไข · Del ลบ · PgUp/PgDn เปลี่ยนสัปดาห์"
+        timesheetTableKeys = "Tab ช่องถัดไป · ↑ ↓ เปลี่ยนแถว · Alt+↑↓ ±15 นาที · Enter บันทึก · Esc ยกเลิกที่พิมพ์ · Ctrl/⌘+N แถวใหม่ · PgUp/PgDn เปลี่ยนสัปดาห์"
+        invalidTime = "พิมพ์เวลา เช่น 8:30"
+        attendancePeriod = "เวลาเข้างาน"
+        addClockPeriod = "เพิ่มช่วงเวลาเข้างาน"
+        durationLabel = "ระยะเวลา"
+        weekTotal = { "สัปดาห์: $it" }
+        newActivity = "งานใหม่"
+        noteLabel = "หมายเหตุ"
+        hoursLabel = "ชั่วโมง"
         deleteProjectQuestion = { "ลบโปรเจกต์ $it?" }
         deleteProjectWarning = "งานในโปรเจกต์จะถูกลบด้วย เวลาที่ลงไว้แล้วยังอยู่แต่จะไม่มีโปรเจกต์ ต้องกำหนดใหม่"
         deleteTaskQuestion = { "ลบงาน «$it»?" }

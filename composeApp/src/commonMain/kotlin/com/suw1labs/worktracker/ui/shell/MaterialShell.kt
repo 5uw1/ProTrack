@@ -81,7 +81,7 @@ class MaterialShell : AppShell {
                     MaterialScaffold(state, showTitleBadges = false) { modifier ->
                         // Cards stay readable on a wide window: content is capped and centred.
                         Box(modifier = Modifier.fillMaxSize().then(modifier), contentAlignment = Alignment.TopCenter) {
-                            content(Modifier.widthIn(max = 720.dp).fillMaxHeight())
+                            content(if (state.fullWidth) Modifier.fillMaxSize() else Modifier.widthIn(max = 720.dp).fillMaxHeight())
                         }
                     }
                 }

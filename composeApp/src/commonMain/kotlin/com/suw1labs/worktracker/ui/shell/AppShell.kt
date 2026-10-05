@@ -28,6 +28,8 @@ data class ShellState(
     val onAlertClick: () -> Unit,
     val tabs: List<ShellTab>,
     val snackbarHostState: SnackbarHostState,
+    /** The screen needs the whole width of a wide window (the week timesheet) instead of a readable column. */
+    val fullWidth: Boolean = false,
 )
 
 /**

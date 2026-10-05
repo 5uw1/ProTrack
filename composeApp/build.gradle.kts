@@ -75,6 +75,8 @@ kotlin {
     // Schema migration and backup/restore tests run against a real SQLite database on the JVM.
     getByName("desktopTest").dependencies {
       implementation(libs.room.testing)
+      // The Timesheet tab is driven with mouse and keyboard the way it is used on desktop.
+      implementation(libs.compose.ui.test.junit4)
     }
   }
 }

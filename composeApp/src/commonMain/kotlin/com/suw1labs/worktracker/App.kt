@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.CalendarViewWeek
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Insights
@@ -36,6 +37,7 @@ import com.suw1labs.worktracker.ui.screens.ProjectsScreen
 import com.suw1labs.worktracker.ui.screens.ReportsScreen
 import com.suw1labs.worktracker.ui.screens.TasksScreen
 import com.suw1labs.worktracker.ui.screens.TodayScreen
+import com.suw1labs.worktracker.ui.timesheet.TimesheetScreen
 import com.suw1labs.worktracker.ui.theme.MyApplicationTheme
 import com.suw1labs.worktracker.ui.viewmodel.TrackerViewModel
 import com.suw1labs.worktracker.util.DateFormats
@@ -47,6 +49,8 @@ enum class TrackerDestination(
     val tag: String,
 ) {
     TODAY(Icons.Default.Timer, "timer", "nav_today"),
+    /** Only on wide windows (desktop, tablets): the week on one screen, edited with mouse and keyboard. */
+    TIMESHEET(Icons.Default.CalendarViewWeek, "calendar", "nav_timesheet"),
     TASKS(Icons.Default.Folder, "folder.fill", "nav_projects"),
     REPORTS(Icons.Default.Insights, "chart.line.uptrend.xyaxis", "nav_reports"),
     PROJECTS(Icons.Default.Settings, "gearshape.fill", "nav_settings");
@@ -54,15 +58,17 @@ enum class TrackerDestination(
     @Composable
     fun title(): String = when (this) {
         TODAY -> strings.tabToday
+        TIMESHEET -> strings.tabTimesheet
         PROJECTS -> strings.tabProjects
         TASKS -> strings.tabTasks
         REPORTS -> strings.tabReports
     }
 
     companion object {
-        /** "today", "tasks", "reports" or "settings" (as the tabs read on screen), for launch options. */
+        /** "today", "timesheet", "tasks", "reports" or "settings" (as the tabs read on screen), for launch options. */
         fun fromLaunchName(name: String): TrackerDestination? = when (name.trim().lowercase()) {
             "today" -> TODAY
+            "timesheet" -> TIMESHEET
             "tasks", "projects" -> TASKS
             "reports" -> REPORTS
             "settings" -> PROJECTS
@@ -106,30 +112,34 @@ fun MainAppContent(viewModel: TrackerViewModel, initialDestination: TrackerDesti
         BoxWithConstraints(
             modifier = Modifier.fillMaxSize().dismissKeyboardOnScroll().dismissKeyboardOnTap()
         ) {
+            val wide = this.maxWidth >= 720.dp
+            // The timesheet needs the room of a wide window; a narrow one falls back to Today.
+            val destination = if (!wide && currentDestination == TrackerDestination.TIMESHEET) TrackerDestination.TODAY else currentDestination
             val state = ShellState(
                 // Today shows the current weekday and date, e.g. "Tuesday, 16 Sep 2026".
-                title = if (currentDestination == TrackerDestination.TODAY) DateFormats.weekdayLongDate(now) else currentDestination.title(),
+                title = if (destination == TrackerDestination.TODAY) DateFormats.weekdayLongDate(now) else destination.title(),
                 status = openSession?.let { if (runningEntry != null) strings.badgeWorking else strings.badgeClockedIn },
                 alertCount = urgentTasks.size,
                 onAlertClick = { currentDestination = TrackerDestination.TASKS },
-                tabs = TrackerDestination.entries.map { destination ->
+                tabs = TrackerDestination.entries.filter { wide || it != TrackerDestination.TIMESHEET }.map { tab ->
                     ShellTab(
-                        label = destination.title(),
-                        icon = destination.icon,
-                        systemImage = destination.systemImage,
-                        selected = currentDestination == destination,
-                        testTag = destination.tag,
-                        badgeCount = if (destination == TrackerDestination.TASKS) urgentTasks.size else 0,
-                        onClick = { currentDestination = destination },
+                        label = tab.title(),
+                        icon = tab.icon,
+                        systemImage = tab.systemImage,
+                        selected = destination == tab,
+                        testTag = tab.tag,
+                        badgeCount = if (tab == TrackerDestination.TASKS) urgentTasks.size else 0,
+                        onClick = { currentDestination = tab },
                     )
                 },
                 snackbarHostState = snackbarHostState,
+                fullWidth = destination == TrackerDestination.TIMESHEET,
             )
 
             // Which chrome is drawn around the screens is the shell's business, not this file's.
-            LocalAppShell.current.Chrome(state = state, wide = this.maxWidth >= 720.dp) { modifier ->
+            LocalAppShell.current.Chrome(state = state, wide = wide) { modifier ->
                 DestinationContent(
-                    destination = currentDestination,
+                    destination = destination,
                     viewModel = viewModel,
                     onNavigateToTimer = { currentDestination = TrackerDestination.TODAY },
                     modifier = modifier,
@@ -149,6 +159,9 @@ fun DestinationContent(
     when (destination) {
         TrackerDestination.TODAY -> {
             TodayScreen(viewModel = viewModel, modifier = modifier)
+        }
+        TrackerDestination.TIMESHEET -> {
+            TimesheetScreen(viewModel = viewModel, modifier = modifier)
         }
         TrackerDestination.PROJECTS -> {
             ProjectsScreen(viewModel = viewModel, modifier = modifier)

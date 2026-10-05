@@ -16,6 +16,10 @@ as files.
   Entries can be edited, re-assigned or added by hand at any time.
 * **Today** – clocked-in total, project vs. unproductive vs. unallocated time, breaks, target for the
   day, overtime today and the running overtime balance.
+* **Timesheet** (desktop and tablets) – the whole week on one screen, as a calendar or as a table.
+  Drag an activity to move it, drag its edge to change start or end, drag on an empty spot to log a
+  new one; or type the times. Keyboard throughout: arrows select, Alt+↑/↓ moves by 15 minutes,
+  Tab goes through the table's fields, Ctrl/⌘+N adds a row, PgUp/PgDn change the week.
 * **Reports** – day / week / month navigation with hours per project number (rounded to 0.25 h),
   hours per category, target and overtime, daily chart.
 * **Swiss working-time rules (canton of Bern)** – configurable schedule (default 40 h/week at

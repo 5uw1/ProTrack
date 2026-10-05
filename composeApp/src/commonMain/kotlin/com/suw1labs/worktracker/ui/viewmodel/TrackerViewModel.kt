@@ -380,11 +380,13 @@ class TrackerViewModel(
         taskId: Long?,
         description: String,
         startTime: Long,
-        endTime: Long
+        endTime: Long,
+        /** Called with the new entry's id once it is saved (the timesheet selects it). */
+        onCreated: (Long) -> Unit = {}
     ) {
         if (endTime <= startTime) return
         viewModelScope.launch {
-            repository.insertTimeEntry(
+            val id = repository.insertTimeEntry(
                 TimeEntry(
                     projectId = projectId,
                     taskId = taskId,
@@ -393,7 +395,14 @@ class TrackerViewModel(
                     endTime = endTime
                 )
             )
+            onCreated(id)
         }
+    }
+
+    /** Saves several edited entries in one transaction (an activity and the neighbours it moved). */
+    fun updateEntries(entries: List<TimeEntry>) {
+        if (entries.isEmpty()) return
+        viewModelScope.launch { repository.updateTimeEntries(entries) }
     }
 
     /**

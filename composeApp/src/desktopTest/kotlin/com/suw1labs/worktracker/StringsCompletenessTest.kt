@@ -1,6 +1,7 @@
 package com.suw1labs.worktracker
 
 import com.suw1labs.worktracker.ui.i18n.AppStrings
+import com.suw1labs.worktracker.ui.i18n.Language
 import com.suw1labs.worktracker.ui.i18n.Translations
 import java.lang.reflect.InvocationTargetException
 import kotlin.test.Test
@@ -18,7 +19,7 @@ class StringsCompletenessTest {
         val getters = AppStrings::class.java.methods
             .filter { it.declaringClass == AppStrings::class.java && it.parameterCount == 0 && it.name.startsWith("get") }
         assertTrue(getters.size > 200, "expected the full set of texts, found ${getters.size}")
-        for (strings in listOf(Translations.EN, Translations.DE, Translations.FR)) {
+        for (strings in Language.entries.map { Translations.forLanguage(it) }) {
             for (getter in getters) {
                 val value = try {
                     getter.invoke(strings)
