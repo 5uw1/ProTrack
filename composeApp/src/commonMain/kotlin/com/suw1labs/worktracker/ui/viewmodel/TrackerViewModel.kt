@@ -56,6 +56,8 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class TrackerViewModel(
     private val repository: TimeTrackerRepository,
@@ -327,17 +329,27 @@ class TrackerViewModel(
         }
     }
 
+    /**
+     * Edits of times run one after another, in the order they were made: two quick saves (a key
+     * held down in the timesheet) must not reach the database the other way round, or the older
+     * value would win. The mutex is fair, so its queue keeps that order.
+     */
+    private val editLock = Mutex()
+    private fun edit(block: suspend () -> Unit) {
+        viewModelScope.launch { editLock.withLock { block() } }
+    }
+
     fun updateSession(session: AttendanceSession) {
-        viewModelScope.launch { repository.updateSession(session) }
+        edit { repository.updateSession(session) }
     }
 
     fun deleteSession(sessionId: Long) {
-        viewModelScope.launch { repository.deleteSessionById(sessionId) }
+        edit { repository.deleteSessionById(sessionId) }
     }
 
     fun addManualSession(clockIn: Long, clockOut: Long, reason: ClockOutReason?) {
         if (clockOut <= clockIn) return
-        viewModelScope.launch {
+        edit {
             repository.insertSession(AttendanceSession(clockIn = clockIn, clockOut = clockOut, clockOutReason = reason?.name))
         }
     }
@@ -348,7 +360,7 @@ class TrackerViewModel(
      * starting work from a task is a single tap.
      */
     fun startActivity(projectId: Long?, taskId: Long? = null, description: String = "") {
-        viewModelScope.launch { repository.startActivity(projectId, taskId, description, currentTimeMillis()) }
+        edit { repository.startActivity(projectId, taskId, description, currentTimeMillis()) }
     }
 
     fun startActivityFromTask(task: WorkTaskWithProject) {
@@ -357,14 +369,14 @@ class TrackerViewModel(
 
     /** Updates the note of an entry (used while an activity is running or afterwards). */
     fun updateEntryNote(entry: TimeEntryWithDetails, note: String) {
-        viewModelScope.launch { repository.updateTimeEntry(entry.toEntity().copy(description = note)) }
+        edit { repository.updateTimeEntry(entry.toEntity().copy(description = note)) }
     }
 
     /** Creates a task with just a title (e.g. "Meeting" on the Unproductive project) unless it exists. */
     fun addQuickTask(projectId: Long, title: String, onCreated: (Long) -> Unit = {}) {
         val clean = title.trim()
         if (clean.isEmpty()) return
-        viewModelScope.launch {
+        edit {
             val existing = repository.findTaskByTitle(projectId, clean)
             val id = existing?.id ?: repository.insertTask(WorkTask(projectId = projectId, title = clean, priority = "LOW", reminderEnabled = false))
             onCreated(id)
@@ -372,7 +384,7 @@ class TrackerViewModel(
     }
 
     fun stopActivity() {
-        viewModelScope.launch { repository.closeRunningEntries(currentTimeMillis()) }
+        edit { repository.closeRunningEntries(currentTimeMillis()) }
     }
 
     fun addManualEntry(
@@ -385,7 +397,7 @@ class TrackerViewModel(
         onCreated: (Long) -> Unit = {}
     ) {
         if (endTime <= startTime) return
-        viewModelScope.launch {
+        edit {
             val entry = TimeEntry(projectId = projectId, taskId = taskId, description = description, startTime = startTime, endTime = endTime)
             val id = repository.insertTimeEntry(entry)
             repository.coverWithAttendance(listOf(entry))
@@ -396,7 +408,7 @@ class TrackerViewModel(
     /** Saves several edited entries in one transaction (an activity and the neighbours it moved). */
     fun updateEntries(entries: List<TimeEntry>) {
         if (entries.isEmpty()) return
-        viewModelScope.launch {
+        edit {
             repository.updateTimeEntries(entries)
             repository.coverWithAttendance(entries)
         }
@@ -407,19 +419,19 @@ class TrackerViewModel(
      * boundary the user chose to move along, so the day stays contiguous (see EntryNeighbours).
      */
     fun updateEntry(entry: TimeEntry, movedNeighbours: List<TimeEntry> = emptyList()) {
-        viewModelScope.launch {
+        edit {
             if (movedNeighbours.isEmpty()) repository.updateTimeEntry(entry) else repository.updateTimeEntries(listOf(entry) + movedNeighbours)
             repository.coverWithAttendance(listOf(entry))
         }
     }
 
     fun deleteTimeEntry(entryId: Long) {
-        viewModelScope.launch { repository.deleteTimeEntryById(entryId) }
+        edit { repository.deleteTimeEntryById(entryId) }
     }
 
     /** Puts a just-deleted entry back (undo from the snackbar); the original id is kept. */
     fun restoreEntry(entry: TimeEntryWithDetails) {
-        viewModelScope.launch { repository.insertTimeEntry(entry.toEntity()) }
+        edit { repository.insertTimeEntry(entry.toEntity()) }
     }
 
     // --- Projects & categories ---

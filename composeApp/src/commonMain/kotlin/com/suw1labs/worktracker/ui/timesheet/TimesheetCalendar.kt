@@ -37,7 +37,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
@@ -128,16 +127,6 @@ fun WeekCalendar(
         else if (bottom > scroll.value + scroll.viewportSize - margin) scroll.animateScrollTo((bottom - scroll.viewportSize + margin).toInt().coerceAtMost(scroll.maxValue))
     }
 
-    // The app clears focus when a list scrolls (to hide a phone keyboard); scrolling the week with the
-    // mouse wheel must not cost the calendar its keyboard focus.
-    var refocusAfterScroll by remember { mutableStateOf(false) }
-    LaunchedEffect(scroll.isScrollInProgress) {
-        if (!scroll.isScrollInProgress && refocusAfterScroll) {
-            refocusAfterScroll = false
-            runCatching { focusRequester.requestFocus() }
-        }
-    }
-
     Column(modifier = modifier) {
         DayHeaders(days, now)
         BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -152,7 +141,6 @@ fun WeekCalendar(
                         .fillMaxHeight()
                         .testTag("timesheet_calendar")
                         .focusRequester(focusRequester)
-                        .onFocusChanged { if (!it.isFocused && scroll.isScrollInProgress) refocusAfterScroll = true }
                         .onKeyEvent { event ->
                             if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
                             handleCalendarKey(event.key, event.isAltPressed, event.isShiftPressed, event.isCtrlPressed || event.isMetaPressed, currentLatestDays(), currentSelection, currentNow, onSelect, actions, onEditSelected)

@@ -23,9 +23,17 @@ fun Modifier.dismissKeyboardOnTap(): Modifier {
     }
 }
 
-/** Hides the keyboard as soon as the user starts scrolling a list. */
+/** True on phones and tablets, where a focused text field brings up an on-screen keyboard. */
+expect val platformHasSoftKeyboard: Boolean
+
+/**
+ * Hides the on-screen keyboard as soon as the user starts scrolling a list. Desktop has none, and
+ * clearing focus there would only take the keyboard away from what the user is working in (the
+ * timesheet calendar loses its arrow keys at every turn of the mouse wheel).
+ */
 @Composable
 fun Modifier.dismissKeyboardOnScroll(): Modifier {
+    if (!platformHasSoftKeyboard) return this
     val focusManager = LocalFocusManager.current
     val connection = remember(focusManager) {
         object : NestedScrollConnection {
