@@ -51,6 +51,7 @@ import com.suw1labs.worktracker.data.model.WorkTaskWithProject
 import com.suw1labs.worktracker.ui.i18n.strings
 import com.suw1labs.worktracker.util.DateFormats
 import com.suw1labs.worktracker.util.TimeFormat
+import com.suw1labs.worktracker.util.formatFixed
 
 private val TimeColumn = 64.dp
 private val HoursColumn = 56.dp
@@ -270,7 +271,8 @@ private fun EntryRow(
                 testTag = "timesheet_end_${entry.id}"
             )
             Text(
-                TimeFormat.sapHours(entry.durationSeconds(now) / 3600.0),
+                // Always two decimals, so the column lines up (1.30 next to 1.47).
+                (entry.durationSeconds(now) / 3600.0).formatFixed(2),
                 fontSize = 14.sp,
                 color = colors.onSurfaceVariant,
                 modifier = Modifier.width(HoursColumn)
