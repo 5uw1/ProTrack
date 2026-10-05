@@ -89,6 +89,7 @@ import com.suw1labs.worktracker.util.TimeFormat
 import com.suw1labs.worktracker.util.projectColor
 import com.suw1labs.worktracker.ui.i18n.strings
 import com.suw1labs.worktracker.ui.shell.InlineScreenTitle
+import com.suw1labs.worktracker.ui.components.AdaptiveCards
 
 /** Settings tab: work schedule, language, backups. Projects themselves live on the Projects tab (TasksScreen). */
 @Composable
@@ -125,14 +126,11 @@ fun ProjectsScreen(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-            contentPadding = LocalScreenInsets.current,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        // Wide windows: the settings cards in two columns instead of one long scroll.
+        AdaptiveCards(testTag = "settings_list", spacing = 16.dp) {
             // Title of the screen where a shell has no bar to put it in.
-            item { InlineScreenTitle() }
-            item { Spacer(modifier = Modifier.height(4.dp)) }
+            item(fullWidth = true) { InlineScreenTitle() }
+            item(fullWidth = true) { Spacer(modifier = Modifier.height(4.dp)) }
 
             // --- Work schedule ---
             item {
@@ -390,7 +388,7 @@ fun ProjectsScreen(
                 }
             }
 
-            item { Spacer(modifier = Modifier.height(24.dp)) }
+            item(fullWidth = true) { Spacer(modifier = Modifier.height(24.dp)) }
         }
     }
 

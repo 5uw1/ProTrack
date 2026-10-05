@@ -23,6 +23,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,7 +66,10 @@ import com.suw1labs.worktracker.util.TimeFormat
 import com.suw1labs.worktracker.util.projectColor
 import kotlin.math.abs
 
-private val HourHeight = 52.dp
+/** The smallest hour row; taller windows get taller rows so about [HOURS_IN_VIEW] hours fill the view. */
+private val MinHourHeight = 52.dp
+private const val HOURS_IN_VIEW = 14
+private val LocalHourHeight = compositionLocalOf { MinHourHeight }
 private val GutterWidth = 52.dp
 /** Width of the clock-in strip at the left of each day; activities are drawn to its right. */
 private val AttendanceStrip = 8.dp
@@ -106,8 +112,9 @@ fun WeekCalendar(
 
     // Start the week scrolled to the first activity (07:00 on an empty week), not to midnight.
     val firstMinute = days.flatMap { d -> d.entries.map { ClockTime.minutesOf(it.startTime, d.range.start) } + d.sessions.map { ClockTime.minutesOf(it.clockIn, d.range.start) } }.minOrNull() ?: (7 * 60)
-    val hourPx = with(androidx.compose.ui.platform.LocalDensity.current) { HourHeight.toPx() }
-    LaunchedEffect(days.firstOrNull()?.range?.start) {
+    var hourHeight by remember { mutableStateOf(MinHourHeight) }
+    val hourPx = with(androidx.compose.ui.platform.LocalDensity.current) { hourHeight.toPx() }
+    LaunchedEffect(days.firstOrNull()?.range?.start, hourHeight) {
         scroll.scrollTo(((firstMinute - 30).coerceAtLeast(0) / 60f * hourPx).toInt())
     }
     // Keep a block chosen with the keyboard in view.
@@ -133,8 +140,11 @@ fun WeekCalendar(
 
     Column(modifier = modifier) {
         DayHeaders(days, now)
-        Box(modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(scroll)) {
-            Row(modifier = Modifier.height(HourHeight * 24).fillMaxWidth()) {
+        BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
+        hourHeight = maxOf(MinHourHeight, maxHeight / HOURS_IN_VIEW)
+        CompositionLocalProvider(LocalHourHeight provides hourHeight) {
+        Box(modifier = Modifier.fillMaxSize().verticalScroll(scroll)) {
+            Row(modifier = Modifier.height(hourHeight * 24).fillMaxWidth()) {
                 HourGutter()
                 BoxWithConstraints(
                     modifier = Modifier
@@ -296,10 +306,14 @@ fun WeekCalendar(
                 }
             }
         }
+        }
+        }
     }
 }
 
-private fun minutesToDp(minutes: Int): Dp = HourHeight * (minutes / 60f)
+@Composable
+@ReadOnlyComposable
+private fun minutesToDp(minutes: Int): Dp = LocalHourHeight.current * (minutes / 60f)
 
 @Composable
 private fun DayHeaders(days: List<TimesheetDay>, now: Long) {
@@ -334,7 +348,7 @@ private fun HourGutter() {
                 ClockTime.format(h * 60),
                 fontSize = 11.sp,
                 color = colors.onSurfaceVariant,
-                modifier = Modifier.offset(x = 8.dp, y = HourHeight * h - 8.dp)
+                modifier = Modifier.offset(x = 8.dp, y = LocalHourHeight.current * h - 8.dp)
             )
         }
     }
@@ -347,6 +361,8 @@ private fun EntryBlock(entry: TimeEntryWithDetails, startMin: Int, endMin: Int, 
     val fill = if (entry.isProductive) base.copy(alpha = 0.85f) else base.copy(alpha = 0.45f)
     val text = if (fill.luminanceIsDark()) Color.White else Color.Black
     val height = minutesToDp(endMin - startMin)
+    // Taller hour rows (a big window) leave room for bigger text.
+    val roomy = LocalHourHeight.current >= 72.dp
     Box(
         modifier = modifier
             .clip(BlockShape)
@@ -360,13 +376,13 @@ private fun EntryBlock(entry: TimeEntryWithDetails, startMin: Int, endMin: Int, 
             Column {
                 Text(
                     entry.projectCode ?: "—",
-                    fontSize = 11.sp, fontWeight = FontWeight.Bold, color = text, maxLines = 1, overflow = TextOverflow.Ellipsis
+                    fontSize = if (roomy) 13.sp else 11.sp, fontWeight = FontWeight.Bold, color = text, maxLines = 1, overflow = TextOverflow.Ellipsis
                 )
                 if (height >= 30.dp) {
                     Text(
                         "${ClockTime.format(startMin)}–${if (entry.isRunning && !dragging) "…" else ClockTime.format(endMin)}" +
                             (entry.taskTitle?.let { " · $it" } ?: ""),
-                        fontSize = 10.sp, color = text.copy(alpha = 0.85f), maxLines = if (height >= 44.dp) 2 else 1, overflow = TextOverflow.Ellipsis
+                        fontSize = if (roomy) 12.sp else 10.sp, color = text.copy(alpha = 0.85f), maxLines = if (height >= 44.dp) 2 else 1, overflow = TextOverflow.Ellipsis
                     )
                 }
             }

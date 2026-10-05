@@ -104,6 +104,7 @@ import com.suw1labs.worktracker.ui.components.TaskDropdown
 import com.suw1labs.worktracker.ui.components.DeadlineUrgencyBadge
 import com.suw1labs.worktracker.ui.components.EmptyStateCard
 import com.suw1labs.worktracker.ui.components.LocalSnackbarHostState
+import com.suw1labs.worktracker.ui.components.AdaptivePanes
 import com.suw1labs.worktracker.ui.components.ProjectDropdown
 import com.suw1labs.worktracker.ui.components.LocalScreenInsets
 import com.suw1labs.worktracker.ui.components.TrackModal
@@ -173,11 +174,9 @@ fun TodayScreen(
     val nowMinute = now / 60_000L
     val timeline = remember(todayEntries, todaySessions, nowMinute) { buildTimeline(todayEntries, todaySessions, now) }
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize().padding(horizontal = 12.dp).testTag("today_list"),
-        contentPadding = LocalScreenInsets.current,
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
+    // Wide windows: clocking and the day's numbers on the left, the timeline of activities on the
+    // right, both in view at once. Phones: one list, in that order.
+    AdaptivePanes(modifier = modifier, testTag = "today_list", primary = {
         // Title of the screen where a shell has no bar to put it in.
         item { InlineScreenTitle() }
         // --- URGENT DEADLINES BANNER ---
@@ -220,7 +219,7 @@ fun TodayScreen(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             Button(
                                 onClick = { viewModel.startActivityFromTask(topUrgent) },
-                                colors = ButtonDefaults.buttonColors(containerColor = RoseUrgent),
+                                colors = ButtonDefaults.buttonColors(containerColor = RoseUrgent, contentColor = Color.White),
                                 modifier = Modifier.weight(1f).height(38.dp)
                             ) {
                                 Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -347,6 +346,8 @@ fun TodayScreen(
             )
         }
 
+        item { Spacer(modifier = Modifier.height(8.dp)) }
+    }, secondary = {
         // --- ACTIVITIES LIST ---
         item {
             Row(
@@ -429,7 +430,7 @@ fun TodayScreen(
         }
 
         item { Spacer(modifier = Modifier.height(24.dp)) }
-    }
+    })
 
     if (showManualEntry) {
         // Default: from the end of the last activity today (or the clock-in) until now.
@@ -809,7 +810,7 @@ private fun AttendanceCard(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = { onClockOut(null) },
-                        colors = ButtonDefaults.buttonColors(containerColor = RoseUrgent),
+                        colors = ButtonDefaults.buttonColors(containerColor = RoseUrgent, contentColor = Color.White),
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.weight(1f).height(48.dp).testTag("clock_out_button")
                     ) {

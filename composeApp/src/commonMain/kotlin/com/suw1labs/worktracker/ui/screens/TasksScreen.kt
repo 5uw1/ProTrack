@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -96,6 +97,8 @@ import com.suw1labs.worktracker.util.TimeFormat
 import com.suw1labs.worktracker.util.projectColor
 import com.suw1labs.worktracker.ui.i18n.strings
 import com.suw1labs.worktracker.ui.shell.InlineScreenTitle
+import com.suw1labs.worktracker.ui.components.AdaptiveCards
+import com.suw1labs.worktracker.ui.components.WideLayout
 
 @Composable
 fun TasksScreen(
@@ -149,15 +152,12 @@ fun TasksScreen(
     }
     val focusedCount = remember(allProjects) { allProjects.count { it.isFocused } }
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize().padding(horizontal = 12.dp),
-        contentPadding = LocalScreenInsets.current,
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
+    // Wide windows: project cards side by side in columns; headings, search and filters span them.
+    AdaptiveCards(modifier = modifier, testTag = "projects_list", minColumnWidth = 460.dp) {
         // Title of the screen where a shell has no bar to put it in.
-        item { InlineScreenTitle() }
+        item(fullWidth = true) { InlineScreenTitle() }
         // Import (paste a project list) and new project; tasks are added on their project card.
-        item {
+        item(fullWidth = true) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = { showImportDialog = true }, modifier = Modifier.testTag("import_projects_open_button")) {
                     Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -177,7 +177,7 @@ fun TasksScreen(
         }
 
         // Search across projects and their tasks.
-        item {
+        item(fullWidth = true) {
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
@@ -192,12 +192,13 @@ fun TasksScreen(
                 },
                 singleLine = true,
                 shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth().testTag("project_search_field")
+                // A search line across a whole wide window is hard to read; it stays phone-wide.
+                modifier = Modifier.widthIn(max = WideLayout.READABLE).fillMaxWidth().testTag("project_search_field")
             )
         }
 
         // Filter status chips
-        item {
+        item(fullWidth = true) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
@@ -222,7 +223,7 @@ fun TasksScreen(
         }
 
         if (orderedProjects.isEmpty()) {
-            item {
+            item(fullWidth = true) {
                 EmptyStateCard(
                     icon = if (focusOnly) Icons.Default.Star else Icons.Default.Task,
                     title = if (focusOnly) t.focus else t.noProjectsTitle,
@@ -262,7 +263,7 @@ fun TasksScreen(
             )
         }
 
-        item { Spacer(modifier = Modifier.height(24.dp)) }
+        item(fullWidth = true) { Spacer(modifier = Modifier.height(24.dp)) }
     }
 
     if (showAddProjectDialog) {

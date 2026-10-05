@@ -75,6 +75,7 @@ import com.suw1labs.worktracker.data.report.WarningKind
 import com.suw1labs.worktracker.ui.components.ConfirmDeleteDialog
 import com.suw1labs.worktracker.ui.components.LocalSnackbarHostState
 import com.suw1labs.worktracker.ui.components.SessionRow
+import com.suw1labs.worktracker.ui.components.AdaptivePanes
 import com.suw1labs.worktracker.ui.components.LocalScreenInsets
 import com.suw1labs.worktracker.ui.i18n.emoji
 import com.suw1labs.worktracker.ui.theme.AmberWarning
@@ -133,11 +134,9 @@ fun ReportsScreen(
         }
     }
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize().padding(horizontal = 12.dp),
-        contentPadding = LocalScreenInsets.current,
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
+    // Wide windows: the period, its controls and totals on the left, the breakdown (projects,
+    // warnings, absences, the day's periods and activities) on the right. Phones: one list.
+    AdaptivePanes(modifier = modifier, testTag = "reports_list", primary = {
         // Title of the screen where a shell has no bar to put it in.
         item { InlineScreenTitle() }
         // Month scope: full calendar. Day / week scope: strip with the working days of the week.
@@ -239,6 +238,8 @@ fun ReportsScreen(
             }
         }
 
+        item { Spacer(modifier = Modifier.height(8.dp)) }
+    }, secondary = {
         // Hours per SAP project
         item {
             Card(
@@ -427,7 +428,7 @@ fun ReportsScreen(
         }
 
         item { Spacer(modifier = Modifier.height(20.dp)) }
-    }
+    })
 
     deletingSession?.let { session ->
         ConfirmDeleteDialog(

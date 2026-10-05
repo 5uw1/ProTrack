@@ -1,6 +1,7 @@
 package com.suw1labs.worktracker.ui.shell
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -8,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Timer
@@ -34,7 +34,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.suw1labs.worktracker.ui.components.WideLayout
 import androidx.compose.ui.unit.sp
 import com.suw1labs.worktracker.ui.theme.RoseUrgent
 
@@ -77,11 +79,14 @@ class MaterialShell : AppShell {
                     }
                 }
 
-                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                    MaterialScaffold(state, showTitleBadges = false) { modifier ->
-                        // Cards stay readable on a wide window: content is capped and centred.
+                BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    // Content is capped and centred (screens go two-column once there is room for
+                    // it); the title lines up with the content's left edge, not the window's.
+                    val contentWidth = if (state.fullWidth) maxWidth else WideLayout.contentWidth(maxWidth)
+                    val titleInset = ((maxWidth - contentWidth) / 2).coerceAtLeast(0.dp)
+                    MaterialScaffold(state, showTitleBadges = false, titleInset = titleInset) { modifier ->
                         Box(modifier = Modifier.fillMaxSize().then(modifier), contentAlignment = Alignment.TopCenter) {
-                            content(if (state.fullWidth) Modifier.fillMaxSize() else Modifier.widthIn(max = 720.dp).fillMaxHeight())
+                            content(Modifier.width(contentWidth).fillMaxHeight())
                         }
                     }
                 }
@@ -114,6 +119,7 @@ class MaterialShell : AppShell {
 internal fun MaterialScaffold(
     state: ShellState,
     showTitleBadges: Boolean,
+    titleInset: Dp = 0.dp,
     bottomBar: @Composable () -> Unit = {},
     content: @Composable (Modifier) -> Unit,
 ) {
@@ -125,7 +131,7 @@ internal fun MaterialScaffold(
             topBar = {
                 TopAppBar(
                     title = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = titleInset)) {
                             Text(
                                 text = state.title,
                                 fontWeight = FontWeight.ExtraBold,
