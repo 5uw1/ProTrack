@@ -146,6 +146,7 @@ fun TodayScreen(
     }
     var showManualEntry by remember { mutableStateOf(false) }
     var editingEntry by remember { mutableStateOf<TimeEntryWithDetails?>(null) }
+    var editingSession by remember { mutableStateOf<AttendanceSession?>(null) }
     var assigningGap by remember { mutableStateOf<UnassignedGap?>(null) }
     var showAbsenceDialog by remember { mutableStateOf(false) }
     var showAddProjectDialog by remember { mutableStateOf(false) }
@@ -173,7 +174,7 @@ fun TodayScreen(
     val timeline = remember(todayEntries, todaySessions, nowMinute) { buildTimeline(todayEntries, todaySessions, now) }
 
     LazyColumn(
-        modifier = modifier.fillMaxSize().padding(horizontal = 12.dp),
+        modifier = modifier.fillMaxSize().padding(horizontal = 12.dp).testTag("today_list"),
         contentPadding = LocalScreenInsets.current,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -420,7 +421,7 @@ fun TodayScreen(
                                 // (newest first, so the pause is below it) and nothing above a clock-out.
                                 lineAbove = index > 0 && item.isClockIn,
                                 lineBelow = index < timeline.lastIndex && !item.isClockIn
-                            ) { AttendanceEventRow(item, now) }
+                            ) { AttendanceEventRow(item, now, onClick = { editingSession = item.session }) }
                         }
                     }
                 }
@@ -468,6 +469,19 @@ fun TodayScreen(
             onQuickTask = { projectId, title, onCreated -> viewModel.addQuickTask(projectId, title, onCreated) },
             onQuickProject = { code, name, client, color, budget, productive, onCreated -> viewModel.addProject(code, name, client, color, budget, productive, onCreated) },
             timeOnly = true
+        )
+    }
+
+    editingSession?.let { session ->
+        // Edited from Today, so the period is today's: only the times are picked, not the date.
+        SessionFormDialog(
+            session = session,
+            timeOnly = true,
+            onDismiss = { editingSession = null },
+            onSave = { clockIn, clockOut, reason ->
+                viewModel.updateSession(session.copy(clockIn = clockIn, clockOut = clockOut, clockOutReason = reason?.name ?: session.clockOutReason))
+                editingSession = null
+            }
         )
     }
 
@@ -651,9 +665,9 @@ fun GapRow(gap: UnassignedGap, now: Long, onAssign: () -> Unit) {
     }
 }
 
-/** Plain, read-only "Clocked in 08:02" / "Clocked out · Lunch 12:00" line on the rail (periods are edited in Reports). */
+/** "Clocked in 08:02" / "Clocked out · Lunch 12:00" on the rail; tapping it corrects the period's times. */
 @Composable
-private fun AttendanceEventRow(item: TimelineItem.Attendance, now: Long) {
+private fun AttendanceEventRow(item: TimelineItem.Attendance, now: Long, onClick: () -> Unit) {
     val t = strings
     val reason = if (item.isClockIn) null else ClockOutReason.fromName(item.session.clockOutReason)
     val pause = item.pauseSeconds(now)
@@ -663,7 +677,12 @@ private fun AttendanceEventRow(item: TimelineItem.Attendance, now: Long) {
         else -> RoseUrgent
     }
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 6.dp, end = 14.dp, top = 8.dp, bottom = 8.dp).testTag(item.key),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(start = 6.dp, end = 14.dp, top = 8.dp, bottom = 8.dp)
+            .testTag(item.key),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(

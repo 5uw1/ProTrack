@@ -333,7 +333,9 @@ fun SessionFormDialog(
     session: AttendanceSession?,
     onDismiss: () -> Unit,
     onSave: (clockIn: Long, clockOut: Long?, reason: ClockOutReason?) -> Unit,
-    initialDayStart: Long? = null
+    initialDayStart: Long? = null,
+    /** Pick only the time of day (the period belongs to a known day, e.g. on Today). */
+    timeOnly: Boolean = false
 ) {
     val t = strings
     val isOpen = session?.isOpen == true
@@ -354,12 +356,12 @@ fun SessionFormDialog(
         saveTestTag = "save_session_button",
         modifier = Modifier.testTag("session_form_dialog")
     ) {
-        DateTimeField(label = t.clockInLabel, millis = clockIn, placeholder = t.pickTime, onPick = { clockIn = it })
+        DateTimeField(label = t.clockInLabel, millis = clockIn, placeholder = t.pickTime, onPick = { clockIn = it }, timeOnly = timeOnly, modifier = Modifier.testTag("session_clock_in_field"))
         Spacer(modifier = Modifier.height(10.dp))
         if (isOpen) {
             Text(t.stillClockedIn, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
-            DateTimeField(label = t.clockOutLabel, millis = clockOut, placeholder = t.pickTime, onPick = { clockOut = it })
+            DateTimeField(label = t.clockOutLabel, millis = clockOut, placeholder = t.pickTime, onPick = { clockOut = it }, timeOnly = timeOnly, modifier = Modifier.testTag("session_clock_out_field"))
             Spacer(modifier = Modifier.height(10.dp))
             LabeledDropdown(
                 label = t.clockOutReason,
