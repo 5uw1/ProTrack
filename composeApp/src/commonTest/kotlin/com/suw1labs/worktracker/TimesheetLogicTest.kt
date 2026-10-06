@@ -58,6 +58,26 @@ class TimesheetLogicTest {
     }
 
     @Test
+    fun magnet_pullsAnEdgeOntoTheNeighbour_whenClose() {
+        val edges = listOf(10 * 60 + 47, 12 * 60 + 5)   // the next activity starts 10:47, clock-out 12:05
+        assertEquals(647, ClockTime.magnet(644, edges, threshold = 8, step = 5))   // 10:44 -> 10:47, not 10:45
+        assertEquals(725, ClockTime.magnet(731, edges, threshold = 8, step = 5))   // 12:11 -> 12:05
+        assertEquals(615, ClockTime.magnet(613, edges, threshold = 8, step = 5))   // nothing near: grid
+    }
+
+    @Test
+    fun magnetMove_alignsWhicheverEdgeIsCloser() {
+        val edges = listOf(600, 720)   // 10:00 and 12:00
+        // A 60-minute block dropped at 10:57: its end (11:57) is 3 min from 12:00, its start 57 from anything.
+        assertEquals(660, ClockTime.magnetMove(657, 60, edges, threshold = 8, step = 5))
+        // Dropped at 10:03: its start meets 10:00.
+        assertEquals(600, ClockTime.magnetMove(603, 60, edges, threshold = 8, step = 5))
+        // Far from both: on the grid, inside the day.
+        assertEquals(840, ClockTime.magnetMove(842, 60, edges, threshold = 8, step = 5))
+        assertEquals(1380, ClockTime.magnetMove(1430, 60, emptyList(), threshold = 8, step = 5))
+    }
+
+    @Test
     fun lanes_putOverlappingActivitiesSideBySide() {
         val lanes = TimesheetLayout.lanes(
             mapOf(

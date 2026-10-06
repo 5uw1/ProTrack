@@ -108,7 +108,8 @@ class TimesheetScreenTest {
         // so the drag lands at whatever time is in view; what counts is the day and the length.
         val calendar = onNodeWithTag("timesheet_calendar")
         val bounds = calendar.fetchSemanticsNode().boundsInRoot
-        val x = bounds.width / 7f * 1.5f
+        // Mon–Fri are the working days by default and the weekend is empty, so five columns.
+        val x = bounds.width / 5f * 1.5f
         val hourPx = with(density) { 52.dp.toPx() }
         calendar.performMouseInput {
             moveTo(Offset(x, hourPx * 2)); press()
@@ -121,6 +122,35 @@ class TimesheetScreenTest {
         assertTrue(tuesday.contains(created.startTime), "logged on Tuesday")
         assertEquals(3600_000L, created.endTime!! - created.startTime)
         assertEquals(0L, (created.startTime - tuesday.start) % (5 * 60_000L), "on the 5-minute grid")
+    }
+
+    @Test
+    fun calendar_draggingAnEdgeNearTheNextActivity_snapsOntoIt() = runDesktopComposeUiTest(width = 1400, height = 900) {
+        val app = container()
+        // 08:00–10:00, then a gap, then 10:20–12:00.
+        val (a, b) = runBlocking {
+            val p = app.database.projectDao().insertProject(Project(code = "P-1001.1", name = "Retrofit"))
+            app.database.timeEntryDao().insertEntry(TimeEntry(projectId = p, startTime = at(8 * 60), endTime = at(10 * 60))) to
+                app.database.timeEntryDao().insertEntry(TimeEntry(projectId = p, startTime = at(10 * 60 + 20), endTime = at(12 * 60)))
+        }
+        setContent { App(app, AppLaunchOptions(initialTab = TrackerDestination.TIMESHEET)) }
+        waitUntil(timeoutMillis = 5_000) { runCatching { onNodeWithTag("timesheet_entry_$b").assertExistsSafely() }.getOrDefault(false) }
+        waitForIdle()
+
+        // The calendar opens at 07:30 (half an hour before the first activity), 52 dp per hour.
+        val calendar = onNodeWithTag("timesheet_calendar")
+        val width = calendar.fetchSemanticsNode().boundsInRoot.width
+        val minute = with(density) { 52.dp.toPx() } / 60f
+        fun y(m: Int) = (m - 450) * minute
+        val x = width / 5f * 0.5f
+        calendar.performMouseInput {
+            moveTo(Offset(x, y(600) - 2f)); press()          // the bottom edge of 08:00–10:00
+            moveTo(Offset(x, y(610))); moveTo(Offset(x, y(617)))  // let go at about 10:17
+            release()
+        }
+        // 10:17 is 3 minutes from where the next activity starts: the edge lands on 10:20, not on 10:15.
+        waitUntil(timeoutMillis = 5_000) { app.entry(a).endTime == at(10 * 60 + 20) }
+        assertEquals(at(10 * 60 + 20), app.entry(b).startTime)
     }
 
     @Test

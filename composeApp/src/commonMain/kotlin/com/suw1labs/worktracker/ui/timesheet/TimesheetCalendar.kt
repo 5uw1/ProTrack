@@ -190,27 +190,34 @@ fun WeekCalendar(
                                 val origEnd = entryHit?.let { ClockTime.minutesOf(it.entry.endTime ?: currentNow, dayStart) } ?: 0
                                 val downMinute = minuteAt(down.position.y)
                                 val step = TimesheetEdits.DRAG_STEP_MINUTES
+                                // Edges pull a dragged edge onto them when it comes within about 8 dp.
+                                val magnet = (8.dp.toPx() / pxPerMin).toInt().coerceAtLeast(3)
+                                fun edgesOn(d: Int) = dayList[d].snapEdges(exceptEntry = entryHit?.entry?.id, now = currentNow)
                                 var dragging = false
+                                // A finger needs the touch slop to tell a tap from a drag; a mouse is precise, and
+                                // with ~1 px per minute the touch slop (~18 px) swallowed every short adjustment.
+                                val dragSlop = if (down.type == PointerType.Touch) viewConfiguration.touchSlop else 3.dp.toPx()
                                 while (true) {
                                     val event = awaitPointerEvent()
                                     val change = event.changes.firstOrNull { it.id == down.id } ?: break
                                     if (!change.pressed) { change.consume(); break }
                                     if (mode == null) continue
-                                    if (!dragging && (change.position - down.position).getDistance() > viewConfiguration.touchSlop) dragging = true
+                                    if (!dragging && (change.position - down.position).getDistance() > dragSlop) dragging = true
                                     if (!dragging) continue
                                     change.consume()
                                     val minute = minuteAt(change.position.y)
                                     preview = when (mode) {
                                         DragMode.MOVE -> {
                                             val length = origEnd - origStart
-                                            val start = ClockTime.snap(origStart + (minute - downMinute), step).coerceIn(0, ClockTime.DAY_MINUTES - length)
-                                            DragPreview(entryHit!!.entry.id, dayAt(change.position.x), start, start + length)
+                                            val target = dayAt(change.position.x)
+                                            val start = ClockTime.magnetMove(origStart + (minute - downMinute), length, edgesOn(target), magnet, step)
+                                            DragPreview(entryHit!!.entry.id, target, start, start + length)
                                         }
-                                        DragMode.RESIZE_START -> DragPreview(entryHit!!.entry.id, day, ClockTime.snap(minute, step).coerceAtMost(origEnd - step), origEnd)
-                                        DragMode.RESIZE_END -> DragPreview(entryHit!!.entry.id, day, origStart, ClockTime.snap(minute, step).coerceAtLeast(origStart + step))
+                                        DragMode.RESIZE_START -> DragPreview(entryHit!!.entry.id, day, ClockTime.magnet(minute, edgesOn(day), magnet, step).coerceAtMost(origEnd - step), origEnd)
+                                        DragMode.RESIZE_END -> DragPreview(entryHit!!.entry.id, day, origStart, ClockTime.magnet(minute, edgesOn(day), magnet, step).coerceAtLeast(origStart + step))
                                         DragMode.CREATE -> {
-                                            val a = ClockTime.snap(downMinute, step)
-                                            val b = ClockTime.snap(minute, step)
+                                            val a = ClockTime.magnet(downMinute, edgesOn(day), magnet, step)
+                                            val b = ClockTime.magnet(minute, edgesOn(day), magnet, step)
                                             DragPreview(null, day, minOf(a, b), maxOf(maxOf(a, b), minOf(a, b) + step))
                                         }
                                     }
@@ -469,8 +476,11 @@ private fun handleCalendarKey(
             true
         }
         alt && horizontal -> {
-            val target = dayIndex + sign
-            if (target in days.indices) TimesheetEdits.moved(entry, ClockTime.shiftDays(entry.startTime, sign), all)?.let(actions.save)
+            // To the next column shown, at the same time of day (days off without entries are not shown).
+            days.getOrNull(dayIndex + sign)?.let { target ->
+                val minute = ClockTime.minutesOf(entry.startTime, days[dayIndex].range.start)
+                TimesheetEdits.moved(entry, ClockTime.at(target.range.start, minute), all)?.let(actions.save)
+            }
             true
         }
         vertical -> {

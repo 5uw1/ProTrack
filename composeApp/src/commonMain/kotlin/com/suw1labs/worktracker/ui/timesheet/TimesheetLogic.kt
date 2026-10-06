@@ -79,6 +79,35 @@ object ClockTime {
 
     /** [minutes] rounded to the nearest multiple of [step]. */
     fun snap(minutes: Int, step: Int): Int = ((minutes + step / 2) / step * step).coerceIn(0, DAY_MINUTES)
+
+    /**
+     * Where a dragged edge lands: on the nearest of [edges] (where the activities around it start
+     * and end, clock-in and clock-out) when one is within [threshold] minutes, so activities meet
+     * without a gap or overlap; otherwise on the [step] grid.
+     */
+    fun magnet(minutes: Int, edges: Collection<Int>, threshold: Int, step: Int): Int =
+        nearestEdge(minutes, edges, threshold) ?: snap(minutes, step)
+
+    /** The edge closest to [minutes], if one lies within [threshold]. */
+    fun nearestEdge(minutes: Int, edges: Collection<Int>, threshold: Int): Int? =
+        edges.filter { kotlin.math.abs(it - minutes) <= threshold }.minByOrNull { kotlin.math.abs(it - minutes) }
+
+    /**
+     * Start of a block of [length] minutes moved to [start]: whichever of its two edges is closer to
+     * one of [edges] (within [threshold]) is pulled onto it; otherwise the start goes on the [step]
+     * grid. The block stays inside the day.
+     */
+    fun magnetMove(start: Int, length: Int, edges: Collection<Int>, threshold: Int, step: Int): Int {
+        val byStart = nearestEdge(start, edges, threshold)
+        val byEnd = nearestEdge(start + length, edges, threshold)?.minus(length)
+        val snapped = when {
+            byStart != null && byEnd != null -> if (kotlin.math.abs(byStart - start) <= kotlin.math.abs(byEnd - start)) byStart else byEnd
+            byStart != null -> byStart
+            byEnd != null -> byEnd
+            else -> snap(start, step)
+        }
+        return snapped.coerceIn(0, DAY_MINUTES - length)
+    }
 }
 
 /** Column of an activity drawn side by side with the ones it overlaps: [index] of [count]. */

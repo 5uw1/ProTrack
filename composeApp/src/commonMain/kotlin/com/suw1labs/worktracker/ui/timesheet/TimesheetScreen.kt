@@ -68,6 +68,8 @@ import com.suw1labs.worktracker.util.DateRanges
 import com.suw1labs.worktracker.util.ReportPeriodType
 import com.suw1labs.worktracker.util.TimeFormat
 import kotlinx.coroutines.launch
+import kotlinx.datetime.isoDayNumber
+import com.suw1labs.worktracker.util.toLocalDate
 
 /** One day of the week on screen: its activities (by start time) and clock-in periods. */
 data class TimesheetDay(val range: DateRange, val entries: List<TimeEntryWithDetails>, val sessions: List<AttendanceSession>) {
@@ -79,6 +81,18 @@ data class TimesheetDay(val range: DateRange, val entries: List<TimeEntryWithDet
     }
 
     fun lanes(now: Long): Map<Long, Lane> = TimesheetLayout.lanes(entries.associate { it.id to (it.startTime to (it.endTime ?: now)) })
+
+    /** Where a dragged edge may snap to on this day: the other activities' starts and ends, clock-in and clock-out. */
+    fun snapEdges(exceptEntry: Long?, now: Long): Set<Int> = buildSet {
+        entries.filter { it.id != exceptEntry }.forEach { e ->
+            add(ClockTime.minutesOf(e.startTime, range.start))
+            add(ClockTime.minutesOf(e.endTime ?: now, range.start))
+        }
+        sessions.forEach { s ->
+            add(ClockTime.minutesOf(s.clockIn, range.start))
+            s.clockOut?.let { add(ClockTime.minutesOf(it, range.start)) }
+        }
+    }
 }
 
 sealed interface TimesheetSelection {
@@ -132,6 +146,7 @@ fun TimesheetScreen(viewModel: TrackerViewModel, modifier: Modifier = Modifier) 
     val entriesState = viewModel.allEntries.collectAsState()
     val sessionsState = viewModel.allSessions.collectAsState()
     val activeProjects by viewModel.activeProjects.collectAsState()
+    val settingsState = viewModel.settings.collectAsState()
     val allProjectsState = viewModel.allProjects.collectAsState()
     val allProjects by allProjectsState
     val tasksState = viewModel.allTasks.collectAsState()
@@ -161,13 +176,19 @@ fun TimesheetScreen(viewModel: TrackerViewModel, modifier: Modifier = Modifier) 
         derivedStateOf {
             val range = DateRanges.weekRange(weekStart)
             val shown = entriesState.value.map { e -> pending[e.id]?.let { e.withEdit(it, allProjectsState.value, tasksState.value) } ?: e }
-            DateRanges.daysIn(range).map { day ->
+            val all = DateRanges.daysIn(range).map { day ->
                 TimesheetDay(
                     range = day,
                     entries = shown.filter { day.contains(it.startTime) }.sortedBy { it.startTime },
                     sessions = sessionsState.value.filter { day.contains(it.clockIn) }.sortedBy { it.clockIn }
                 )
             }
+                // Days off in the work schedule (weekends, a part-time day) only take room when
+                // something was logged on them.
+            all.filter { d ->
+                settingsState.value.isWorkDay(d.range.start.toLocalDate().dayOfWeek.isoDayNumber) ||
+                    d.entries.isNotEmpty() || d.sessions.isNotEmpty()
+            }.ifEmpty { all }
         }
     }
     val days = daysState.value
