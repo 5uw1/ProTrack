@@ -93,8 +93,10 @@ privacy manifest in the build.
 **5. Regional differences**
 
 There are none. The app behaves identically in every region and every country; nothing is gated by
-region, and the app does not read the device location. The interface is localized into English,
-German and French and follows the device language and the device's date, time and number formats.
+region, and the app does not read the device location. The interface is localized into five
+languages – English, German, French, Chinese (Simplified) and Thai – which the user picks in
+Settings → Language (English by default); dates, times and numbers follow the device's formats.
+The App Store listing itself is in English only.
 
 The only region-related content is a default setting: the shipped working-time defaults (40 h week,
 45 h weekly maximum, 30 min break after 5 h, 1 h after 9 h) follow Swiss rules, and every one of

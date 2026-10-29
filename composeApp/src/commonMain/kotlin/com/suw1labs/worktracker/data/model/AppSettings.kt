@@ -26,7 +26,7 @@ data class AppSettings(
     val weekdayHours: String = DEFAULT_WEEKDAY_HOURS,
     /** Legal maximum working hours per week (ArG: 45 h for office / technical staff). */
     val maxWeeklyHours: Double = 45.0,
-    /** UI language code: en, de or fr. */
+    /** UI language code: en, de, fr, zh or th (see [com.suw1labs.worktracker.ui.i18n.Language]). */
     val language: String = "en",
     /**
      * Minutes of short breaks (coffee, smoke) per day the company credits as working time.
