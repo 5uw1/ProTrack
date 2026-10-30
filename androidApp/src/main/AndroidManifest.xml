@@ -13,7 +13,8 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.MyApplication">
+        android:theme="@style/Theme.MyApplication"
+        android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -40,9 +41,12 @@
             android:name=".platform.DeadlineAlertReceiver"
             android:exported="false" />
 
+        <!-- Exported for the home screen, but only the system's widget service (which holds
+             BIND_APPWIDGET) may deliver to it. The app updates the widget through Glance, not broadcasts. -->
         <receiver
             android:name=".widget.WorkTrackerWidgetReceiver"
             android:exported="true"
+            android:permission="android.permission.BIND_APPWIDGET"
             android:label="@string/widget_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
