@@ -21,6 +21,8 @@ core = "1.6.1"
 runner = "1.6.2"
 robolectric = "4.16.1"
 roborazzi = "1.59.0"
+kover = "0.9.11"
+cyclonedx = "3.5.1"
 
 [libraries]
 # Kotlin / KotlinX
@@ -77,3 +79,6 @@ compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMu
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room = { id = "androidx.room", version.ref = "room" }
 roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }
+# Test coverage (read by SonarQube Cloud) and the dependency SBOM (scanned for known vulnerabilities in CI)
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
+cyclonedx = { id = "org.cyclonedx.bom", version.ref = "cyclonedx" }

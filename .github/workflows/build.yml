@@ -1,24 +1,35 @@
 name: Build
 
-# Push to main / manual run: build + test every platform, upload dev-versioned artifacts.
-# Tag push (v1.2.3, v1.2.3-rc1, ...): stamp the exact version, sign when secrets exist,
+# Push to main / pull request / manual run: lint, scan, test every platform, upload dev-versioned
+# artifacts. Tag push (v1.2.3, v1.2.3-rc1, ...): stamp the exact version, sign when secrets exist,
 # publish everything on one GitHub Release, and (optionally) upload the AAB to Google Play.
 on:
   push:
     tags: ["v*"]
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
+# Read-only by default; only the release job writes (it creates the GitHub Release).
 permissions:
-  contents: write
+  contents: read
+
+# A newer push to the same pull request supersedes the running checks. Pushes to main and tags
+# always run to the end.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   JAVA_VERSION: "25"
+  OSV_SCANNER_VERSION: "2.7.0"
+  OSV_SCANNER_SHA256: "160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b"   # osv-scanner_linux_amd64
 
 jobs:
   # ---------------------------------------------------------------- version
   version:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       app_version: ${{ steps.v.outputs.app_version }}
       version_code: ${{ steps.v.outputs.version_code }}
@@ -30,67 +41,173 @@ jobs:
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             VERSION="${GITHUB_REF_NAME#v}"                     # v1.2.3-rc1 -> 1.2.3-rc1
           else
-            VERSION="1.0.0-dev.${GITHUB_RUN_NUMBER}"           # every main build uniquely numbered
+            VERSION="1.0.0-dev.${GITHUB_RUN_NUMBER}"           # every non-tag build uniquely numbered
           fi
           echo "app_version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "version_code=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
           if [[ "$VERSION" == *-* ]]; then echo "prerelease=true" >> "$GITHUB_OUTPUT"; else echo "prerelease=false" >> "$GITHUB_OUTPUT"; fi
 
+  # ---------------------------------------------------------------- code quality + security
+  quality:
+    needs: version
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      APP_VERSION: ${{ needs.version.outputs.app_version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Script injection, leaked credentials, unpinned or compromised actions (exceptions in
+      # .github/zizmor.yml). The token lets it look up known-vulnerable and impostor action commits.
+      - name: Workflow security lint (zizmor)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: pipx run zizmor==1.16.0 --format=github .
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      # Also validates the checksum of gradle/wrapper/gradle-wrapper.jar.
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-disabled: ${{ startsWith(github.ref, 'refs/tags/') }}   # releases build from scratch
+      - name: Android Lint (correctness, security, performance)
+        run: ./gradlew :androidApp:lintRelease --no-daemon --stacktrace
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: lint-report
+          path: androidApp/build/reports/lint-results-release.*
+      # SBOM of what the apps ship (release/desktop/iOS runtime dependencies, no test or build
+      # tooling), exact resolved versions. Attached to the GitHub Release on tags.
+      - name: Generate SBOM (CycloneDX)
+        run: |
+          ./gradlew cyclonedxBom --no-daemon --stacktrace
+          mkdir -p out
+          cp build/reports/cyclonedx/bom.json "out/WorkTracker-$APP_VERSION-sbom.cdx.json"
+      - name: Known vulnerabilities in shipped dependencies (OSV-Scanner)
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/osv-scanner" \
+            "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64"
+          echo "$OSV_SCANNER_SHA256  $RUNNER_TEMP/osv-scanner" | sha256sum --check --strict
+          chmod +x "$RUNNER_TEMP/osv-scanner"
+          "$RUNNER_TEMP/osv-scanner" scan source -L "out/WorkTracker-$APP_VERSION-sbom.cdx.json"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: WorkTracker-sbom
+          path: out/*
+
   # ---------------------------------------------------------------- tests
+  # Common + desktop + Android host tests with coverage. The SonarQube Cloud scan runs here too, so it
+  # can read the coverage report from the same checkout.
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}   # empty on fork PRs: the scan step is then skipped
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v5
-        with: { distribution: temurin, java-version: "25" }
-      - uses: gradle/actions/setup-gradle@v4
-      - name: Common + Android host tests
-        run: ./gradlew :composeApp:desktopTest :composeApp:testAndroidHostTest :androidApp:testDebugUnitTest --no-daemon --stacktrace
-      - uses: actions/upload-artifact@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # full history and tags, for SonarQube blame, new-code detection and the version below
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-disabled: ${{ startsWith(github.ref, 'refs/tags/') }}   # releases build from scratch
+      - name: Tests with coverage (Kover)
+        run: |
+          ./gradlew :composeApp:desktopTest :composeApp:testAndroidHostTest :androidApp:testDebugUnitTest \
+            :composeApp:koverXmlReport --no-daemon --stacktrace
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: test-reports
           path: |
             composeApp/build/test-results
             androidApp/build/test-results
+            composeApp/build/reports/kover/report.xml
+      # SonarQube's "new code since previous version" restarts whenever projectVersion changes, so
+      # it is the release a build leads to: the tag's version on tags, otherwise the patch after the
+      # latest release tag (the same rule as iosApp/ci_scripts/ci_pre_xcodebuild.sh).
+      - name: Analysis version
+        if: env.SONAR_TOKEN != ''
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            V="${GITHUB_REF_NAME#v}"; V="${V%%-*}"
+          else
+            LAST="$(git tag --list 'v[0-9]*' --sort=-v:refname | head -n 1)"
+            V="$(echo "${LAST:-v0.0.0}" | sed -E 's/^v//; s/-.*$//' | awk -F. '{ printf "%d.%d.%d", $1, $2, $3 + 1 }')"
+          fi
+          echo "SONAR_PROJECT_VERSION=$V" >> "$GITHUB_ENV"
+      - name: Cache SonarQube packages
+        if: env.SONAR_TOKEN != ''
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+      # Project keys, sources and the coverage report path are in sonar-project.properties.
+      - name: SonarQube Cloud scan
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304 # v8.4.0
+        with:
+          args: >
+            -Dsonar.projectVersion=${{ env.SONAR_PROJECT_VERSION }}
 
   # ---------------------------------------------------------------- android
   android:
-    needs: [version, test]
+    needs: [version, quality, test]
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      APP_VERSION: ${{ needs.version.outputs.app_version }}
+      APP_VERSION_CODE: ${{ needs.version.outputs.version_code }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v5
-        with: { distribution: temurin, java-version: "25" }
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-disabled: ${{ startsWith(github.ref, 'refs/tags/') }}   # releases build from scratch
 
       # Upload keystore as base64 in ANDROID_KEYSTORE_BASE64 (+ ANDROID_KEYSTORE_PASSWORD,
       # ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD). Without it the release build is unsigned.
+      # Pull requests always build unsigned: the upload key only signs code that is on main or tagged.
       - name: Check for signing secrets
         env:
-          HAS: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+          HAS: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && github.event_name != 'pull_request' }}
         run: echo "HAS_ANDROID_KEYSTORE=$HAS" >> "$GITHUB_ENV"
       - name: Import keystore
         if: env.HAS_ANDROID_KEYSTORE == 'true'
-        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
 
       - name: Build release APK + AAB
         env:
           KEYSTORE_PATH: ${{ env.HAS_ANDROID_KEYSTORE == 'true' && format('{0}/upload.jks', runner.temp) || '' }}
-          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ env.HAS_ANDROID_KEYSTORE == 'true' && secrets.ANDROID_KEYSTORE_PASSWORD || '' }}
+          KEY_ALIAS: ${{ env.HAS_ANDROID_KEYSTORE == 'true' && secrets.ANDROID_KEY_ALIAS || '' }}
+          KEY_PASSWORD: ${{ env.HAS_ANDROID_KEYSTORE == 'true' && secrets.ANDROID_KEY_PASSWORD || '' }}
         run: |
           ./gradlew :androidApp:assembleRelease :androidApp:bundleRelease \
-            -PappVersion=${{ needs.version.outputs.app_version }} \
-            -PappVersionCode=${{ needs.version.outputs.version_code }} \
+            -PappVersion="$APP_VERSION" \
+            -PappVersionCode="$APP_VERSION_CODE" \
             --no-daemon --stacktrace
       - name: Rename outputs
         run: |
           mkdir -p out
-          cp androidApp/build/outputs/apk/release/*.apk out/WorkTracker-${{ needs.version.outputs.app_version }}-android.apk
-          cp androidApp/build/outputs/bundle/release/*.aab out/WorkTracker-${{ needs.version.outputs.app_version }}-android.aab
-      - uses: actions/upload-artifact@v4
+          cp androidApp/build/outputs/apk/release/*.apk "out/WorkTracker-$APP_VERSION-android.apk"
+          cp androidApp/build/outputs/bundle/release/*.aab "out/WorkTracker-$APP_VERSION-android.aab"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: WorkTracker-android
           path: out/*
@@ -100,16 +217,25 @@ jobs:
 
   # ---------------------------------------------------------------- windows
   windows:
-    needs: [version, test]
+    needs: [version, quality, test]
     runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      APP_VERSION: ${{ needs.version.outputs.app_version }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v5
-        with: { distribution: temurin, java-version: "25" }
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-disabled: ${{ startsWith(github.ref, 'refs/tags/') }}   # releases build from scratch
       - name: Build MSI + EXE
         shell: bash
-        run: ./gradlew :composeApp:packageMsi :composeApp:packageExe -PappVersion=${{ needs.version.outputs.app_version }} --no-daemon --stacktrace
+        run: ./gradlew :composeApp:packageMsi :composeApp:packageExe -PappVersion="$APP_VERSION" --no-daemon --stacktrace
       # The installers bundle a trimmed Java runtime; a module the code needs but the runtime lacks
       # only shows at launch ("Failed to launch JVM", v1.0.16). Fail the build instead.
       - name: Bundled runtime has the modules the app needs
@@ -122,22 +248,31 @@ jobs:
         shell: bash
         run: |
           mkdir -p out
-          cp composeApp/build/compose/binaries/main/msi/*.msi out/WorkTracker-${{ needs.version.outputs.app_version }}-windows.msi
-          cp composeApp/build/compose/binaries/main/exe/*.exe out/WorkTracker-${{ needs.version.outputs.app_version }}-windows.exe
-      - uses: actions/upload-artifact@v4
+          cp composeApp/build/compose/binaries/main/msi/*.msi "out/WorkTracker-$APP_VERSION-windows.msi"
+          cp composeApp/build/compose/binaries/main/exe/*.exe "out/WorkTracker-$APP_VERSION-windows.exe"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: WorkTracker-windows
           path: out/*
 
   # ---------------------------------------------------------------- macos
   macos:
-    needs: [version, test]
+    needs: [version, quality, test]
     runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      APP_VERSION: ${{ needs.version.outputs.app_version }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v5
-        with: { distribution: temurin, java-version: "25" }
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-disabled: ${{ startsWith(github.ref, 'refs/tags/') }}   # releases build from scratch
 
       # Developer ID signing + notarization, only on tags and only once the secrets exist:
       # MACOS_CERT_P12 (base64 .p12 with "Developer ID Application" cert), MACOS_CERT_PASSWORD,
@@ -145,18 +280,21 @@ jobs:
       # APPLE_ID, APPLE_APP_PASSWORD (app-specific password), APPLE_TEAM_ID.
       - name: Check for Developer ID secret
         env:
-          HAS: ${{ secrets.MACOS_CERT_P12 != '' }}
-        run: echo "HAS_DEVELOPER_ID=$HAS" >> "$GITHUB_ENV"
+          HAS: ${{ secrets.MACOS_CERT_P12 != '' && startsWith(github.ref, 'refs/tags/') }}
+        run: echo "SIGN_MAC=$HAS" >> "$GITHUB_ENV"
       - name: Import Developer ID certificate
-        if: startsWith(github.ref, 'refs/tags/') && env.HAS_DEVELOPER_ID == 'true'
+        if: env.SIGN_MAC == 'true'
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
         run: |
           KEYCHAIN_PATH="$RUNNER_TEMP/signing.keychain-db"
           KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
-          echo "${{ secrets.MACOS_CERT_P12 }}" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          echo "$MACOS_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN_PATH" -P "${{ secrets.MACOS_CERT_PASSWORD }}" -T /usr/bin/codesign
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN_PATH" -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           EXISTING=()
           while IFS= read -r k; do EXISTING+=("$k"); done < <(security list-keychains -d user | sed 's/^ *"//;s/" *$//')
@@ -164,19 +302,23 @@ jobs:
           rm -f "$RUNNER_TEMP/cert.p12"
 
       - name: Build DMG (signed + notarized when configured)
+        env:
+          MACOS_SIGNING_IDENTITY: ${{ env.SIGN_MAC == 'true' && secrets.MACOS_SIGNING_IDENTITY || '' }}
+          APPLE_ID: ${{ env.SIGN_MAC == 'true' && secrets.APPLE_ID || '' }}
+          APPLE_APP_PASSWORD: ${{ env.SIGN_MAC == 'true' && secrets.APPLE_APP_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ env.SIGN_MAC == 'true' && secrets.APPLE_TEAM_ID || '' }}
         run: |
-          EXTRA=""
-          if [[ "$GITHUB_REF" == refs/tags/* && "$HAS_DEVELOPER_ID" == "true" ]]; then
-            EXTRA="-Pcompose.desktop.mac.sign=true \
-                   -Pcompose.desktop.mac.signing.identity=${{ secrets.MACOS_SIGNING_IDENTITY }} \
-                   -Pcompose.desktop.mac.notarization.appleID=${{ secrets.APPLE_ID }} \
-                   -Pcompose.desktop.mac.notarization.password=${{ secrets.APPLE_APP_PASSWORD }} \
-                   -Pcompose.desktop.mac.notarization.teamID=${{ secrets.APPLE_TEAM_ID }}"
-            TASKS=":composeApp:packageDmg :composeApp:notarizeDmg"
+          if [[ "$SIGN_MAC" == "true" ]]; then
+            ./gradlew :composeApp:packageDmg :composeApp:notarizeDmg -PappVersion="$APP_VERSION" \
+              -Pcompose.desktop.mac.sign=true \
+              "-Pcompose.desktop.mac.signing.identity=$MACOS_SIGNING_IDENTITY" \
+              "-Pcompose.desktop.mac.notarization.appleID=$APPLE_ID" \
+              "-Pcompose.desktop.mac.notarization.password=$APPLE_APP_PASSWORD" \
+              "-Pcompose.desktop.mac.notarization.teamID=$APPLE_TEAM_ID" \
+              --no-daemon --stacktrace
           else
-            TASKS=":composeApp:packageDmg"
+            ./gradlew :composeApp:packageDmg -PappVersion="$APP_VERSION" --no-daemon --stacktrace
           fi
-          ./gradlew $TASKS -PappVersion=${{ needs.version.outputs.app_version }} $EXTRA --no-daemon --stacktrace
       # The installers bundle a trimmed Java runtime; a module the code needs but the runtime lacks
       # only shows at launch ("Failed to launch JVM", v1.0.16). Fail the build instead.
       - name: Bundled runtime has the modules the app needs
@@ -188,8 +330,8 @@ jobs:
       - name: Rename outputs
         run: |
           mkdir -p out
-          cp composeApp/build/compose/binaries/main/dmg/*.dmg out/WorkTracker-${{ needs.version.outputs.app_version }}-macos.dmg
-      - uses: actions/upload-artifact@v4
+          cp composeApp/build/compose/binaries/main/dmg/*.dmg "out/WorkTracker-$APP_VERSION-macos.dmg"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: WorkTracker-macos
           path: out/*
@@ -199,15 +341,24 @@ jobs:
 
   # ---------------------------------------------------------------- linux
   linux:
-    needs: [version, test]
+    needs: [version, quality, test]
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      APP_VERSION: ${{ needs.version.outputs.app_version }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v5
-        with: { distribution: temurin, java-version: "25" }
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-disabled: ${{ startsWith(github.ref, 'refs/tags/') }}   # releases build from scratch
       - name: Build DEB
-        run: ./gradlew :composeApp:packageDeb -PappVersion=${{ needs.version.outputs.app_version }} --no-daemon --stacktrace
+        run: ./gradlew :composeApp:packageDeb -PappVersion="$APP_VERSION" --no-daemon --stacktrace
       # The installers bundle a trimmed Java runtime; a module the code needs but the runtime lacks
       # only shows at launch ("Failed to launch JVM", v1.0.16). Fail the build instead.
       - name: Bundled runtime has the modules the app needs
@@ -219,8 +370,8 @@ jobs:
       - name: Rename outputs
         run: |
           mkdir -p out
-          cp composeApp/build/compose/binaries/main/deb/*.deb out/WorkTracker-${{ needs.version.outputs.app_version }}-linux.deb
-      - uses: actions/upload-artifact@v4
+          cp composeApp/build/compose/binaries/main/deb/*.deb "out/WorkTracker-$APP_VERSION-linux.deb"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: WorkTracker-linux
           path: out/*
@@ -230,8 +381,11 @@ jobs:
     needs: [version, android, windows, macos, linux]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: WorkTracker-*
           path: dist
@@ -241,20 +395,22 @@ jobs:
       - name: Create GitHub Release with auto-generated notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PRERELEASE: ${{ needs.version.outputs.prerelease }}
         run: |
           FLAG=""
-          if [[ "${{ needs.version.outputs.prerelease }}" == "true" ]]; then FLAG="--prerelease"; fi
-          if ! gh release view "$GITHUB_REF_NAME" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+          if [[ "$PRERELEASE" == "true" ]]; then FLAG="--prerelease"; fi
+          if ! gh release view "$GITHUB_REF_NAME" --repo "$REPO" >/dev/null 2>&1; then
             # shellcheck disable=SC2086
             gh release create "$GITHUB_REF_NAME" \
-              --repo "${{ github.repository }}" \
+              --repo "$REPO" \
               --title "$GITHUB_REF_NAME" \
               --generate-notes \
               $FLAG
           fi
           for f in dist/*; do
             for attempt in 1 2 3 4 5; do
-              if gh release upload "$GITHUB_REF_NAME" "$f" --repo "${{ github.repository }}" --clobber; then break; fi
+              if gh release upload "$GITHUB_REF_NAME" "$f" --repo "$REPO" --clobber; then break; fi
               if [[ "$attempt" == "5" ]]; then echo "::error title=Asset upload failed::$f"; exit 1; fi
               echo "upload of $f failed (attempt $attempt), retrying in $((attempt * 15))s"
               sleep $((attempt * 15))
@@ -266,6 +422,7 @@ jobs:
     needs: [version, android]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Check for Play service account
         env:
@@ -284,14 +441,14 @@ jobs:
             echo "::error title=Unsigned AAB::ANDROID_KEYSTORE_BASE64 is not set; Google Play rejects unsigned bundles. Add the keystore secrets (see README) and re-run."
             exit 1
           fi
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         if: env.HAS_PLAY == 'true'
         with:
           name: WorkTracker-android
           path: android
       - name: Upload AAB to Google Play (internal testing track)
         if: env.HAS_PLAY == 'true'
-        uses: r0adkll/upload-google-play@v1
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.suw1labs.worktracker

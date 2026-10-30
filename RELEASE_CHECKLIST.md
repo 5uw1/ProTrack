@@ -11,6 +11,8 @@ employer's codes that shipped as defaults, the language that was added without i
 - [ ] Builds for every target: `./gradlew :composeApp:compileKotlinDesktop :androidApp:assembleDebug`
       and the iOS build (`xcodebuild … -scheme iosApp`).
 - [ ] Working tree clean, everything committed on `main`.
+- [ ] The Build workflow on that commit is green (Android Lint, zizmor, OSV-Scanner, tests) and the
+      [SonarQube Cloud](https://sonarcloud.io/summary/new_code?id=5uw1_ProTrack) quality gate passes.
 
 ## 2. Data – the part that cannot be fixed afterwards
 

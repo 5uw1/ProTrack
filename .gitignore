@@ -30,3 +30,6 @@ iosApp/Pods/
 
 # IDE state (Android Studio / IntelliJ)
 /.idea/
+
+# Coverage / SonarQube scanner
+.scannerwork/

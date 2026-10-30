@@ -1,0 +1,22 @@
+# Keeps the SHA-pinned actions in workflows/build.yml and the Gradle version catalog current. Each
+# update waits a week after release, so a hijacked release is usually pulled before it arrives here.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      gradle:
+        patterns: ["*"]

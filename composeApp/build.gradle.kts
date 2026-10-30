@@ -9,6 +9,8 @@ plugins {
   alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.ksp)
   alias(libs.plugins.room)
+  // Coverage of the JVM test runs: ./gradlew :composeApp:koverXmlReportDesktop (read by SonarQube Cloud)
+  alias(libs.plugins.kover)
 }
 
 kotlin {
@@ -93,6 +95,11 @@ dependencies {
   add("kspDesktop", libs.room.compiler)
   add("kspIosArm64", libs.room.compiler)
   add("kspIosSimulatorArm64", libs.room.compiler)
+}
+
+// The SBOM lists what the apps ship, not the test and build tooling.
+tasks.named<org.cyclonedx.gradle.CyclonedxDirectTask>("cyclonedxDirectBom") {
+  includeConfigs = listOf("androidRuntimeClasspath", "desktopRuntimeClasspath", "iosArm64CompileKlibraries")
 }
 
 // Desktop installer version from CI: -PappVersion=1.2.3 (MSI needs a numeric MAJOR.MINOR.PATCH).

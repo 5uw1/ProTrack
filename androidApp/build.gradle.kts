@@ -84,6 +84,11 @@ android {
   }
 }
 
+// The SBOM lists what the app ships, not the test and build tooling.
+tasks.named<org.cyclonedx.gradle.CyclonedxDirectTask>("cyclonedxDirectBom") {
+  includeConfigs = listOf("releaseRuntimeClasspath")
+}
+
 dependencies {
   // All UI, view models and the Room data layer live in the shared multiplatform module.
   implementation(project(":composeApp"))

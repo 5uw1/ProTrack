@@ -1,5 +1,9 @@
 # WorkTracker
 
+[![Build](https://github.com/5uw1/ProTrack/actions/workflows/build.yml/badge.svg)](https://github.com/5uw1/ProTrack/actions/workflows/build.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=5uw1_ProTrack&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=5uw1_ProTrack)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=5uw1_ProTrack&metric=coverage)](https://sonarcloud.io/summary/new_code?id=5uw1_ProTrack)
+
 Personal working-time tracker for a full-time software engineer whose hours are booked into
 an ERP timesheet per project at the end of the month. Built with **Kotlin Multiplatform + Compose
 Multiplatform** and runs on **Android, iOS and desktop (Windows, macOS, Linux)** from one
@@ -144,6 +148,28 @@ Without a Windows machine, push to `main` (or run the workflow manually): the
 the macOS `.dmg`, the Linux `.deb` and the Android APK/AAB and attaches them as downloadable artifacts
 to the workflow run. The app stores its data under `%APPDATA%\WorkTracker` on Windows.
 
+## Code quality and security (CI)
+
+Every push to `main` and every pull request runs these checks before any installer is built; a
+failure stops the build:
+
+* **quality** job – Android Lint on the release build (`./gradlew :androidApp:lintRelease`, report
+  uploaded as `lint-report`), [zizmor](https://docs.zizmor.sh) over the workflows (script
+  injection, credential handling, pinned actions; exceptions in `.github/zizmor.yml`), and
+  [OSV-Scanner](https://google.github.io/osv-scanner/) over a CycloneDX SBOM of the shipped
+  dependencies (`./gradlew cyclonedxBom`). The SBOM is attached to every GitHub Release.
+* **test** job – the common, desktop and Android tests with [Kover](https://github.com/Kotlin/kotlinx-kover)
+  coverage, then a [SonarQube Cloud](https://sonarcloud.io/summary/new_code?id=5uw1_ProTrack)
+  analysis (settings in `sonar-project.properties`). The scan runs only when the `SONAR_TOKEN`
+  secret is set, so pull requests from forks skip it.
+
+Every action is pinned to a commit SHA; Dependabot (`.github/dependabot.yml`) proposes updates
+monthly, a week after each release. Tag builds don't restore the Gradle cache, and pull requests
+build Android unsigned.
+
+Coverage locally: `./gradlew :composeApp:desktopTest :composeApp:testAndroidHostTest :composeApp:koverHtmlReport`
+(report in `composeApp/build/reports/kover/html`).
+
 ## Releases (CI)
 
 Go through [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) first, then push a tag to publish a release:
@@ -169,6 +195,7 @@ checks the keystore passwords first):
 | `PLAY_SERVICE_ACCOUNT_JSON` | Upload the AAB to the Google Play internal testing track on every tag. |
 | `MACOS_CERT_P12`, `MACOS_CERT_PASSWORD`, `MACOS_SIGNING_IDENTITY` | Developer ID signing of the macOS app. |
 | `APPLE_ID`, `APPLE_APP_PASSWORD`, `APPLE_TEAM_ID` | Notarize the DMG with Apple. |
+| `SONAR_TOKEN` | SonarQube Cloud analysis in the test job (sonarcloud.io → My Account → Security). |
 
 One-time setup on the Google side: enable the Google Play Android Developer API in a Cloud
 project, create a service account with a JSON key, and invite its e-mail in Play Console under

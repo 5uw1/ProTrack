@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -71,8 +72,11 @@ class WorkTrackerWidget : GlanceAppWidget() {
         provideContent {
             // Glance keeps this composition alive between updates, so the state must be observed
             // here: every database change (from the app or from the widget's own buttons) re-renders.
-            val snapshot by WidgetSnapshots.flow(repository).collectAsState(initialSnapshot)
-            val language by repository.settings.map { it?.language }.collectAsState(initialLanguage)
+            // The flows are built once: a new Flow on every recomposition would restart collection.
+            val snapshots = remember { WidgetSnapshots.flow(repository) }
+            val languages = remember { repository.settings.map { it?.language } }
+            val snapshot by snapshots.collectAsState(initialSnapshot)
+            val language by languages.collectAsState(initialLanguage)
             val strings = Translations.forLanguage(Language.fromCode(language))
             GlanceTheme { WidgetContent(snapshot = snapshot, now = System.currentTimeMillis(), t = strings) }
         }

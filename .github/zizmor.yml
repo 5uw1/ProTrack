@@ -1,0 +1,8 @@
+# zizmor (GitHub Actions security lint), run by the quality job in workflows/build.yml.
+rules:
+  cache-poisoning:
+    ignore:
+      # setup-gradle sets cache-disabled on tag builds, so the released binaries never come from a
+      # restored cache; zizmor cannot evaluate that expression. The SonarQube cache only holds the
+      # scanner's analyzers and does not reach any artifact.
+      - build.yml
