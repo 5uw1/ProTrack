@@ -73,7 +73,14 @@ android {
       excludes += "META-INF/DEPENDENCIES"
     }
   }
-  testOptions { unitTests { isIncludeAndroidResources = true } }
+  testOptions {
+    unitTests {
+      isIncludeAndroidResources = true
+      // Robolectric 4.17 sets up Android's ApplicationSharedMemory through jdk.internal.access, which
+      // JDK 25 no longer exports by default ("Failed to interact with raw FileDescriptor internals").
+      all { it.jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED") }
+    }
+  }
   lint {
     // False positive: the check fires on registerForActivityResult even though the app uses no Fragments.
     disable += "InvalidFragmentVersionForActivityResult"
