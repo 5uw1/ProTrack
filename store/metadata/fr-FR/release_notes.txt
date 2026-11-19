@@ -1,5 +1,7 @@
-• Règles de pause réglables (p. ex. 30 min dès 5 h, 1 h dès 9 h) ; une pause non prise est déduite automatiquement du temps compté
-• Gestion des projets à un seul endroit : budgets, modifier / supprimer et import dans l'onglet Projets
-• Sauvegarde automatique dans un dossier de votre choix (Google Drive, iCloud Drive, local)
-• Attribuez le temps pointé sans activité directement depuis la chronologie
-• Modification des heures : déplacer l'activité voisine ou laisser un trou – aucune minute perdue
+• iPad : nouvel onglet Feuille de temps – toute la semaine sur un seul écran ; faites glisser les activités pour les déplacer ou les ajuster, ou saisissez les heures dans un tableau
+• Touchez un pointage d'arrivée ou de départ sur la chronologie d'Aujourd'hui pour le corriger
+• Une activité placée avant une arrivée tardive déplace aussi le pointage – aucune minute perdue
+• Les projets se distinguent par leur numéro et leur nom ensemble
+• Saisie des heures : le centre de coûts peut être enregistré seul
+• Les cinq langues sont désormais indiquées : anglais, allemand, français, chinois, thaï
+• Corrections de bugs et améliorations

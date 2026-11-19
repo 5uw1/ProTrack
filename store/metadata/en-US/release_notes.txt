@@ -1,5 +1,7 @@
-• Adjustable break rules (e.g. 30 min after 5 h, 1 h after 9 h); a break not taken is deducted from the counted time automatically
-• Project management in one place: budgets, edit / delete and import on the Projects tab
-• Automatic backup into a folder you choose (Google Drive, iCloud Drive, local)
-• Assign clocked-in time that has no activity yet, straight from the timeline
-• Editing times: move the neighbouring activity along or leave a gap – no minute is lost
+• iPad: new Timesheet tab – the whole week on one screen; drag activities to move or resize them, or type times in a table
+• Tap a clock-in or clock-out on Today's timeline to correct it
+• Moving an activity before a late clock-in now moves the clock-in too – no minute is lost
+• Projects are told apart by number and name together
+• Timesheet booking: the cost object can be saved on its own
+• All five languages now listed: English, German, French, Chinese, Thai
+• Bug fixes and improvements
