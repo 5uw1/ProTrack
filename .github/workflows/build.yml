@@ -138,7 +138,8 @@ jobs:
             composeApp/build/reports/kover/report.xml
       # SonarQube's "new code since previous version" restarts whenever projectVersion changes, so
       # it is the release a build leads to: the tag's version on tags, otherwise the patch after the
-      # latest release tag (the same rule as iosApp/ci_scripts/ci_pre_xcodebuild.sh).
+      # latest release tag, or the version of the latest tag while that is a release candidate (the
+      # same rule as iosApp/ci_scripts/ci_pre_xcodebuild.sh).
       - name: Analysis version
         if: env.SONAR_TOKEN != ''
         run: |
@@ -147,7 +148,10 @@ jobs:
           else
             # versionsort.suffix: v1.2.0-rc.3 sorts before v1.2.0, as in SemVer.
             LAST="$(git -c versionsort.suffix=- tag --list 'v[0-9]*' --sort=-v:refname | head -n 1)"
-            V="$(echo "${LAST:-v0.0.0}" | sed -E 's/^v//; s/-.*$//' | awk -F. '{ printf "%d.%d.%d", $1, $2, $3 + 1 }')"
+            LAST="${LAST:-v0.0.0}"
+            # After a release candidate the next release is still that version; after a release, the next patch.
+            case "$LAST" in *-*) BUMP=0 ;; *) BUMP=1 ;; esac
+            V="$(echo "$LAST" | sed -E 's/^v//; s/-.*$//' | awk -F. -v b="$BUMP" '{ printf "%d.%d.%d", $1, $2, $3 + b }')"
           fi
           echo "SONAR_PROJECT_VERSION=$V" >> "$GITHUB_ENV"
       - name: Cache SonarQube packages

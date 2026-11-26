@@ -6,9 +6,12 @@
 #
 # * Tag build (v1.2.3, v1.2.3-rc1): the tag, without the "v" and without a pre-release suffix,
 #   since Apple allows only up to three dot-separated integers.
-# * Branch build: the patch after the latest release tag (v1.2.3 → 1.2.4). Not the tag's own
+# * Branch build, latest tag a release: the patch after it (v1.2.3 → 1.2.4). Not the tag's own
 #   version: once 1.2.3 is approved, App Store Connect closes that version to new builds, so a
 #   build from main between releases has to go up as the next one.
+# * Branch build, latest tag a release candidate (v1.2.3-rc.4): that version, 1.2.3. It is still
+#   being tested and not approved, so its builds belong to it – going to 1.2.4 would put TestFlight
+#   one version ahead of the 1.2.3 that GitHub, Android, desktop and the release notes ship.
 # * Build number: Xcode Cloud's own counter, which only ever goes up.
 set -e
 
@@ -32,7 +35,10 @@ else
   fi
   BASE="$(echo "$TAG" | sed -E 's/^v//; s/-.*$//')"
   if echo "$BASE" | grep -Eq '^[0-9]+(\.[0-9]+){0,2}$'; then
-    VERSION="$(echo "$BASE" | awk -F. '{ printf "%d.%d.%d", $1, $2, $3 + 1 }')"
+    case "$TAG" in
+      *-*) VERSION="$(echo "$BASE" | awk -F. '{ printf "%d.%d.%d", $1, $2, $3 }')" ;;      # rc: its own version
+      *)   VERSION="$(echo "$BASE" | awk -F. '{ printf "%d.%d.%d", $1, $2, $3 + 1 }')" ;;  # release: the next patch
+    esac
   else
     VERSION=""
   fi
