@@ -628,8 +628,20 @@ class TrackerViewModel(
     }
 
     // --- SAP export ---
-    fun buildSapExport(type: SapExportType, roundToQuarter: Boolean, format: ExportFormat): String =
-        SapExport.generate(type, periodReport.value, periodLabel.value, roundToQuarter, format, settings.value)
+    fun buildSapExport(type: SapExportType, roundToQuarter: Boolean, format: ExportFormat): String {
+        val report = if (type == SapExportType.SAP_WEEK) {
+            // Whole weeks: the week crossing the month end keeps its days in the next/previous month.
+            ReportCalculator.compute(
+                sessions = allSessions.value,
+                entries = allEntries.value,
+                range = SapExport.weekPasteRange(DateRanges.rangeFor(_periodType.value, _periodAnchor.value)),
+                now = currentTimeMillis(),
+                settings = settings.value,
+                dayRecords = dayRecords.value
+            )
+        } else periodReport.value
+        return SapExport.generate(type, report, periodLabel.value, roundToQuarter, format, settings.value)
+    }
 
     fun shareSapExport(type: SapExportType, format: ExportFormat, content: String, action: ExportAction = ExportAction.SHARE) {
         val stamp = DateFormats.yearMonth(_periodAnchor.value)

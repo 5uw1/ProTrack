@@ -52,15 +52,84 @@ class SapWeekExportTest {
         val report = ReportCalculator.compute(sessions, entries, DateRanges.weekRange(monday), now = monday + 10 * 24 * hour, settings = bookingSettings)
         val text = SapExport.generate(SapExportType.SAP_WEEK, report, "week", roundToQuarter = false, format = ExportFormat.CSV, settings = bookingSettings)
 
+        // The exact clipboard text: CRLF after every row, the last one included – what an Excel copy looks like.
         assertEquals(
-            listOf(
-                "INTERNAL\t\t1000\t0.50\t0.50\t\t\t",
-                "PROJECT\tP-1001.1\t\t3.00\t5.00\t\t\t",
-                "PROJECT\tP-1002.1\t\t\t1.50\t\t\t",
-                "PROJECT\tP-1003.1\t\t3.95\t0.98\t\t\t"
-            ),
-            text.trimEnd('\n').lines()
+            "INTERNAL\t\t1000\t0.50\t0.50\t\t\t\r\n" +
+                "PROJECT\tP-1001.1\t\t3.00\t5.00\t\t\t\r\n" +
+                "PROJECT\tP-1002.1\t\t\t1.50\t\t\t\r\n" +
+                "PROJECT\tP-1003.1\t\t3.95\t0.98\t\t\t\r\n",
+            text
         )
+    }
+
+    @Test
+    fun weekPaste_lastRowEndsWithItsFridayValueAndCrlf() {
+        // The reported case: hours on the last project's Friday – the very last cell of the paste.
+        val entries = listOf(
+            entry(1, 0, 8.0, 30, "UNPRODUCTIVE", productive = false, project = "Unproductive"),
+            entry(2, 0, 9.0, 180, "P-1001.1", productive = true),
+            entry(3, 4, 9.0, 210, "P-1003.1", productive = true)   // Friday, 3 h 30
+        )
+        val report = ReportCalculator.compute(emptyList(), entries, DateRanges.weekRange(monday), now = monday + 10 * 24 * hour, settings = bookingSettings)
+        val text = SapExport.weekPaste(report, bookingSettings)
+
+        assertEquals(
+            "INTERNAL\t\t1000\t0.50\t\t\t\t\r\n" +
+                "PROJECT\tP-1001.1\t\t3.00\t\t\t\t\r\n" +
+                "PROJECT\tP-1003.1\t\t\t\t\t\t3.50\r\n",
+            text
+        )
+        assertTrue(text.endsWith("\t3.50\r\n"), "last cell must be followed by CRLF: ${text.replace("\r", "\\r").replace("\n", "\\n")}")
+        // No bare LF anywhere: Android and iOS put the text on the clipboard unchanged.
+        assertEquals(text.count { it == '\n' }, Regex("\r\n").findAll(text).count())
+        // Every row has the same number of cells (3 booking columns + 5 days).
+        assertTrue(text.removeSuffix("\r\n").split("\r\n").all { it.split('\t').size == 8 }, text)
+    }
+
+    @Test
+    fun weekPaste_monthExport_keepsFridayOfTheWeekThatRunsIntoNextMonth() {
+        // April 2026 ends on Thursday 30; Friday 1 May is the last cell of that week's row.
+        val mon27Apr = LocalDate(2026, 4, 27).startOfDayMillis()
+        val fri1May = LocalDate(2026, 5, 1).startOfDayMillis()
+        fun at(day: Long, minutes: Int, id: Long) = TimeEntryWithDetails(
+            id = id, projectId = 1L, projectCode = "P-1001.1", projectName = "P-1001.1", projectColor = "#000000",
+            projectProductive = true, taskId = null, taskTitle = null, description = "",
+            startTime = day + 9 * hour, endTime = day + 9 * hour + minutes * minute, createdAt = 0
+        )
+        val entries = listOf(at(mon27Apr, 120, 1), at(fri1May, 210, 2))
+        val april = DateRanges.monthRange(mon27Apr)
+        val now = fri1May + 30 * 24 * hour
+
+        // Whole weeks: Monday 30 March .. Monday 4 May.
+        val range = SapExport.weekPasteRange(april)
+        assertEquals(LocalDate(2026, 3, 30).startOfDayMillis(), range.start)
+        assertEquals(LocalDate(2026, 5, 4).startOfDayMillis(), range.endExclusive)
+
+        val text = SapExport.weekPaste(ReportCalculator.compute(emptyList(), entries, range, now, bookingSettings), bookingSettings)
+        val rows = text.split("\r\n").filter { it.startsWith("PROJECT\t") }
+        assertEquals(listOf("PROJECT\tP-1001.1\t\t2.00\t\t\t\t3.50"), rows, text)
+
+        // The old month-only report: the 1 May cell came out empty – the "missing last cell".
+        val monthOnly = SapExport.weekPaste(ReportCalculator.compute(emptyList(), entries, april, now, bookingSettings), bookingSettings)
+        assertEquals(listOf("PROJECT\tP-1001.1\t\t2.00\t\t\t\t"), monthOnly.split("\r\n").filter { it.startsWith("PROJECT\t") })
+    }
+
+    @Test
+    fun weekPasteRange_weekPeriodIsUnchanged() {
+        val week = DateRanges.weekRange(monday)
+        assertEquals(week, SapExport.weekPasteRange(week))
+        assertEquals(week, SapExport.weekPasteRange(DateRanges.dayRange(monday + 2 * 24 * hour)))
+    }
+
+    @Test
+    fun weekPaste_weekendWeek_lastCellIsSunday() {
+        val entries = listOf(
+            entry(1, 0, 9.0, 60, "P-1001.1", productive = true),
+            entry(2, 6, 9.0, 45, "P-1001.1", productive = true)    // Sunday, 45 min
+        )
+        val report = ReportCalculator.compute(emptyList(), entries, DateRanges.weekRange(monday), now = monday + 10 * 24 * hour, settings = bookingSettings)
+
+        assertEquals("PROJECT\tP-1001.1\t\t1.00\t\t\t\t\t\t0.75\r\n", SapExport.weekPaste(report, bookingSettings))
     }
 
     @Test
@@ -72,7 +141,8 @@ class SapWeekExportTest {
         val range = DateRanges.monthRange(monday)
         val report = ReportCalculator.compute(emptyList(), entries, range, now = monday + 30 * 24 * hour, settings = AppSettings(sapProductiveType = "SERV", sapUnproductiveType = "UNP", sapUnproductiveNumber = "1"))
         val text = SapExport.generate(SapExportType.SAP_WEEK, report, "month", false, ExportFormat.CSV, AppSettings(sapProductiveType = "SERV"))
-        val lines = text.trimEnd('\n').lines()
+        assertTrue(text.endsWith("\r\n") && !Regex("(?<!\r)\n").containsMatchIn(text), "CRLF line ends only: $text")
+        val lines = text.removeSuffix("\r\n").split("\r\n")
         assertTrue(lines.count { it.startsWith("# ") } >= 2, "one header per week in a month: $text")
         assertTrue(lines.any { it.startsWith("! NOT ASSIGNED YET") && it.contains("1.25") }, text)
         assertTrue(lines.any { it == "SERV\tP-1001.1\t\t1.00\t\t\t\t" }, text)

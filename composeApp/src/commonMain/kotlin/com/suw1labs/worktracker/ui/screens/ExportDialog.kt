@@ -152,7 +152,8 @@ fun SapExportDialog(
                 ) {
                     Box(modifier = Modifier.padding(10.dp).verticalScroll(rememberScrollState()).horizontalScroll(rememberScrollState())) {
                         Text(
-                            text = previewText.take(1500) + if (previewText.length > 1500) "\n${t.moreRows}" else "",
+                            // The SAP paste ends its lines with CRLF for the clipboard; show plain line breaks.
+                            text = previewText.take(1500).replace("\r\n", "\n") + if (previewText.length > 1500) "\n${t.moreRows}" else "",
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp,
                             lineHeight = 15.sp,

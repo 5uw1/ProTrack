@@ -3,6 +3,7 @@ package com.suw1labs.worktracker.data.export
 import com.suw1labs.worktracker.data.model.AppSettings
 import com.suw1labs.worktracker.data.report.DayRow
 import com.suw1labs.worktracker.data.report.PeriodReport
+import com.suw1labs.worktracker.util.DateRange
 import com.suw1labs.worktracker.util.DateRanges
 import com.suw1labs.worktracker.util.formatFixed
 import com.suw1labs.worktracker.util.DateFormats
@@ -59,6 +60,18 @@ object SapExport {
         return if (seconds < 0) "-$text" else text
     }
 
+    /** Line end of the SAP week paste: CRLF, as in an Excel copy, on every platform. */
+    const val SAP_LINE_END = "\r\n"
+
+    /**
+     * The range the SAP week paste is computed over: [period] widened to whole calendar weeks
+     * (Monday 00:00 .. next Monday 00:00). The SAP sheet is booked per week, so the week that crosses
+     * a month end must still carry its days in the next month – a month-only report left those cells
+     * (typically Friday, the last cell of a row) empty.
+     */
+    fun weekPasteRange(period: DateRange): DateRange =
+        DateRange(DateRanges.weekRange(period.start).start, DateRanges.weekRange(period.endExclusive - 1).endExclusive)
+
     fun generate(
         type: SapExportType,
         report: PeriodReport,
@@ -84,37 +97,42 @@ object SapExport {
      * Hours are per project and day with two decimals (3 h 57 → 3.95), empty when nothing was
      * booked. Five day columns, seven when the week has hours on a weekend. Time on no project is not
      * bookable and is listed after the block with a leading "!" so it is not pasted by accident.
+     *
+     * Every line, the last one included, ends with CRLF ([SAP_LINE_END]) – the exact shape Excel puts
+     * on the clipboard, which is what SAP's multi-cell paste is built for. Plain LF (what Android and
+     * iOS would otherwise copy) can make SAP drop the final cell of the block.
      */
     fun weekPaste(report: PeriodReport, settings: AppSettings): String {
-        val sb = StringBuilder()
+        val lines = mutableListOf<String>()
         val weeks: List<Pair<Long, List<DayRow>>> = report.days.groupBy { DateRanges.weekRange(it.range.start).start }.entries
             .sortedBy { it.key }.map { it.key to it.value }
         val multi = weeks.size > 1
         weeks.forEachIndexed { index: Int, week: Pair<Long, List<DayRow>> ->
             val (weekStart, days) = week
-            if (index > 0) sb.append('\n')
+            if (index > 0) lines += ""
             val byDay: Map<Int, DayRow> = days.associateBy { ((it.range.start - weekStart) / (24 * 3600_000L)).toInt() + 1 }
             val weekend = (6..7).any { d -> byDay[d]?.cells?.any { it.seconds > 0 } == true }
             val columns = if (weekend) 7 else 5
-            if (multi) sb.append("# ").append(DateFormats.monthDay(weekStart)).append(" – ").append(DateFormats.monthDay(weekStart + (columns - 1) * 24 * 3600_000L)).append('\n')
+            if (multi) lines += "# " + DateFormats.monthDay(weekStart) + " – " + DateFormats.monthDay(weekStart + (columns - 1) * 24 * 3600_000L)
             fun cell(seconds: Long): String = if (seconds <= 0) "" else (seconds / 3600.0).formatFixed(2)
             fun perDay(select: (DayRow) -> Long): List<String> = (1..columns).map { d -> cell(byDay[d]?.let(select) ?: 0L) }
 
             val unproductive = perDay { day -> day.cells.filter { !it.isProductive }.sumOf { it.seconds } }
             if (unproductive.any { it.isNotEmpty() }) {
-                sb.append(listOf(settings.sapUnproductiveType, "", settings.sapUnproductiveNumber).plus(unproductive).joinToString("\t")).append('\n')
+                lines += listOf(settings.sapUnproductiveType, "", settings.sapUnproductiveNumber).plus(unproductive).joinToString("\t")
             }
             val codes = days.flatMap { it.cells }.filter { it.isProductive && it.projectId != null && it.seconds > 0 }.map { it.projectCode }.distinct().sorted()
             for (code in codes) {
                 val hours = perDay { day -> day.cells.filter { it.isProductive && it.projectId != null && it.projectCode == code }.sumOf { it.seconds } }
-                sb.append(listOf(settings.sapProductiveType, code, "").plus(hours).joinToString("\t")).append('\n')
+                lines += listOf(settings.sapProductiveType, code, "").plus(hours).joinToString("\t")
             }
             val unassigned = perDay { day -> day.cells.filter { it.isProductive && it.projectId == null }.sumOf { it.seconds } }
             if (unassigned.any { it.isNotEmpty() }) {
-                sb.append("! NOT ASSIGNED YET – book manually: ").append(unassigned.joinToString("\t")).append('\n')
+                lines += "! NOT ASSIGNED YET – book manually: " + unassigned.joinToString("\t")
             }
         }
-        return sb.toString()
+        // Terminate every line, the last one too: SAP reads a cell up to its tab or line end.
+        return lines.joinToString("") { it + SAP_LINE_END }
     }
 
     /**
