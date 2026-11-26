@@ -1,6 +1,7 @@
 package com.suw1labs.worktracker.platform
 
 import androidx.compose.runtime.staticCompositionLocalOf
+import com.suw1labs.worktracker.util.SemVer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.Serializable
@@ -123,16 +124,14 @@ object GitHubReleases {
         )
     }
 
-    /** True when [candidate] is a higher version than [current] ("1.0.10" > "1.0.9"; a suffix like "-rc1" is ignored). */
+    /**
+     * True when [candidate] is a higher version than [current] by SemVer precedence ("1.0.10" >
+     * "1.0.9", "1.1.0" > "1.1.0-rc.10" > "1.1.0-rc.9"; see [SemVer]). False when either is not a
+     * version, so a malformed tag never offers itself as an update.
+     */
     fun isNewer(candidate: String, current: String): Boolean {
-        fun parts(v: String) = v.removePrefix("v").substringBefore('-').split('.').map { it.toIntOrNull() ?: 0 }
-        val a = parts(candidate)
-        val b = parts(current)
-        for (i in 0 until maxOf(a.size, b.size)) {
-            val x = a.getOrElse(i) { 0 }
-            val y = b.getOrElse(i) { 0 }
-            if (x != y) return x > y
-        }
-        return false
+        val a = SemVer.parse(candidate) ?: return false
+        val b = SemVer.parse(current) ?: return false
+        return a > b
     }
 }

@@ -74,7 +74,11 @@ and will not show a layout that only breaks on device:
 ## 7. Ship
 
 - [ ] Tag: `git tag vX.Y.Z && git push origin vX.Y.Z` – CI stamps the version into every platform,
-      builds the installers and creates the GitHub release.
+      builds the installers and creates the GitHub release. A release candidate is
+      `vX.Y.Z-rc.N` – **with the dot** (`v1.2.0-rc.1`, …, `v1.2.0-rc.10`): SemVer compares
+      `rc.10` as the number 10, but `rc10` as text, which sorts it before `rc9`. CI rejects any
+      other tag shape. (`v1.1.0-rc1` … `rc4` predate this rule; the app's `SemVer` still reads them
+      as `rc.1` … `rc.4`, so the 1.1.0 series continues at `v1.1.0-rc.5`.)
 - [ ] Android: the AAB lands on the Play internal testing track; test it there, then promote.
 - [ ] iOS: Xcode Cloud builds to TestFlight; install that build, walk section 4 again on it, then
       submit.

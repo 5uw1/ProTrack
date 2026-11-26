@@ -31,6 +31,11 @@ class GitHubReleasesTest {
         assertFalse(GitHubReleases.isNewer("1.0.15", "1.0.15"))
         assertFalse(GitHubReleases.isNewer("1.0.14", "1.0.15"))
         assertFalse(GitHubReleases.isNewer("1.0.15-rc1", "1.0.15"))
+        // Release candidates past nine, and the release after them.
+        assertTrue(GitHubReleases.isNewer("1.1.0-rc.10", "1.1.0-rc.9"))
+        assertTrue(GitHubReleases.isNewer("1.1.0", "1.1.0-rc.10"))
+        assertTrue(GitHubReleases.isNewer("1.1.0-rc.5", "1.1.0-rc4"))
+        assertFalse(GitHubReleases.isNewer("not-a-version", "1.0.15"))
     }
 
     @Test

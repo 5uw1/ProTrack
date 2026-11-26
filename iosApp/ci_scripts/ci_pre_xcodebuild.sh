@@ -24,9 +24,10 @@ else
   # local history and `git describe` finds nothing. Take the highest vX.Y.Z tag instead: from the
   # local tags after a fetch, or straight from the remote if the fetch brought none.
   git fetch --tags --force --quiet 2>/dev/null || true
-  TAG="$(git tag --list 'v[0-9]*' --sort=-v:refname | head -n 1)"
+  # versionsort.suffix: v1.2.0-rc.3 sorts before v1.2.0, as in SemVer.
+  TAG="$(git -c versionsort.suffix=- tag --list 'v[0-9]*' --sort=-v:refname | head -n 1)"
   if [ -z "$TAG" ]; then
-    TAG="$(git ls-remote --tags --refs --sort=-v:refname origin 2>/dev/null \
+    TAG="$(git -c versionsort.suffix=- ls-remote --tags --refs --sort=-v:refname origin 2>/dev/null \
       | sed 's|.*refs/tags/||' | grep -E '^v[0-9]' | head -n 1 || true)"
   fi
   BASE="$(echo "$TAG" | sed -E 's/^v//; s/-.*$//')"
