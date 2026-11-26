@@ -54,6 +54,30 @@ class WidgetAndTimelineTest {
     }
 
     @Test
+    fun widgetSnapshot_taggedClockOutTodayIsAPause() {
+        val sessions = listOf(AttendanceSession(id = 1, clockIn = at(8.0), clockOut = at(12.0), clockOutReason = ClockOutReason.LUNCH.name))
+        val snapshot = WidgetSnapshots.compute(sessions, emptyList(), AppSettings(), now = at(12.5))
+
+        assertEquals("LUNCH", snapshot.pauseReason)
+        assertEquals(at(12.0), snapshot.pauseSince)
+    }
+
+    @Test
+    fun widgetSnapshot_noPauseWhenClockedInUntaggedOrFromYesterday() {
+        val lunchThenBack = listOf(
+            AttendanceSession(id = 1, clockIn = at(8.0), clockOut = at(12.0), clockOutReason = ClockOutReason.LUNCH.name),
+            AttendanceSession(id = 2, clockIn = at(12.5), clockOut = null)
+        )
+        assertNull(WidgetSnapshots.compute(lunchThenBack, emptyList(), AppSettings(), now = at(13.0)).pauseReason)
+
+        val wentHome = listOf(AttendanceSession(id = 1, clockIn = at(8.0), clockOut = at(17.0), clockOutReason = ClockOutReason.END_OF_DAY.name))
+        assertNull(WidgetSnapshots.compute(wentHome, emptyList(), AppSettings(), now = at(18.0)).pauseReason)
+
+        val breakYesterday = listOf(AttendanceSession(id = 1, clockIn = at(-8.0), clockOut = at(-7.0), clockOutReason = ClockOutReason.BREAK.name))
+        assertNull(WidgetSnapshots.compute(breakYesterday, emptyList(), AppSettings(), now = at(9.0)).pauseReason)
+    }
+
+    @Test
     fun timeline_interleavesClockEventsNewestFirst() {
         val sessions = listOf(
             AttendanceSession(id = 1, clockIn = at(8.0), clockOut = at(12.0), clockOutReason = "LUNCH"),

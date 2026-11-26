@@ -1,5 +1,6 @@
 package com.suw1labs.worktracker.platform
 
+import com.suw1labs.worktracker.data.model.ClockOutReason
 import platform.Foundation.NSNumber
 import platform.Foundation.NSUserDefaults
 
@@ -30,6 +31,8 @@ class IosWidgetBridge(private val appGroup: String = WIDGET_APP_GROUP) : WidgetB
         defaults.setStringOrRemove(snapshot.runningTask, KEY_RUNNING_TASK)
         defaults.setDoubleOrRemove(snapshot.runningSince?.toEpochSeconds(), KEY_RUNNING_SINCE)
         defaults.setInteger(snapshot.runningTaskId ?: -1L, KEY_RUNNING_TASK_ID)
+        defaults.setStringOrRemove(snapshot.pauseReason, KEY_PAUSE_REASON)
+        defaults.setDoubleOrRemove(snapshot.pauseSince?.toEpochSeconds(), KEY_PAUSE_SINCE)
         // Kotlin lists / maps / strings / numbers bridge to NSArray / NSDictionary / NSString / NSNumber.
         defaults.setObject(
             snapshot.quickTasks.map {
@@ -69,6 +72,8 @@ class IosWidgetBridge(private val appGroup: String = WIDGET_APP_GROUP) : WidgetB
         const val KEY_RUNNING_TASK = "widget.runningTask"
         const val KEY_RUNNING_SINCE = "widget.runningSince"
         const val KEY_RUNNING_TASK_ID = "widget.runningTaskId"
+        const val KEY_PAUSE_REASON = "widget.pauseReason"
+        const val KEY_PAUSE_SINCE = "widget.pauseSince"
         const val KEY_QUICK_TASKS = "widget.quickTasks"
         const val KEY_LANGUAGE = "widget.language"
         const val KEY_UPDATED_AT = "widget.updatedAt"
@@ -79,7 +84,7 @@ class IosWidgetBridge(private val appGroup: String = WIDGET_APP_GROUP) : WidgetB
 
 /**
  * The widget extension cannot open the database, so its buttons append `{type, at, taskId,
- * projectId}` records to [IosWidgetBridge.KEY_PENDING_ACTIONS] and update the shown state
+ * projectId, reason}` records (reason: LUNCH / BREAK on a clock-out from a pause button) to [IosWidgetBridge.KEY_PENDING_ACTIONS] and update the shown state
  * optimistically. The app replays them, in order and with their original timestamps, as soon as it
  * becomes active; the regular snapshot publish then corrects the widget.
  */
@@ -105,7 +110,9 @@ object WidgetActions {
                     type = m["type"] as? String ?: return@mapNotNull null,
                     atMillis = (at * 1000.0).toLong(),
                     taskId = m["taskId"].asLong(),
-                    projectId = m["projectId"].asLong()
+                    projectId = m["projectId"].asLong(),
+                    // Only the pause reasons the widget offers; anything else is a plain clock-out.
+                    reason = ClockOutReason.fromName(m["reason"] as? String)?.takeIf { it in WidgetSnapshots.PAUSE_REASONS }
                 )
             }
             .sortedBy { it.atMillis }
@@ -113,14 +120,20 @@ object WidgetActions {
         for (action in actions) {
             when (action.type) {
                 CLOCK_IN -> repository.clockIn(action.atMillis)
-                CLOCK_OUT -> repository.clockOut(action.atMillis)
+                CLOCK_OUT -> repository.clockOut(action.atMillis, action.reason?.name)
                 SWITCH_TASK -> repository.startActivity(action.projectId, action.taskId, "", action.atMillis)
             }
         }
         return actions.size
     }
 
-    private data class PendingAction(val type: String, val atMillis: Long, val taskId: Long?, val projectId: Long?)
+    private data class PendingAction(
+        val type: String,
+        val atMillis: Long,
+        val taskId: Long?,
+        val projectId: Long?,
+        val reason: ClockOutReason? = null
+    )
 
     private fun Any?.asDouble(): Double? = when (this) {
         is Number -> toDouble()

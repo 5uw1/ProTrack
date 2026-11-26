@@ -2,6 +2,7 @@ package com.suw1labs.worktracker.platform
 
 import com.suw1labs.worktracker.data.model.AppSettings
 import com.suw1labs.worktracker.data.model.AttendanceSession
+import com.suw1labs.worktracker.data.model.ClockOutReason
 import com.suw1labs.worktracker.data.model.Project
 import com.suw1labs.worktracker.data.model.TimeEntryWithDetails
 import com.suw1labs.worktracker.data.model.WorkTaskWithProject
@@ -33,6 +34,13 @@ data class WidgetSnapshot(
     val runningSince: Long?,
     val runningProjectId: Long? = null,
     val runningTaskId: Long? = null,
+    /**
+     * [ClockOutReason.LUNCH] / [ClockOutReason.BREAK] name while clocked out for a tagged pause
+     * today (the Today screen's "LUNCH · since 12:02"), else null.
+     */
+    val pauseReason: String? = null,
+    /** When that pause began – the clock-out (epoch millis). */
+    val pauseSince: Long? = null,
     /** Tasks offered as one-tap switches on the widget (running one first, then recently used). */
     val quickTasks: List<QuickTask> = emptyList(),
     /** UI language code (en / de / fr) so the widgets speak the app's language. */
@@ -73,6 +81,9 @@ object NoOpWidgetBridge : WidgetBridge {
 }
 
 object WidgetSnapshots {
+    /** Clock-out reasons the widget shows as a pause and offers as buttons. */
+    val PAUSE_REASONS = setOf(ClockOutReason.LUNCH, ClockOutReason.BREAK)
+
     fun compute(
         sessions: List<AttendanceSession>,
         entries: List<TimeEntryWithDetails>,
@@ -85,6 +96,11 @@ object WidgetSnapshots {
         val open = sessions.firstOrNull { it.clockOut == null }
         val closedToday = ReportCalculator.attendanceSeconds(sessions.filter { it.clockOut != null }, today, now)
         val running = entries.firstOrNull { it.isRunning }
+        // While clocked out, today's last period tells whether this is a lunch / break.
+        val pause = if (open != null) null else sessions
+            .filter { s -> s.clockOut?.let { it >= today.start && it <= now } == true }
+            .maxByOrNull { it.clockOut!! }
+            ?.takeIf { ClockOutReason.fromName(it.clockOutReason) in PAUSE_REASONS }
         val runningProject = running?.let { entry ->
             entry.projectCode?.let { code -> if (entry.isProductive) "$code · ${entry.projectName}" else entry.projectName }
         }
@@ -99,6 +115,8 @@ object WidgetSnapshots {
             runningSince = running?.startTime,
             runningProjectId = running?.projectId,
             runningTaskId = running?.taskId,
+            pauseReason = pause?.clockOutReason,
+            pauseSince = pause?.clockOut,
             quickTasks = quickTasks(tasks, entries, running?.taskId, projects.filter { it.isProductive }.map { it.id }.toSet()),
             language = settings.language,
             updatedAt = now

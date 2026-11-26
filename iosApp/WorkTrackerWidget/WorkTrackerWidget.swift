@@ -26,6 +26,9 @@ struct WidgetState {
     var runningTask: String? = nil
     var runningSince: Date? = nil
     var runningTaskId: Int? = nil
+    /// "LUNCH" / "BREAK" while clocked out for a tagged pause today.
+    var pauseReason: String? = nil
+    var pauseSince: Date? = nil
     var quickTasks: [QuickTask] = []
     var language = "en"
     var updatedAt: Date? = nil
@@ -44,6 +47,8 @@ struct WidgetState {
         s.runningSince = date(d, "widget.runningSince")
         let runningId = d.integer(forKey: "widget.runningTaskId")
         s.runningTaskId = runningId >= 0 && d.object(forKey: "widget.runningTaskId") != nil ? runningId : nil
+        s.pauseReason = d.string(forKey: "widget.pauseReason")
+        s.pauseSince = date(d, "widget.pauseSince")
         s.quickTasks = (d.array(forKey: "widget.quickTasks") as? [[String: Any]] ?? []).compactMap { m in
             guard let taskId = m["taskId"] as? Int, let projectId = m["projectId"] as? Int, let title = m["title"] as? String else { return nil }
             return QuickTask(taskId: taskId, projectId: projectId, title: title,
@@ -81,7 +86,18 @@ struct WidgetState {
         var s = self
         if let updatedAt, updatedAt < dayStart { s.attendanceSecondsBefore = 0 }
         if s.clockedIn, let since = s.clockedInSince, since < dayStart { s.clockedInSince = dayStart }
+        // Only a pause of today is shown, as on the Today screen.
+        if s.clockedIn || (s.pauseSince.map { $0 < dayStart } ?? true) {
+            s.pauseReason = nil
+            s.pauseSince = nil
+        }
         return s
+    }
+
+    /// The pause going on right now, if any.
+    var pause: (reason: String, since: Date)? {
+        guard !clockedIn, let reason = pauseReason, let since = pauseSince else { return nil }
+        return (reason, since)
     }
 
     static let preview: WidgetState = {
@@ -103,19 +119,23 @@ struct WidgetState {
     }()
 }
 
-/// Small table of the widget's own texts in the three app languages.
+/// Small table of the widget's own texts in the app languages.
 enum WidgetTexts {
     private static let table: [String: [String: String]] = [
-        "clockedIn": ["en": "CLOCKED IN", "de": "EINGESTEMPELT", "fr": "POINTÉ"],
-        "clockedOut": ["en": "CLOCKED OUT", "de": "AUSGESTEMPELT", "fr": "DÉPOINTÉ"],
-        "ofToday": ["en": "of %@ today", "de": "von %@ heute", "fr": "sur %@ aujourd'hui"],
-        "clockIn": ["en": "Clock in", "de": "Einstempeln", "fr": "Pointer"],
-        "clockOut": ["en": "Clock out", "de": "Ausstempeln", "fr": "Dépointer"],
-        "switchTo": ["en": "SWITCH TO", "de": "WECHSELN ZU", "fr": "PASSER À"],
-        "tasks": ["en": "TASKS", "de": "AUFGABEN", "fr": "TÂCHES"],
-        "clockInFirst": ["en": "Clock in first, then pick a task.", "de": "Zuerst einstempeln, dann Aufgabe wählen.", "fr": "Pointe d'abord, puis choisis une tâche."],
-        "addTasks": ["en": "Add tasks in the app", "de": "Aufgaben in der App anlegen", "fr": "Ajoute des tâches dans l'app"],
-        "now": ["en": "NOW", "de": "JETZT", "fr": "EN COURS"],
+        "clockedIn": ["en": "CLOCKED IN", "de": "EINGESTEMPELT", "fr": "POINTÉ", "zh": "已打卡", "th": "เข้างาน"],
+        "clockedOut": ["en": "CLOCKED OUT", "de": "AUSGESTEMPELT", "fr": "DÉPOINTÉ", "zh": "已下班打卡", "th": "ออกงานแล้ว"],
+        "ofToday": ["en": "of %@ today", "de": "von %@ heute", "fr": "sur %@ aujourd'hui", "zh": "今日目标 %@", "th": "จาก %@ วันนี้"],
+        "clockIn": ["en": "Clock in", "de": "Einstempeln", "fr": "Pointer", "zh": "上班打卡", "th": "เข้างาน"],
+        "clockOut": ["en": "Clock out", "de": "Ausstempeln", "fr": "Dépointer", "zh": "下班打卡", "th": "ออกงาน"],
+        "switchTo": ["en": "SWITCH TO", "de": "WECHSELN ZU", "fr": "PASSER À", "zh": "切换到", "th": "สลับไป"],
+        "tasks": ["en": "TASKS", "de": "AUFGABEN", "fr": "TÂCHES", "zh": "任务", "th": "งาน"],
+        "clockInFirst": ["en": "Clock in first, then pick a task.", "de": "Zuerst einstempeln, dann Aufgabe wählen.", "fr": "Pointe d'abord, puis choisis une tâche.", "zh": "先打卡，再选择任务。", "th": "เข้างานก่อน แล้วค่อยเลือกงาน"],
+        "addTasks": ["en": "Add tasks in the app", "de": "Aufgaben in der App anlegen", "fr": "Ajoute des tâches dans l'app", "zh": "在应用中添加任务", "th": "เพิ่มงานในแอป"],
+        "now": ["en": "NOW", "de": "JETZT", "fr": "EN COURS", "zh": "进行中", "th": "ตอนนี้"],
+        // Pause reasons, as the app names them (Strings.reasonLunch / reasonBreak).
+        "LUNCH": ["en": "LUNCH", "de": "MITTAG", "fr": "MIDI", "zh": "午休", "th": "พักเที่ยง"],
+        "BREAK": ["en": "BREAK", "de": "PAUSE", "fr": "PAUSE", "zh": "休息", "th": "พัก"],
+        "resume": ["en": "Back to work", "de": "Weiterarbeiten", "fr": "Reprendre", "zh": "继续工作", "th": "กลับมาทำงาน"],
     ]
 
     static func text(_ key: String, language: String) -> String {
@@ -129,13 +149,15 @@ enum WidgetTexts {
 /// Appends an action to the App Group queue and updates the shown state optimistically. The app
 /// replays the queue with these timestamps when it next becomes active (WidgetActions.kt).
 enum WidgetActionStore {
-    static func perform(_ type: String, taskId: Int? = nil, projectId: Int? = nil, title: String? = nil, projectLabel: String? = nil) {
+    /// [reason]: "LUNCH" / "BREAK" for a clock-out from a pause button, nil for a plain one.
+    static func perform(_ type: String, taskId: Int? = nil, projectId: Int? = nil, title: String? = nil, projectLabel: String? = nil, reason: String? = nil) {
         guard let d = WidgetState.defaults else { return }
         let now = Date()
         var queue = d.array(forKey: "widget.pendingActions") as? [[String: Any]] ?? []
         var record: [String: Any] = ["type": type, "at": now.timeIntervalSince1970]
         if let taskId { record["taskId"] = taskId }
         if let projectId { record["projectId"] = projectId }
+        if let reason { record["reason"] = reason }
         queue.append(record)
         d.set(queue, forKey: "widget.pendingActions")
 
@@ -145,6 +167,9 @@ enum WidgetActionStore {
         d.set(Int(state.attendanceSecondsBefore), forKey: "widget.attendanceSecondsBefore")
         if let since = state.clockedInSince { d.set(since.timeIntervalSince1970, forKey: "widget.clockedInSince") }
         d.set(now.timeIntervalSince1970, forKey: "widget.updatedAt")
+        // Any tap ends a pause; a clock-out from a pause button starts a new one below.
+        d.removeObject(forKey: "widget.pauseReason")
+        d.removeObject(forKey: "widget.pauseSince")
         switch type {
         case "clockIn":
             if !state.clockedIn {
@@ -160,6 +185,10 @@ enum WidgetActionStore {
                 d.removeObject(forKey: key)
             }
             d.set(-1, forKey: "widget.runningTaskId")
+            if let reason {
+                d.set(reason, forKey: "widget.pauseReason")
+                d.set(now.timeIntervalSince1970, forKey: "widget.pauseSince")
+            }
         case "switchTask":
             if !state.clockedIn {
                 d.set(true, forKey: "widget.clockedIn")
@@ -193,6 +222,23 @@ struct ClockOutIntent: AppIntent {
     static var description = IntentDescription("Clocks out and stops the running activity.")
     func perform() async throws -> some IntentResult {
         WidgetActionStore.perform("clockOut")
+        return .result()
+    }
+}
+
+@available(iOS 17.0, *)
+struct PauseIntent: AppIntent {
+    static var title: LocalizedStringResource = "Take a break"
+    static var description = IntentDescription("Clocks out for lunch or a short break; clocking in again continues the activity.")
+
+    /// "LUNCH" or "BREAK" (ClockOutReason names).
+    @Parameter(title: "Reason") var reason: String
+
+    init() {}
+    init(reason: String) { self.reason = reason }
+
+    func perform() async throws -> some IntentResult {
+        WidgetActionStore.perform("clockOut", reason: reason)
         return .result()
     }
 }
@@ -291,20 +337,84 @@ private struct TotalText: View {
     }
 }
 
+private func pauseSymbol(_ reason: String) -> String {
+    reason == "LUNCH" ? "fork.knife" : "cup.and.saucer.fill"
+}
+
 private struct StatusLine: View {
     let state: WidgetState
     var body: some View {
         HStack(spacing: 5) {
-            Circle().fill(state.clockedIn ? green : Color.secondary.opacity(0.5)).frame(width: 7, height: 7)
-            if state.clockedIn, let since = state.clockedInSince {
-                Text("\(state.text("clockedIn")) · \(hourMinute(since))")
+            if let pause = state.pause {
+                // "LUNCH · 12:02", like the Today screen.
+                Image(systemName: pauseSymbol(pause.reason)).font(.system(size: 9))
+                Text("\(state.text(pause.reason)) · \(hourMinute(pause.since))")
             } else {
-                Text(state.text("clockedOut"))
+                Circle().fill(state.clockedIn ? green : Color.secondary.opacity(0.5)).frame(width: 7, height: 7)
+                if state.clockedIn, let since = state.clockedInSince {
+                    Text("\(state.text("clockedIn")) · \(hourMinute(since))")
+                } else {
+                    Text(state.text("clockedOut"))
+                }
             }
         }
         .font(.system(size: 10, weight: .bold))
-        .foregroundStyle(state.clockedIn ? green : .secondary)
+        .foregroundStyle(state.clockedIn ? green : state.pause != nil ? amber : .secondary)
         .lineLimit(1)
+    }
+}
+
+/// How long the pause has lasted so far, ticking live.
+private struct PauseLine: View {
+    let state: WidgetState
+    var size: CGFloat = 11
+    var body: some View {
+        if let pause = state.pause {
+            HStack(spacing: 4) {
+                Image(systemName: "timer").font(.system(size: size - 1, weight: .bold))
+                Text(timerInterval: pause.since...pause.since.addingTimeInterval(24 * 3600), countsDown: false)
+                    .monospacedDigit()
+                    .font(.system(size: size, weight: .bold))
+            }
+            .foregroundStyle(amber)
+            .lineLimit(1)
+        }
+    }
+}
+
+/// Clocks out for lunch / a short break, tagged so the app shows and sums it like its own menu.
+@available(iOS 17.0, *)
+private struct PauseButton: View {
+    let reason: String
+    let state: WidgetState
+    var compact = true
+
+    var body: some View {
+        Button(intent: PauseIntent(reason: reason)) {
+            Image(systemName: pauseSymbol(reason))
+                .font(.system(size: compact ? 11 : 12, weight: .bold))
+                .foregroundStyle(amber)
+                .frame(minWidth: compact ? 28 : 0, maxWidth: compact ? nil : CGFloat.infinity, maxHeight: .infinity)
+                .padding(.vertical, compact ? 6 : 8)
+                .background(amber.opacity(0.18), in: RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(state.text(reason))
+    }
+}
+
+/// Clock in / out, and while clocked in the two pause buttons beside it.
+private struct ClockActions: View {
+    let state: WidgetState
+    var body: some View {
+        HStack(spacing: 4) {
+            ClockButton(state: state, compact: true)
+            if #available(iOS 17.0, *), state.clockedIn {
+                PauseButton(reason: "LUNCH", state: state)
+                PauseButton(reason: "BREAK", state: state)
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -334,7 +444,9 @@ private struct ClockButton: View {
     var body: some View {
         let label = HStack(spacing: 4) {
             Image(systemName: state.clockedIn ? "rectangle.portrait.and.arrow.right" : "arrow.right.to.line")
-            Text(state.text(state.clockedIn ? "clockOut" : "clockIn"))
+            Text(state.text(state.clockedIn ? "clockOut" : state.pause != nil ? "resume" : "clockIn"))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
         .font(.system(size: compact ? 11 : 12, weight: .bold))
         .foregroundStyle(.white)
@@ -417,8 +529,9 @@ private struct SmallView: View {
             // The smallest size still has to answer "what am I on?" – on a day without a target
             // (a weekend) this is the only thing between the clock and the button.
             RunningLine(state: entry.state)
+            PauseLine(state: entry.state)
             Spacer(minLength: 0)
-            ClockButton(state: entry.state, compact: true)
+            ClockActions(state: entry.state)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
@@ -459,8 +572,9 @@ private struct MediumView: View {
                         .font(.system(size: 10)).foregroundStyle(.secondary)
                 }
                 TargetBar(entry: entry)
+                PauseLine(state: entry.state)
                 Spacer(minLength: 0)
-                ClockButton(state: entry.state, compact: true)
+                ClockActions(state: entry.state)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             TaskList(state: entry.state, limit: 3)
@@ -485,9 +599,20 @@ private struct LargeView: View {
                             .font(.system(size: 11)).foregroundStyle(.secondary)
                     }
                     TargetBar(entry: entry)
+                    PauseLine(state: entry.state, size: 13)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                ClockButton(state: entry.state).frame(width: 120)
+                VStack(spacing: 6) {
+                    ClockButton(state: entry.state)
+                    if #available(iOS 17.0, *), entry.state.clockedIn {
+                        HStack(spacing: 6) {
+                            PauseButton(reason: "LUNCH", state: entry.state, compact: false)
+                            PauseButton(reason: "BREAK", state: entry.state, compact: false)
+                        }
+                        .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .frame(width: 120)
             }
             if let project = entry.state.runningProject {
                 HStack(spacing: 4) {
@@ -531,7 +656,9 @@ private struct RectangularView: View {
             VStack(alignment: .leading, spacing: 2) {
                 StatusLine(state: entry.state)
                 TotalText(entry: entry).font(.system(size: 20, weight: .heavy, design: .rounded))
-                if let project = entry.state.runningProject {
+                if entry.state.pause != nil {
+                    PauseLine(state: entry.state)
+                } else if let project = entry.state.runningProject {
                     Text(project).font(.system(size: 11)).lineLimit(1)
                 }
             }
