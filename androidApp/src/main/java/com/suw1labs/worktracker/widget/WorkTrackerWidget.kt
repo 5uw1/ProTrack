@@ -1,6 +1,8 @@
 package com.suw1labs.worktracker.widget
 
 import android.content.Context
+import android.os.SystemClock
+import android.widget.RemoteViews
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -14,11 +16,13 @@ import androidx.glance.ButtonDefaults
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
+import androidx.glance.appwidget.AndroidRemoteViews
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
@@ -38,12 +42,16 @@ import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
+import androidx.glance.semantics.contentDescription
+import androidx.glance.semantics.semantics
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.suw1labs.worktracker.MainActivity
+import com.suw1labs.worktracker.R
 import com.suw1labs.worktracker.WorkTrackerApplication
+import com.suw1labs.worktracker.data.model.ClockOutReason
 import com.suw1labs.worktracker.platform.QuickTask
 import com.suw1labs.worktracker.platform.WidgetSnapshot
 import com.suw1labs.worktracker.platform.WidgetSnapshots
@@ -109,6 +117,19 @@ class ClockOutAction : ActionCallback {
     }
 }
 
+/** Clocks out tagged as lunch / break, like the "…" menu next to Clock out on the Today screen. */
+class PauseAction : ActionCallback {
+    override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
+        val reason = ClockOutReason.fromName(parameters[Reason])?.takeIf { it in WidgetSnapshots.PAUSE_REASONS } ?: return
+        WorkTrackerApplication.container(context).repository.clockOut(System.currentTimeMillis(), reason.name)
+        WorkTrackerWidget().update(context, glanceId)
+    }
+
+    companion object {
+        val Reason = ActionParameters.Key<String>("reason")
+    }
+}
+
 /** Starts the tapped task (clocking in first if needed), exactly like "Track" in the app. */
 class SwitchTaskAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
@@ -132,7 +153,14 @@ private val Amber = Color(0xFFF59E0B)
 private fun WidgetContent(snapshot: WidgetSnapshot, now: Long, t: AppStrings) {
     val wide = LocalSize.current.width >= WorkTrackerWidget.WIDE.width
     val tall = LocalSize.current.height >= WorkTrackerWidget.TALL.height
-    val statusColor = if (snapshot.clockedIn) ColorProvider(Green) else GlanceTheme.colors.onSurfaceVariant
+    // A lunch / break going on right now (today's last clock-out was tagged so).
+    val pause = snapshot.pauseReason?.let { ClockOutReason.fromName(it) }?.takeIf { !snapshot.clockedIn }
+    val pauseSince = snapshot.pauseSince ?: now
+    val statusColor = when {
+        snapshot.clockedIn -> ColorProvider(Green)
+        pause != null -> ColorProvider(Amber)
+        else -> GlanceTheme.colors.onSurfaceVariant
+    }
     val muted = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp)
 
     Column(
@@ -144,10 +172,19 @@ private fun WidgetContent(snapshot: WidgetSnapshot, now: Long, t: AppStrings) {
             .clickable(actionStartActivity<MainActivity>())
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = GlanceModifier.fillMaxWidth()) {
-            Box(modifier = GlanceModifier.size(8.dp).cornerRadius(4.dp).background(statusColor)) {}
+            if (pause != null) {
+                Text(text = pause.emoji(), style = TextStyle(fontSize = 10.sp), maxLines = 1)
+            } else {
+                Box(modifier = GlanceModifier.size(8.dp).cornerRadius(4.dp).background(statusColor)) {}
+            }
             Spacer(modifier = GlanceModifier.width(6.dp))
             Text(
-                text = if (snapshot.clockedIn) t.clockedInSince(DateFormats.hourMinute(snapshot.clockedInSince ?: now)) else t.clockedOut,
+                text = when {
+                    snapshot.clockedIn -> t.clockedInSince(DateFormats.hourMinute(snapshot.clockedInSince ?: now))
+                    // "LUNCH · since 12:02", like the Today screen.
+                    pause != null -> "${t.reasonLabel(pause).uppercase()} · ${t.since(DateFormats.hourMinute(pauseSince))}"
+                    else -> t.clockedOut
+                },
                 style = TextStyle(color = statusColor, fontSize = 10.sp, fontWeight = FontWeight.Bold),
                 maxLines = 1
             )
@@ -164,7 +201,10 @@ private fun WidgetContent(snapshot: WidgetSnapshot, now: Long, t: AppStrings) {
                 Text(text = "/ ${TimeFormat.hoursMinutes(snapshot.targetSeconds)}", style = muted, maxLines = 1)
             }
         }
-        if (wide) {
+        if (pause != null) {
+            // How long the break has lasted, ticking on its own.
+            PauseTimer(since = pauseSince)
+        } else if (wide) {
             // Running activity, or a hint when nothing runs.
             Text(
                 text = snapshot.runningProject?.let { p -> snapshot.runningTask?.let { "$p · $it" } ?: p }
@@ -174,18 +214,36 @@ private fun WidgetContent(snapshot: WidgetSnapshot, now: Long, t: AppStrings) {
             )
         }
         // Tasks are chosen after clocking in, so they only show while clocked in.
-        if (snapshot.clockedIn && snapshot.quickTasks.isNotEmpty()) {
+        if (snapshot.clockedIn && wide && snapshot.quickTasks.isNotEmpty()) {
             Spacer(modifier = GlanceModifier.height(8.dp))
             if (tall) {
                 Text(text = t.switchActivity, style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 9.sp, fontWeight = FontWeight.Bold), maxLines = 1)
                 Spacer(modifier = GlanceModifier.height(4.dp))
                 QuickTaskRows(tasks = snapshot.quickTasks.take(4), runningTaskId = snapshot.runningTaskId)
             } else {
-                QuickTaskChips(tasks = snapshot.quickTasks.take(if (wide) 3 else 2), runningTaskId = snapshot.runningTaskId)
+                QuickTaskChips(tasks = snapshot.quickTasks.take(3), runningTaskId = snapshot.runningTaskId)
             }
+        } else if (snapshot.clockedIn && !wide) {
+            // The narrow widget has no room beside Clock out, and two truncated task chips helped
+            // less than one tap to lunch / a break: the pause buttons take their row.
+            Spacer(modifier = GlanceModifier.height(8.dp))
+            PauseChips(t)
         }
         Spacer(modifier = GlanceModifier.defaultWeight())
-        if (snapshot.clockedIn) {
+        if (snapshot.clockedIn && wide) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = GlanceModifier.fillMaxWidth()) {
+                Button(
+                    text = t.clockOut,
+                    onClick = actionRunCallback<ClockOutAction>(),
+                    colors = ButtonDefaults.buttonColors(backgroundColor = ColorProvider(Red), contentColor = ColorProvider(Color.White)),
+                    modifier = GlanceModifier.defaultWeight().height(PauseButtonHeight)
+                )
+                PauseReasons.forEach { reason ->
+                    Spacer(modifier = GlanceModifier.width(6.dp))
+                    PauseIconButton(reason, t)
+                }
+            }
+        } else if (snapshot.clockedIn) {
             Button(
                 text = t.clockOut,
                 onClick = actionRunCallback<ClockOutAction>(),
@@ -201,6 +259,70 @@ private fun WidgetContent(snapshot: WidgetSnapshot, now: Long, t: AppStrings) {
             )
         }
     }
+}
+
+/** Lunch first, then the short break – the order of the app's clock-out menu. */
+private val PauseReasons = listOf(ClockOutReason.LUNCH, ClockOutReason.BREAK)
+private val PauseButtonHeight = 40.dp
+
+private fun ClockOutReason.emoji(): String = if (this == ClockOutReason.LUNCH) "🍴" else "☕"
+
+private fun pauseAction(reason: ClockOutReason) =
+    actionRunCallback<PauseAction>(actionParametersOf(PauseAction.Reason to reason.name))
+
+/** Square pause button beside Clock out (wide widget). */
+@Composable
+private fun PauseIconButton(reason: ClockOutReason, t: AppStrings) {
+    Box(
+        modifier = GlanceModifier
+            .size(44.dp, PauseButtonHeight)
+            .background(ColorProvider(Amber.copy(alpha = 0.18f)))
+            .cornerRadius(12.dp)
+            .clickable(pauseAction(reason))
+            .semantics { contentDescription = t.reasonLabel(reason) },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text = reason.emoji(), style = TextStyle(fontSize = 16.sp), maxLines = 1)
+    }
+}
+
+/** Both pause buttons with their names, in a row of their own (narrow widget). */
+@Composable
+private fun PauseChips(t: AppStrings) {
+    Row(modifier = GlanceModifier.fillMaxWidth()) {
+        PauseReasons.forEachIndexed { index, reason ->
+            if (index > 0) Spacer(modifier = GlanceModifier.width(6.dp))
+            Box(
+                modifier = GlanceModifier
+                    .defaultWeight()
+                    .background(ColorProvider(Amber.copy(alpha = 0.18f)))
+                    .cornerRadius(10.dp)
+                    .padding(horizontal = 6.dp, vertical = 6.dp)
+                    .clickable(pauseAction(reason)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "${reason.emoji()} ${t.reasonLabel(reason)}",
+                    style = TextStyle(color = ColorProvider(Amber), fontSize = 11.sp, fontWeight = FontWeight.Bold),
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Live break duration. Glance cannot tick text itself, so this embeds a platform Chronometer;
+ * its base is on the elapsed-realtime clock, hence the conversion from the wall-clock start.
+ */
+@Composable
+private fun PauseTimer(since: Long) {
+    val context = LocalContext.current
+    val elapsed = (System.currentTimeMillis() - since).coerceAtLeast(0L)
+    val views = RemoteViews(context.packageName, R.layout.widget_pause_chronometer).apply {
+        setChronometer(R.id.pause_chronometer, SystemClock.elapsedRealtime() - elapsed, "⏱ %s", true)
+    }
+    AndroidRemoteViews(remoteViews = views)
 }
 
 /** A row per task, for a widget tall enough that side-by-side chips would waste the space. */

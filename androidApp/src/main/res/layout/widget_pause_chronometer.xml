@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Live "how long on a break" counter in the home-screen widget. Glance has no ticking text of its
+     own, so WorkTrackerWidget embeds this Chronometer through AndroidRemoteViews. -->
+<Chronometer xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/pause_chronometer"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:singleLine="true"
+    android:textColor="#FFF59E0B"
+    android:textSize="13sp"
+    android:textStyle="bold" />
