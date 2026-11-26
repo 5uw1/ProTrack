@@ -73,6 +73,17 @@ struct WidgetState {
         return max(0, now.timeIntervalSince(start))
     }
 
+    /// The stored totals belong to the day of [updatedAt]. Once the day has changed (the app was not
+    /// opened since midnight), yesterday's closed time must not carry into today's total, and an
+    /// open period only counts from midnight – the same rules WidgetSnapshots.compute applies.
+    func asOf(_ date: Date, calendar: Calendar = .current) -> WidgetState {
+        let dayStart = calendar.startOfDay(for: date)
+        var s = self
+        if let updatedAt, updatedAt < dayStart { s.attendanceSecondsBefore = 0 }
+        if s.clockedIn, let since = s.clockedInSince, since < dayStart { s.clockedInSince = dayStart }
+        return s
+    }
+
     static let preview: WidgetState = {
         var s = WidgetState()
         s.clockedIn = true
@@ -128,8 +139,12 @@ enum WidgetActionStore {
         queue.append(record)
         d.set(queue, forKey: "widget.pendingActions")
 
-        // Optimistic state so the widget reflects the tap immediately.
-        let state = WidgetState.load()
+        // Optimistic state so the widget reflects the tap immediately. Roll the stored totals over
+        // to today first, so a clock-in the morning after a widget clock-out starts from zero.
+        let state = WidgetState.load().asOf(now)
+        d.set(Int(state.attendanceSecondsBefore), forKey: "widget.attendanceSecondsBefore")
+        if let since = state.clockedInSince { d.set(since.timeIntervalSince1970, forKey: "widget.clockedInSince") }
+        d.set(now.timeIntervalSince1970, forKey: "widget.updatedAt")
         switch type {
         case "clockIn":
             if !state.clockedIn {
@@ -219,19 +234,26 @@ struct WorkTrackerProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (WorkTrackerEntry) -> Void) {
-        completion(WorkTrackerEntry(date: Date(), state: context.isPreview ? .preview : WidgetState.load()))
+        let now = Date()
+        completion(WorkTrackerEntry(date: now, state: context.isPreview ? .preview : WidgetState.load().asOf(now)))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<WorkTrackerEntry>) -> Void) {
-        let state = WidgetState.load()
+        let stored = WidgetState.load()
         let now = Date()
+        let calendar = Calendar.current
+        let state = stored.asOf(now, calendar: calendar)
+        let nextMidnight = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))
+            ?? now.addingTimeInterval(24 * 3600)
         var entries = [WorkTrackerEntry(date: now, state: state)]
         // When clocked in, add an entry at the moment the target is reached so the colour flips
         // without the app having to push an update.
         if let start = state.timerStart, state.targetSeconds > 0 {
             let reachedAt = start.addingTimeInterval(state.targetSeconds)
-            if reachedAt > now { entries.append(WorkTrackerEntry(date: reachedAt, state: state)) }
+            if reachedAt > now && reachedAt < nextMidnight { entries.append(WorkTrackerEntry(date: reachedAt, state: state)) }
         }
+        // Start the new day's total at midnight even if the app is not opened.
+        entries.append(WorkTrackerEntry(date: nextMidnight, state: stored.asOf(nextMidnight, calendar: calendar)))
         // The app reloads the timeline on every change; this is only a safety net for a new day.
         completion(Timeline(entries: entries, policy: .after(now.addingTimeInterval(30 * 60))))
     }
